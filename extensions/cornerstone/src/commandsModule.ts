@@ -58,6 +58,9 @@ import i18n from '@ohif/i18n';
 
 const { add, intersect, subtract, copy } = cstUtils.contourSegmentation;
 
+import ImplantLibraryModal from './components/ImplantLibrary/ImplantLibraryModal';
+import React from 'react';
+
 const { DefaultHistoryMemo } = csUtils.HistoryMemo;
 const toggleSyncFunctions = {
   imageSlice: toggleImageSliceSync,
@@ -205,6 +208,67 @@ function commandsModule({
   };
 
   const actions = {
+    openImplantLibrary: () => {
+      const { uiModalService } = servicesManager.services;
+
+      const onSelect = (implant) => {
+        uiModalService.hide();
+
+        console.log('Implant selected:', implant);
+
+        const allToolGroups = cornerstoneTools.ToolGroupManager.getAllToolGroups();
+
+        allToolGroups.forEach(toolGroup => {
+             const toolInstance = toolGroup.getToolInstance(toolNames.DentalImplant);
+             if (toolInstance) {
+                 console.log(`Found DentalImplant in ToolGroup ${toolGroup.id}, activating...`);
+
+                 // Explicitly set potentially conflicting tools to passive/disabled
+                 const conflictingTools = [
+                     'Crosshairs',
+                     'WindowLevel',
+                     'Pan',
+                     'Zoom',
+                     'TrackballRotate',
+                     'VolumeRotateMouseWheel'
+                 ];
+
+                 conflictingTools.forEach(toolName => {
+                     if (toolGroup.getToolInstance(toolName)) {
+                         // Disable tool to prevent runtime errors (e.g. Crosshairs mouseMove processing)
+                         toolGroup.setToolDisabled(toolName);
+                     }
+                 });
+
+                 // Set configuration
+                 toolGroup.setToolConfiguration(toolNames.DentalImplant, {
+                     implant,
+                 });
+
+                 // Activate the tool
+                 toolGroup.setToolActive(toolNames.DentalImplant, {
+                    bindings: [{ mouseButton: cornerstoneTools.Enums.MouseBindings.Primary }],
+                 });
+
+                 // Force refresh of the viewport to ensure cursor update (if applicable)
+                 // This is indirect, but setting tool active should trigger state change.
+             }
+        });
+      };
+
+      const onClose = () => {
+        uiModalService.hide();
+      };
+
+      uiModalService.show({
+        content: ImplantLibraryModal,
+        contentProps: {
+          onSelect,
+          onClose,
+        },
+        title: 'Dental Implant Library',
+      });
+    },
     jumpToMeasurementViewport: ({ annotationUID, measurement }) => {
       cornerstoneTools.annotation.selection.setAnnotationSelected(annotationUID, true);
       const { metadata } = measurement;
@@ -2749,6 +2813,7 @@ function commandsModule({
     decimateContours: actions.decimateContours,
     convertContourHoles: actions.convertContourHoles,
     setInterpolationToolConfiguration: actions.setInterpolationToolConfiguration,
+    openImplantLibrary: actions.openImplantLibrary,
   };
 
   return {

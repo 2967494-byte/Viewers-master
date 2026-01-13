@@ -295,6 +295,16 @@ export const toolbarButtons: Button[] = [
     },
   },
   {
+    id: 'DentalImplant',
+    uiType: 'ohif.toolButton',
+    props: {
+      icon: 'tool-length', // Placeholder icon
+      label: 'Dental Implant',
+      commands: 'openImplantLibrary',
+      evaluate: 'evaluate.action',
+    },
+  },
+  {
     id: 'Reset',
     uiType: 'ohif.toolButton',
     props: {

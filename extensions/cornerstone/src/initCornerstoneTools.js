@@ -56,6 +56,7 @@ import * as polySeg from '@cornerstonejs/polymorphic-segmentation';
 import CalibrationLineTool from './tools/CalibrationLineTool';
 import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 import VolumeRotateMouseWheelTool from './tools/VolumeRotateMouseWheelTool';
+import DentalImplantTool from './tools/DentalImplantTool';
 
 export default function initCornerstoneTools(configuration = {}) {
   CrosshairsTool.isAnnotation = false;
@@ -101,8 +102,13 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(BrushTool);
   addTool(PaintFillTool);
   addTool(ReferenceLinesTool);
+
+  // ... existing imports
+
   addTool(ReferenceLinesTool, { name: 'ReferenceLinesSagittal' });
   addTool(ReferenceLinesTool, { name: 'ReferenceLinesCoronal' });
+  addTool(DentalImplantTool);
+
   addTool(CalibrationLineTool);
   addTool(TrackballRotateTool);
   addTool(ImageOverlayViewerTool);
@@ -197,6 +203,7 @@ const toolNames = {
   VerticalScaleOverlay: VerticalScaleOverlayTool.toolName,
   FocalPointCross: FocalPointCrossTool.toolName,
   VolumeRotateMouseWheel: VolumeRotateMouseWheelTool.toolName,
+  DentalImplant: DentalImplantTool.toolName,
 };
 
 export { toolNames };

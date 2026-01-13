@@ -160,6 +160,9 @@ function createTools({ utilityModule, commandsManager }) {
       */
       /*
       {
+        toolName: 'DentalImplant',
+      },
+      {
         toolName: 'PlanarFreehandContourSegmentation',
       },
       { toolName: 'LivewireContourSegmentation' },
@@ -243,6 +246,7 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
 
   // Remove WindowLevel from active tools to replace with Crosshairs
   tools.active = tools.active.filter(tool => tool.toolName !== 'WindowLevel');
+  tools.enabled.push({ toolName: 'DentalImplant' });
 
   tools.active.push(
     {
@@ -321,6 +325,9 @@ function initVolume3DToolGroup(extensionManager, toolGroupService) {
     enabled: [
       {
         toolName: 'OrientationMarker',
+      },
+      {
+        toolName: 'DentalImplant',
       },
       {
         toolName: 'Crosshairs',

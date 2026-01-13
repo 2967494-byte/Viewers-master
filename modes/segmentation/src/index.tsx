@@ -286,6 +286,7 @@ function modeFactory({ modeConfiguration }) {
         'Capture',
         'Layout',
         'Crosshairs',
+        'DentalImplant',
         'MoreTools',
       ]);
 
