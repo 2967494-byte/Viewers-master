@@ -74,18 +74,21 @@ function modeFactory({ modeConfiguration }) {
             id: 'PatientID',
             attribute: 'PatientID',
             label: '',
-            contentF: ({ instance }) => (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return (
               <div className="overlay-item flex flex-row text-[10px] leading-3">
                 <span className="text-[#b0b0b0] mr-1">ID :</span>
                 <span className="text-white">{instance.PatientID}</span>
               </div>
-            ),
+            )},
           },
           {
             id: 'PatientName',
             attribute: 'PatientName',
             label: '',
             contentF: ({ instance, formatters }) => {
+              if (!instance) return null;
               const { PatientName } = instance;
               let nameToFormat = PatientName;
 
@@ -107,14 +110,14 @@ function modeFactory({ modeConfiguration }) {
                 !/[\u0400-\u04FF]/.test(nameToFormat)
               ) {
                 try {
-                  const bytes = new Uint8Array(nameToFormat.length);
-                  for (let i = 0; i < nameToFormat.length; i++) {
+                    const bytes = new Uint8Array(nameToFormat.length);
+                    for (let i = 0; i < nameToFormat.length; i++) {
                     bytes[i] = nameToFormat.charCodeAt(i);
-                  }
-                  const decoder = new TextDecoder('windows-1251');
-                  nameToFormat = decoder.decode(bytes);
+                    }
+                    const decoder = new TextDecoder('windows-1251');
+                    nameToFormat = decoder.decode(bytes);
                 } catch (error) {
-                  console.warn('Failed to decode potential Mojibake name:', error);
+                    console.warn('Failed to decode potential Mojibake name:', error);
                 }
               }
 
@@ -130,22 +133,26 @@ function modeFactory({ modeConfiguration }) {
             id: 'StudyDate',
             attribute: 'StudyDate',
             label: '',
-            contentF: ({ instance }) => (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return (
               <div className="overlay-item flex flex-row text-[10px] leading-3 text-white">
                 {instance.StudyDate}
               </div>
-            ),
+            )},
           },
           {
             id: 'SeriesNumber',
             attribute: 'SeriesNumber',
             label: '',
-            contentF: ({ instance }) => (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return (
               <div className="overlay-item flex flex-row text-[10px] leading-3">
                 <span className="text-[#b0b0b0] mr-1">Series :</span>
                 <span className="text-white">{instance.SeriesNumber}</span>
               </div>
-            ),
+            )},
           },
         ],
         'viewportOverlay.topRight': [
@@ -162,57 +169,67 @@ function modeFactory({ modeConfiguration }) {
             id: 'SliceThickness',
             attribute: 'SliceThickness',
             label: '',
-            contentF: ({ instance }) =>
-              instance.SliceThickness ? (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return instance.SliceThickness ? (
                 <div className="overlay-item flex flex-row text-[10px] leading-3">
                   <span className="text-[#b0b0b0] mr-1">TH :</span>
                   <span className="text-white">
                     {Number(instance.SliceThickness).toFixed(1)}mm
                   </span>
                 </div>
-              ) : null,
+              ) : null;
+            },
           },
         ],
         'viewportOverlay.bottomLeft': [
           {
             id: 'Dose',
             label: '',
-            contentF: ({ instance }) =>
-              instance.ImageAndFluoroscopyAreaDoseProduct ? (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return instance.ImageAndFluoroscopyAreaDoseProduct ? (
                 <div className="overlay-item flex flex-row text-[10px] leading-3 text-white">
                   {Number(instance.ImageAndFluoroscopyAreaDoseProduct).toFixed(2)} [dGy*cm^2]
                 </div>
-              ) : null,
+              ) : null;
+            },
           },
           {
             id: 'mA',
             label: '',
-            contentF: ({ instance }) =>
-              instance.XRayTubeCurrent ? (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return instance.XRayTubeCurrent ? (
                 <div className="overlay-item flex flex-row text-[10px] leading-3 text-white">
                   {Number(instance.XRayTubeCurrent).toFixed(1)} [mA]
                 </div>
-              ) : null,
+              ) : null;
+            },
           },
           {
             id: 'kVp',
             label: '',
-            contentF: ({ instance }) =>
-              instance.KVP ? (
+            contentF: ({ instance }) => {
+              if (!instance) return null;
+              return instance.KVP ? (
                 <div className="overlay-item flex flex-row text-[10px] leading-3 text-white">
                   {Number(instance.KVP).toFixed(0)} [kVp]
                 </div>
-              ) : null,
+              ) : null;
+            },
           },
           {
             id: 'Modality',
             attribute: 'Modality',
             label: '',
-            contentF: ({ instance }) => (
+            contentF: ({ instance }) => {
+               if (!instance) return null;
+               return (
                <div className="overlay-item flex flex-row text-[10px] leading-3 text-white">
                   {instance.Modality}
                </div>
-            ),
+            )},
           },
           {
             id: 'BottomSpacer',

@@ -65,14 +65,16 @@ class DentalImplantTool extends LengthTool {
       // 3. Create Annotation Manually
       const annotationUID = cornerstone.utilities.uuidv4();
 
-      // Satisfy standard interface
+      const referencedImageId = viewport.getCurrentImageId ? viewport.getCurrentImageId() : '';
+
+      // Satisfy standard interface with proper Point3 types
       const newAnnotation = {
           metadata: {
               toolName: DentalImplantTool.toolName,
-              viewPlaneNormal: [...normal],
-              viewUp: camera.viewUp ? [...camera.viewUp] : undefined,
+              viewPlaneNormal: [normal[0], normal[1], normal[2]] as [number, number, number],
+              viewUp: camera.viewUp ? [camera.viewUp[0], camera.viewUp[1], camera.viewUp[2]] as [number, number, number] : undefined,
               FrameOfReferenceUID: viewport.getFrameOfReferenceUID(),
-              referencedImageId: '',
+              referencedImageId,
           },
           data: {
               label: '',
@@ -82,8 +84,13 @@ class DentalImplantTool extends LengthTool {
                   activeHandleIndex: null, // No active handle = no drag
                   textBox: {
                       hasMoved: false,
-                      worldPosition: [0, 0, 0],
-                      worldBoundingBox: { top: 0, left: 0, bottom: 0, right: 0 },
+                      worldPosition: [0, 0, 0] as [number, number, number],
+                      worldBoundingBox: {
+                          topLeft: [0, 0, 0] as [number, number, number],
+                          topRight: [0, 0, 0] as [number, number, number],
+                          bottomLeft: [0, 0, 0] as [number, number, number],
+                          bottomRight: [0, 0, 0] as [number, number, number],
+                      },
                   },
               },
               visible: true,
@@ -100,10 +107,41 @@ class DentalImplantTool extends LengthTool {
       // 4. Add to state
       annotation.state.addAnnotation(newAnnotation, element);
 
-      // 5. Trigger Render
-      viewport.render();
+      // 5. Trigger Render Globally (Deferred to prevent Crosshairs collision)
+      setTimeout(() => {
+          try {
+              const enabledElements = cornerstone.getEnabledElements();
+              enabledElements.forEach(obj => {
+                   const vp = obj.viewport;
+                   // Get element from viewport's canvas parent
+                   const el = vp?.element;
+                   if (vp && el && vp.getFrameOfReferenceUID &&
+                       vp.getFrameOfReferenceUID() === viewport.getFrameOfReferenceUID()) {
+                       utilities.triggerAnnotationRender(el);
+                   }
+              });
+          } catch(err) {
+              console.warn("DentalImplantTool: Deferred render failed", err);
+          }
+      }, 0);
 
-      // 6. Return annotation
+      // 6. Trigger 3D viewport render so implant appears in skull view
+      setTimeout(() => {
+          try {
+              const enabledElements = cornerstone.getEnabledElements();
+              enabledElements.forEach(obj => {
+                   const vp = obj.viewport;
+                   if (vp && vp.getRenderer) {
+                       // This is a 3D viewport - trigger render
+                       vp.render();
+                   }
+              });
+          } catch(e) {
+              console.warn("DentalImplantTool: 3D render trigger failed", e);
+          }
+      }, 50);
+
+      // 7. Return annotation
       return newAnnotation;
   };
 
@@ -117,37 +155,195 @@ class DentalImplantTool extends LengthTool {
   }
 
   // ------------------------------------------------------------------------
-  // Interaction Guards: Explicitly block standard tool interactions
+  // Interaction Guards: Explicitly block handled resizing, but allow moving
   // ------------------------------------------------------------------------
 
   handleSelectedCallback(evt, annotation, handle, interactionType = 'mouse') {
-      console.log("DentalImplantTool: Handle selection blocked");
-      return;
+      return; // Block handle selection (resizing)
   }
 
-  mouseDragCallback = (evt, annotation) => {
-      return true; // Consume event, do nothing
-  }
-
-  touchDragCallback = (evt, annotation) => {
-      return true;
-  }
 
   /**
-   * Change Cursor on Hover to indicate "Placement" mode
+   * Required for the tool to be selectable/movable.
+   * STRICT CHECK: Only allow selection if correct visual elements are close.
    */
-  mouseMoveCallback = (evt, filteredToolAnnotations) => {
-        const { element } = evt.detail;
-        if (element) {
-            element.style.cursor = 'copy';
-        }
-        return false;
+  isPointNearToolData(element, annotation, canvasCoords, proximity) {
+      const { data } = annotation;
+      const { points } = data.handles;
+      const enabledElement = getEnabledElement(element);
+      const { viewport } = enabledElement;
+
+      // 1. First, check if VISIBLE on this slice
+      const vis = this._checkVisibility(viewport, points, data);
+      if (!vis.isVisible) return false;
+
+      // 2. Distance Check
+      const p1 = viewport.worldToCanvas(points[0]);
+      const p2 = viewport.worldToCanvas(points[1]);
+
+      // If End View (Circle), we are basically clicking a point
+      if (vis.isEndView) {
+          const dist = Math.sqrt(Math.pow(p1[0]-canvasCoords[0], 2) + Math.pow(p1[1]-canvasCoords[1], 2));
+          // Radius check
+          // const radius = (vis.drawWidthPx || 10) / 2;
+          return dist <= (proximity || 6); // Allow clicking center
+      }
+
+      // Side View: Check distance to axis
+      const distToLine = Math.abs(utilities.math.lineSegment.distanceToPoint(p1, p2, canvasCoords));
+
+      // If we are strictly checking "implant center", check p1
+      if (vis.showStartPoint) {
+           const distToStart = Math.sqrt(Math.pow(p1[0]-canvasCoords[0], 2) + Math.pow(p1[1]-canvasCoords[1], 2));
+           if (distToStart <= (proximity || 6)) return true;
+      }
+
+      return distToLine <= (proximity || 6);
   }
 
-  toolDeactivatedCallback = (evt) => {
-       const { element } = evt.detail;
-       if (element) element.style.cursor = 'initial';
+  // ------------------------------------------------------------------------
+  // Helper: Visibility Logic (Shared)
+  // ------------------------------------------------------------------------
+  _checkVisibility(viewport, points, data) {
+      // Defaults
+      const result = {
+          isVisible: false,
+          isEndView: false,
+          showStartPoint: false,
+          drawWidthPx: 0,
+          distToPlane: 0,
+      };
+
+
+      const viewportType = viewport.type ? viewport.type.toString().toLowerCase() : '';
+      // ROBUST 3D CHECK: Check constructor name as fallback
+      const is3D =
+        viewportType === 'volume3d' ||
+        viewportType.includes('3d') ||
+        viewport.constructor.name === 'VolumeViewport3D' ||
+        (viewport.type && viewport.type === cornerstone.Enums.ViewportType.VOLUME_3D);
+
+      if (is3D) {
+          // 3D logic handled separately/always visible if in frustum
+          result.isVisible = true;
+          return result;
+      }
+
+      // 2D Logic
+      let implantDiameter = 4;
+      if (data.implant?.dimensions?.diameter) implantDiameter = data.implant.dimensions.diameter;
+      const rMM = implantDiameter / 2;
+
+      try {
+          const camera = viewport.getCamera();
+          const { viewPlaneNormal, focalPoint } = camera;
+
+          if (!viewPlaneNormal || !focalPoint) return result;
+
+          // Normalize normal to ensure accurate distance
+          const normal = [viewPlaneNormal[0], viewPlaneNormal[1], viewPlaneNormal[2]];
+          const lenN = Math.sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2]);
+          if (lenN > 0) {
+              normal[0] /= lenN;
+              normal[1] /= lenN;
+              normal[2] /= lenN;
+          }
+
+          const p1 = points[0];
+          const p2 = points[1];
+
+          // Dists
+          const d1 = (
+              (p1[0] - focalPoint[0]) * normal[0] +
+              (p1[1] - focalPoint[1]) * normal[1] +
+              (p1[2] - focalPoint[2]) * normal[2]
+          );
+
+          const d2 = (
+              (p2[0] - focalPoint[0]) * normal[0] +
+              (p2[1] - focalPoint[1]) * normal[1] +
+              (p2[2] - focalPoint[2]) * normal[2]
+          );
+
+          if (isNaN(d1) || isNaN(d2)) return result;
+
+          const distStartToPlane = Math.abs(d1);
+          const distToPlane = (d1 + d2) / 2;
+          const intersectsPlane = (d1 * d2) <= 0;
+
+          // Angle
+          let angleWithPlane = 0;
+          const axis = [p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2]];
+          const len = Math.sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+          if (len > 0) {
+              const dot = Math.abs(
+                  (axis[0]*normal[0] + axis[1]*normal[1] + axis[2]*normal[2]) / len
+              );
+              angleWithPlane = dot;
+          }
+
+          // Scale: Calculate pixelsPerMM using a reference point offset
+          // This works regardless of viewing angle (unlike projected axis length)
+          let pixelsPerMM = 1;
+          try {
+              // Create a reference point 1mm away from p1 in a direction perpendicular to view normal
+              const viewRight = camera.viewUp ? [
+                  normal[1] * camera.viewUp[2] - normal[2] * camera.viewUp[1],
+                  normal[2] * camera.viewUp[0] - normal[0] * camera.viewUp[2],
+                  normal[0] * camera.viewUp[1] - normal[1] * camera.viewUp[0]
+              ] : [1, 0, 0];
+
+              const lenR = Math.sqrt(viewRight[0]*viewRight[0] + viewRight[1]*viewRight[1] + viewRight[2]*viewRight[2]);
+              if (lenR > 0.001) {
+                  // Normalized viewRight direction
+                  const refOffset = [viewRight[0]/lenR, viewRight[1]/lenR, viewRight[2]/lenR];
+                  // Point 1mm away in screen-horizontal direction
+                  const refPoint = [p1[0] + refOffset[0], p1[1] + refOffset[1], p1[2] + refOffset[2]];
+
+                  const p1c = viewport.worldToCanvas(p1);
+                  const refC = viewport.worldToCanvas(refPoint);
+                  const pxDist = Math.sqrt((p1c[0]-refC[0])*(p1c[0]-refC[0]) + (p1c[1]-refC[1])*(p1c[1]-refC[1]));
+                  if (pxDist > 0.1) {
+                      pixelsPerMM = pxDist; // Since we offset by 1mm, pxDist = pixels per mm
+                  }
+              }
+          } catch(scaleErr) {
+              console.warn("pixelsPerMM calc failed", scaleErr);
+          }
+
+          if (angleWithPlane > 0.8) {
+              // END VIEW
+              // Relaxed check: Visible if intersecting OR if the start head is very close to plane
+              // This handles cases where d1 is -0.0001 (behind) relative to camera but effectively on slice
+              if (!intersectsPlane && distStartToPlane > 0.5) return result;
+
+              result.isVisible = true;
+              result.isEndView = true;
+              result.drawWidthPx = implantDiameter * pixelsPerMM;
+              result.showStartPoint = true; // Center always on in circle
+          } else {
+              // SIDE VIEW
+              const absDist = Math.abs(distToPlane);
+              if (absDist >= rMM) return result; // Hidden
+
+              result.isVisible = true;
+              result.isEndView = false;
+              // Chord
+              const drawWidthMM = 2 * Math.sqrt(Math.max(0, rMM*rMM - absDist*absDist));
+              result.drawWidthPx = Math.max(1, drawWidthMM * pixelsPerMM);
+
+              if (distStartToPlane < 0.5) {
+                   result.showStartPoint = true;
+              }
+          }
+
+      } catch (e) {
+          console.warn(e);
+      }
+
+      return result;
   }
+
 
   // ------------------------------------------------------------------------
   // Helper: Rect Points
@@ -182,8 +378,13 @@ class DentalImplantTool extends LengthTool {
    * Manages the VTK Actor for 3D Viewports
    */
   _update3DActor(viewport, annotationUID, start, end, diameter, colorHex) {
+      console.log("DentalImplantTool: _update3DActor called", { annotationUID, start, end, diameter });
+
       const renderer = viewport.getRenderer();
-      if (!renderer) return;
+      if (!renderer) {
+          console.warn("DentalImplantTool: No renderer for 3D viewport");
+          return;
+      }
 
       if (!this.actorMap) this.actorMap = new Map();
       const key = `${annotationUID}-${viewport.id}`;
@@ -191,6 +392,7 @@ class DentalImplantTool extends LengthTool {
       let actor = this.actorMap.get(key);
 
       if (!actor) {
+          console.log("DentalImplantTool: Creating new VTK actor for", key);
           // Create Actor
           const cylinderSource = vtkCylinderSource.newInstance({
               resolution: 20,
@@ -303,114 +505,29 @@ class DentalImplantTool extends LengthTool {
 
       // 2. 2D RENDER (Fallback)
 
-      // Calculate Distances to Plane to determine "Slice Width"
-      let distToPlane = 0;
-      let intersectsPlane = false;
-      let angleWithPlane = 0; // 0 = parallel, 1 = perp
+      // Use Shared Visibility Check to ensure consistency with Interaction Logic
+      const vis = this._checkVisibility(viewport, points, data);
 
-      try {
-          const camera = viewport.getCamera();
-          const { viewPlaneNormal, focalPoint } = camera;
+      if (!vis.isVisible) return;
 
-          if (viewPlaneNormal && focalPoint) {
-              const p1 = points[0];
-              const p2 = points[1];
+      const p1 = viewport.worldToCanvas(points[0]);
+      const p2 = viewport.worldToCanvas(points[1]);
+      const start = p1;
+      const end = p2;
 
-              // Normal vector calc
-              const d1 = (
-                  (p1[0] - focalPoint[0]) * viewPlaneNormal[0] +
-                  (p1[1] - focalPoint[1]) * viewPlaneNormal[1] +
-                  (p1[2] - focalPoint[2]) * viewPlaneNormal[2]
-              );
-
-              const d2 = (
-                  (p2[0] - focalPoint[0]) * viewPlaneNormal[0] +
-                  (p2[1] - focalPoint[1]) * viewPlaneNormal[1] +
-                  (p2[2] - focalPoint[2]) * viewPlaneNormal[2]
-              );
-
-              // Average Distance (for width modulation)
-              distToPlane = (d1 + d2) / 2;
-
-              // Intersects?
-              intersectsPlane = (d1 * d2) <= 0;
-
-              // Angle
-              const axis = [p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2]];
-              const len = Math.sqrt(axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
-              if (len > 0) {
-                  const dot = Math.abs(
-                      (axis[0]*viewPlaneNormal[0] + axis[1]*viewPlaneNormal[1] + axis[2]*viewPlaneNormal[2]) / len
-                  );
-                  angleWithPlane = dot; // 1.0 = Perpendicular (End View), 0.0 = Parallel (Side View)
-              }
-          }
-      } catch (err) {
-          console.warn("DentalImplantTool: Math failed", err);
-      }
-
-      // Convert to Canvas
-      const canvasPoints = points.map((p) => viewport.worldToCanvas(p));
-      const [start, end] = canvasPoints;
-
-      // Get Scaling (Pixels per MM)
-      let pixelsPerMM = 1;
-      try {
-         const dx = start[0] - end[0];
-         const dy = start[1] - end[1];
-         const cLen = Math.sqrt(dx*dx + dy*dy);
-         const wLen = Math.sqrt(
-             Math.pow(points[1][0] - points[0][0], 2) +
-             Math.pow(points[1][1] - points[0][1], 2) +
-             Math.pow(points[1][2] - points[0][2], 2)
-         );
-         if (cLen > 0 && wLen > 0) {
-              pixelsPerMM = cLen / wLen;
-         }
-      } catch(e) {}
-
-      const rMM = implantDiameter / 2;
-      let drawWidthMM = implantDiameter;
-
-      // -----------------------------------------------------------
-      // LOGIC SWITCH
-      // -----------------------------------------------------------
-
-      if (angleWithPlane > 0.8) {
-          // === END VIEW (Circle) ===
-          // Visible if we are cutting through the length
-          if (!intersectsPlane) return;
-
-          let drawWidthPx = implantDiameter * pixelsPerMM;
-
-          // Draw Circle
-          drawCircle(svgDrawingHelper, annotationUID, 'implant-circle', start, drawWidthPx / 2, {
+      // Draw
+      if (vis.isEndView) {
+          // Circle
+           drawCircle(svgDrawingHelper, annotationUID, 'implant-circle', start, vis.drawWidthPx / 2, {
               color: implantColor,
               lineWidth: 2,
               fillColor: implantColor,
               fillOpacity: 0.2,
           });
           drawCircle(svgDrawingHelper, annotationUID, 'implant-center', start, 1, { color: '#00FFFF', lineWidth: 1, fillColor: '#00FFFF', fillOpacity: 1 });
-
       } else {
-          // === SIDE VIEW (Rect) ===
-          // Modulate Width based on distance from axis
-          const absDist = Math.abs(distToPlane);
-
-          if (absDist >= rMM) {
-              // Outside the cylinder radius -> Hidden
-              return;
-          }
-
-          // Chord Width = 2 * sqrt(R^2 - d^2)
-          drawWidthMM = 2 * Math.sqrt(rMM*rMM - absDist*absDist);
-
-          let drawWidthPx = drawWidthMM * pixelsPerMM;
-
-          // Prevent tiny rendering
-          if (drawWidthPx < 1) drawWidthPx = 1;
-
-          const rectPoints = this._getRectPoints(start, end, drawWidthPx);
+          // Rect
+          const rectPoints = this._getRectPoints(start, end, vis.drawWidthPx);
           drawPolyline(svgDrawingHelper, annotationUID, 'implant-fixture', rectPoints, {
               color: implantColor,
               lineWidth: 2,
@@ -423,6 +540,9 @@ class DentalImplantTool extends LengthTool {
                 lineWidth: 2,
                 lineDash: [4, 4],
           });
+          if (vis.showStartPoint) {
+              drawCircle(svgDrawingHelper, annotationUID, 'implant-center', start, 1, { color: '#00FFFF', lineWidth: 1, fillColor: '#00FFFF', fillOpacity: 1 });
+          }
       }
 
       renderStatus = true;

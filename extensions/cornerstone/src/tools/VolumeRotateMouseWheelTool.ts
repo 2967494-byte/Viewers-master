@@ -15,6 +15,7 @@ class VolumeRotateMouseWheelTool extends BaseTool {
     }
   ) {
     super(toolProps, defaultToolProps);
+    console.log("VolumeRotateMouseWheelTool: Constructor called - tool registered");
   }
 
   mouseWheelCallback(evt) {
@@ -45,6 +46,8 @@ class VolumeRotateMouseWheelTool extends BaseTool {
     const camera = viewport.getCamera();
     const { viewUp, position, focalPoint } = camera;
 
+    console.log("VolumeRotateMouseWheel: Before tilt", { viewUp: [...viewUp], position: [...(position || [])], focalPoint: [...(focalPoint || [])] });
+
     // View Direction (VPN) used as rotation axis
     const viewDirection = vec3.create();
     vec3.subtract(viewDirection, focalPoint, position);
@@ -56,10 +59,13 @@ class VolumeRotateMouseWheelTool extends BaseTool {
     const rotationMat = mat4.create();
     mat4.fromRotation(rotationMat, rotationRadians, viewDirection);
 
-    // Rotate viewUp vector
+    // Rotate viewUp vector ONLY - position and focalPoint stay the same
     const newViewUp = vec3.create();
     vec3.transformMat4(newViewUp, viewUp, rotationMat);
 
+    console.log("VolumeRotateMouseWheel: After tilt", { newViewUp: [newViewUp[0], newViewUp[1], newViewUp[2]], angle });
+
+    // CRITICAL: Only set viewUp, do NOT change position or focalPoint
     viewport.setCamera({
       viewUp: [newViewUp[0], newViewUp[1], newViewUp[2]],
     });

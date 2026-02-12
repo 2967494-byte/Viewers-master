@@ -65,45 +65,52 @@ function ToolbarLayoutSelectorWithServices({
           },
         },
         {
+            title: 'MPR 2x2',
+            icon: 'layout-four-up',
+            commandOptions: {
+              protocolId: 'mpr2x2',
+            },
+        },
+        {
           title: '3D four up',
           icon: 'layout-four-up',
           commandOptions: {
-            protocolId: '3d-four-up',
+            protocolId: 'fourUp',
           },
         },
         {
           title: '3D main',
           icon: 'layout-three-row',
           commandOptions: {
-            protocolId: '3d-main',
+            protocolId: 'main3D',
           },
         },
         {
           title: 'Axial Primary',
           icon: 'layout-side-by-side',
           commandOptions: {
-            protocolId: 'axial-primary',
+            protocolId: 'primaryAxial',
           },
         },
         {
           title: '3D only',
           icon: 'layout-single',
           commandOptions: {
-            protocolId: '3d-only',
+            protocolId: 'only3D',
           },
         },
         {
           title: '3D primary',
           icon: 'layout-side-by-side',
           commandOptions: {
-            protocolId: '3d-primary',
+            protocolId: 'primary3D',
           },
         },
         {
           title: 'Frame View',
           icon: 'icon-stack',
           commandOptions: {
-            protocolId: 'frame-view',
+            protocolId: '@ohif/frameView',
           },
         },
       ];

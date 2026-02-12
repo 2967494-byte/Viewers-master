@@ -224,13 +224,13 @@ function commandsModule({
                  console.log(`Found DentalImplant in ToolGroup ${toolGroup.id}, activating...`);
 
                  // Explicitly set potentially conflicting tools to passive/disabled
+                 // Note: VolumeRotateMouseWheel is NOT disabled since wheel doesn't conflict with primary button
                  const conflictingTools = [
                      'Crosshairs',
                      'WindowLevel',
                      'Pan',
                      'Zoom',
-                     'TrackballRotate',
-                     'VolumeRotateMouseWheel'
+                     'TrackballRotate'
                  ];
 
                  conflictingTools.forEach(toolName => {
