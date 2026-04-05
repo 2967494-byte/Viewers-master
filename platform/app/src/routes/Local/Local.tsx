@@ -1,14 +1,15 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import classnames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { DicomMetadataStore, MODULE_TYPES, useSystem } from '@ohif/core';
-import Dropzone from 'react-dropzone';
 
+import Dropzone from 'react-dropzone';
 import filesToStudies from './filesToStudies';
+
 import { extensionManager } from '../../App';
+
 import { Button, Icons, useModal } from '@ohif/ui-next';
 import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
-import { s3FileService } from '../../utils/S3FileService';
 
 const getLoadButton = (onDrop, text, isDir) => {
   return (
@@ -61,8 +62,6 @@ function Local({ modePath }: LocalProps) {
   const { show, hide } = useModal();
   const dropzoneRef = useRef();
   const [dropInitiated, setDropInitiated] = useState(false);
-  const [statusText, setStatusText] = useState('');
-  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const LoadingIndicatorProgress = customizationService.getCustomization(
     'ui.loadingIndicatorProgress'
@@ -88,7 +87,7 @@ function Local({ modePath }: LocalProps) {
   );
 
   const onDrop = async acceptedFiles => {
-    const studies = await filesToStudies(acceptedFiles);
+    const studies = await filesToStudies(acceptedFiles, dataSource);
 
     const query = new URLSearchParams();
 
@@ -102,79 +101,17 @@ function Local({ modePath }: LocalProps) {
 
       if (smStudies.length > 0) {
         smStudies.forEach(id => query.append('StudyInstanceUIDs', id));
+
         modePath = 'microscopy';
       }
     }
 
+    // Todo: navigate to work list and let user select a mode
+    // Filter out undefined values that may come from failed file processing
     studies.filter(id => id).forEach(id => query.append('StudyInstanceUIDs', id));
+    // Note: datasources param not needed since modePath includes the data source
+
     navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
-  };
-
-  const handleS3StreamLoad = async (prefix: string) => {
-    hide();
-    setDropInitiated(true);
-    setStatusText('Подключение к S3...');
-
-    try {
-      const allKeys = await s3FileService.listAllObjects(prefix);
-      const fileKeys = allKeys.filter(key => !key.endsWith('/'));
-
-      if (fileKeys.length === 0) {
-        alert('Папка пуста');
-        setDropInitiated(false);
-        return;
-      }
-
-      setStatusText(`Найдено ${fileKeys.length} файлов. Подготовка...`);
-      
-      const initialKeys = fileKeys.slice(0, 3);
-      const remainingKeys = fileKeys.slice(3);
-
-      const downloadFile = async (key: string, index: number) => {
-        const blob = await s3FileService.getObjectAsBlob(key);
-        const file = blob as any;
-        file.name = key.split('/').pop() || `file-${index}.dcm`;
-        return file;
-      };
-
-      const initialFiles = await Promise.all(initialKeys.map((key, i) => downloadFile(key, i)));
-      const { processFile } = await import('./filesToStudies');
-      await Promise.all(initialFiles.map(f => processFile(f)));
-      
-      const studies = DicomMetadataStore.getStudyInstanceUIDs();
-      const studyUID = studies[studies.length - 1];
-
-      if (studyUID) {
-        // Мгновенный переход
-        const query = new URLSearchParams();
-        query.append('StudyInstanceUIDs', studyUID);
-        navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
-        
-        // Фоновая загрузка оставшихся файлов пачками
-        const BATCH_SIZE = 10;
-        for (let i = 0; i < remainingKeys.length; i += BATCH_SIZE) {
-          const batch = remainingKeys.slice(i, i + BATCH_SIZE);
-          await Promise.all(batch.map(async (key, idx) => {
-            try {
-              const f = await downloadFile(key, i + idx);
-              await processFile(f);
-            } catch (e) {
-              console.error('Failed to stream file:', key, e);
-            }
-          }));
-          const progress = Math.round(((i + batch.length + 3) / fileKeys.length) * 100);
-          setDownloadProgress(progress);
-          setStatusText(`Загружено ${i + batch.length + 3} из ${fileKeys.length}`);
-        }
-      } else {
-        alert('Не удалось определить ID исследования.');
-        setDropInitiated(false);
-      }
-    } catch (err) {
-      console.error('Streaming S3 load failed:', err);
-      alert('Ошибка при загрузке');
-      setDropInitiated(false);
-    }
   };
 
   const handleS3Load = () => {
@@ -182,12 +119,23 @@ function Local({ modePath }: LocalProps) {
       content: S3BrowseModal,
       title: 'Load from S3',
       contentProps: {
-        onConfirm: handleS3StreamLoad,
-        hide: hide,
+        onLoad: async (blobs) => {
+          hide();
+          setDropInitiated(true);
+          // filesToStudies expects File-like objects (with name)
+          const files = blobs.map((blob, index) => {
+            const file = blob as any;
+            file.name = file.name || `s3-file-${index}.dcm`;
+            return file;
+          });
+          onDrop(files);
+        },
+        onClose: hide,
       },
     });
   };
 
+  // Set body style
   useEffect(() => {
     document.body.classList.add('bg-white');
     return () => {
@@ -202,7 +150,7 @@ function Local({ modePath }: LocalProps) {
         setDropInitiated(true);
         onDrop(acceptedFiles);
       }}
-      noClick
+      noDrag
     >
       {({ getRootProps }) => (
         <div
@@ -221,19 +169,14 @@ function Local({ modePath }: LocalProps) {
               <div className="space-y-2 py-6 text-center">
                 {dropInitiated ? (
                   <div className="flex flex-col items-center justify-center pt-12">
-                    {LoadingIndicatorProgress && LoadingIndicatorProgress.component ? (
+                     {LoadingIndicatorProgress && LoadingIndicatorProgress.component ? (
                        <LoadingIndicatorProgress.component
-                         progress={downloadProgress}
-                         textBlock={
-                           <div className="text-center pt-4">
-                             <div className="text-[#9333ea] text-lg font-bold">{statusText}</div>
-                           </div>
-                         }
                          className={'h-full w-full'}
+                         style={{ backgroundColor: 'white' }}
                        />
-                    ) : (
-                      <div className="text-[#9333ea] animate-pulse">Loading... {statusText}</div>
-                    )}
+                     ) : (
+                       <div className="text-[#9333ea] animate-pulse">Загрузка...</div>
+                     )}
                   </div>
                 ) : (
                   <div className="space-y-2">

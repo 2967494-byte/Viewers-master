@@ -3,7 +3,7 @@ import { DicomMetadataStore } from '@ohif/core';
 import { readDicomMetadataFromFile } from './readDicomMetadataFast';
 
 /** Limit parallel metadata reads to avoid memory spikes with huge folder drops. */
-const METADATA_PARSE_CONCURRENCY = 8;
+const METADATA_PARSE_CONCURRENCY = 32;
 
 async function mapPool(items, limit, mapper) {
   const results = new Array(items.length);
