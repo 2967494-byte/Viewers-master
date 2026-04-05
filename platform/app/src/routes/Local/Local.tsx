@@ -8,7 +8,8 @@ import filesToStudies from './filesToStudies';
 
 import { extensionManager } from '../../App';
 
-import { Button, Icons } from '@ohif/ui-next';
+import { Button, Icons, useModal } from '@ohif/ui-next';
+import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
 
 const getLoadButton = (onDrop, text, isDir) => {
   return (
@@ -58,6 +59,7 @@ function Local({ modePath }: LocalProps) {
   const { servicesManager } = useSystem();
   const { customizationService } = servicesManager.services;
   const navigate = useNavigate();
+  const { show, hide } = useModal();
   const dropzoneRef = useRef();
   const [dropInitiated, setDropInitiated] = React.useState(false);
 
@@ -115,6 +117,27 @@ function Local({ modePath }: LocalProps) {
     navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
   };
 
+  const handleS3Load = () => {
+    show({
+      content: S3BrowseModal,
+      title: 'Load from S3',
+      contentProps: {
+        onLoad: async (blobs) => {
+          hide();
+          setDropInitiated(true);
+          // filesToStudies expects File-like objects (with name)
+          const files = blobs.map((blob, index) => {
+            const file = blob as any;
+            file.name = file.name || `s3-file-${index}.dcm`;
+            return file;
+          });
+          onDrop(files);
+        },
+        onClose: hide,
+      },
+    });
+  };
+
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-white');
@@ -167,6 +190,18 @@ function Local({ modePath }: LocalProps) {
               <div className="flex justify-center gap-4 pt-4">
                 {getLoadButton(onDrop, 'Загрузить файлы', false)}
                 {getLoadButton(onDrop, 'Загрузить папку', true)}
+                <Button
+                  variant="default"
+                  className="min-w-32"
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                  }}
+                  onClick={handleS3Load}
+                >
+                  Загрузить из S3
+                </Button>
               </div>
             </div>
           </div>

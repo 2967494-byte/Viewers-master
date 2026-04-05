@@ -15,6 +15,7 @@ const StudyListFilter = ({
   isFiltering,
   numOfStudies,
   onUploadClick,
+  onS3Click,
   getDataSourceConfigurationComponent,
 }) => {
   const { t } = useTranslation('StudyList');
@@ -38,17 +39,28 @@ const StudyListFilter = ({
                 <Typography
                   variant="h6"
                   className="text-white"
+                  component="div"
                 >
                   {t('StudyList')}
                 </Typography>
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
-                {onUploadClick && (
+                 {onUploadClick && (
                   <div
                     className="text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold"
                     onClick={onUploadClick}
                   >
                     <Icons.Upload />
                     <span>{t('Upload')}</span>
+                  </div>
+                )}
+                {onS3Click && (
+                  <div
+                    className="text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold ml-4"
+                    onClick={onS3Click}
+                    data-cy="s3-load"
+                  >
+                    <Icons.Database />
+                    <span>S3</span>
                   </div>
                 )}
               </div>
@@ -78,6 +90,7 @@ const StudyListFilter = ({
                 <Typography
                   variant="h6"
                   className="text-primary-light"
+                  component="div"
                 >
                   {`${t('Studies')} `}
                 </Typography>
@@ -138,6 +151,7 @@ StudyListFilter.propTypes = {
   clearFilters: PropTypes.func.isRequired,
   isFiltering: PropTypes.bool.isRequired,
   onUploadClick: PropTypes.func,
+  onS3Click: PropTypes.func,
   getDataSourceConfigurationComponent: PropTypes.func,
 };
 

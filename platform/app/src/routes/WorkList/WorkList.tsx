@@ -35,6 +35,7 @@ import {
   ScrollArea,
   InvestigationalUseDialog,
 } from '@ohif/ui-next';
+import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
 
 import { Types } from '@ohif/ui';
 
@@ -547,6 +548,26 @@ function WorkList({
         }
       : undefined;
 
+  const onS3Click = () => {
+    show({
+      content: S3BrowseModal,
+      title: 'Load from S3',
+      contentProps: {
+        onLoad: async (blobs) => {
+          hide();
+          const files = blobs.map((blob, index) => {
+            const file = blob as any;
+            file.name = file.name || `s3-file-${index}.dcm`;
+            return file;
+          });
+          const studies = await dataSource.store.dicom(files);
+          onRefresh();
+        },
+        onClose: hide,
+      },
+    });
+  };
+
   const dataSourceConfigurationComponent = customizationService.getCustomization(
     'ohif.dataSourceConfigurationComponent'
   );
@@ -573,6 +594,7 @@ function WorkList({
               clearFilters={() => setFilterValues(defaultFilterValues)}
               isFiltering={isFiltering(filterValues, defaultFilterValues)}
               onUploadClick={uploadProps ? () => show(uploadProps) : undefined}
+              onS3Click={onS3Click}
               getDataSourceConfigurationComponent={
                 dataSourceConfigurationComponent
                   ? () => dataSourceConfigurationComponent()
