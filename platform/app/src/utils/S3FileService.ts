@@ -59,7 +59,9 @@ class S3FileService {
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
       }
-      return new Response(body as any).blob();
+      // Official SDK way to handle streams in browser
+      const bytes = await (body as any).transformToByteArray();
+      return new Blob([bytes]);
     } catch (error) {
       console.error(`Detailed S3 fetch error for key "${key}":`, error);
       throw error;
@@ -79,7 +81,8 @@ class S3FileService {
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
       }
-      return new Response(body as any).blob();
+      const bytes = await (body as any).transformToByteArray();
+      return new Blob([bytes]);
     } catch (error) {
       console.error(`Detailed S3 range fetch error for key "${key}" (${range}):`, error);
       throw error;
@@ -87,8 +90,14 @@ class S3FileService {
   }
 
   async getMetadataChunk(key: string): Promise<Blob> {
-    // Fetch first 128KB which usually contains all DICOM metadata
-    return this.getObjectRange(key, 'bytes=0-131071');
+    try {
+      // Пытаемся получить только метаданные (быстро)
+      return await this.getObjectRange(key, 'bytes=0-131071');
+    } catch (err) {
+      console.warn(`S3 Range request failed for ${key}, falling back to full download. Check CORS "Range" header.`, err);
+      // Если Range заблокирован CORS или не поддерживается - качаем весь файл (медленно, но надежно)
+      return await this.getObjectAsBlob(key);
+    }
   }
 
   async listAllObjects(prefix: string): Promise<string[]> {

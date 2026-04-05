@@ -123,31 +123,36 @@ function Local({ modePath }: LocalProps) {
       // Это необходимо для того, чтобы вьювер сразу увидел полный объем серии
       const { processFile } = await import('./filesToStudies');
       
-      const INDEX_CONCURRENCY = 30;
+      const INDEX_CONCURRENCY = 15; // Снижаем конкурентность для надежности
       let indexedCount = 0;
       
       const indexWorker = async (keys: string[]) => {
         for (const key of keys) {
           try {
             const blob = await s3FileService.getMetadataChunk(key);
-            const filename = key.split('/').pop() || `s3-meta-${indexedCount}.dcm`;
+            const filename = key.split('/').pop() || `s3-meta-${Date.now()}-${indexedCount}.dcm`;
             const file = new File([blob], filename, { type: 'application/dicom' });
             await processFile(file);
             indexedCount++;
+            
+            // Небольшая пауза для разгрузки главного потока при массовой индексации
+            if (indexedCount % 50 === 0) {
+              await new Promise(r => setTimeout(r, 100));
+            }
           } catch (err) {
-            console.warn(`Failed to index metadata for ${key}:`, err);
+            console.error(`ERROR: Failed to index metadata for ${key}. Error details:`, err);
           }
         }
       };
 
       // Распределяем индексацию по потокам
-      const chunks = [];
-      const chunkSize = Math.ceil(fileKeys.length / INDEX_CONCURRENCY);
-      for (let i = 0; i < fileKeys.length; i += chunkSize) {
-        chunks.push(fileKeys.slice(i, i + chunkSize));
+      const batches = [];
+      const batchSize = Math.ceil(fileKeys.length / INDEX_CONCURRENCY);
+      for (let i = 0; i < fileKeys.length; i += batchSize) {
+        batches.push(fileKeys.slice(i, i + batchSize));
       }
       
-      await Promise.all(chunks.map(chunk => indexWorker(chunk)));
+      await Promise.all(batches.map(batch => indexWorker(batch)));
       
       const studies = DicomMetadataStore.getStudyInstanceUIDs();
       const studyUID = studies[studies.length - 1];
