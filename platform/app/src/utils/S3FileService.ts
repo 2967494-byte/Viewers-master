@@ -19,7 +19,7 @@ class S3FileService {
         accessKeyId: accessKeyId || '',
         secretAccessKey: secretAccessKey || '',
       },
-      forcePathStyle: true,
+      forcePathStyle: false, // Меняем на Virtual-hosted style
       apiVersion: 'latest',
       maxAttempts: 3,
     });
