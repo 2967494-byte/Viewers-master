@@ -86,22 +86,10 @@ class S3FileService {
     }
   }
 
-  private rangeSupported = true;
-
   async getMetadataChunk(key: string): Promise<Blob> {
-    if (this.rangeSupported) {
-      try {
-        // Пытаемся получить только метаданные (быстро)
-        return await this.getObjectRange(key, 'bytes=0-131071');
-      } catch (err) {
-        // Если получили 403/405 или другую ошибку - запоминаем, что Range не работает
-        console.warn(`S3 Range request failed for ${key}, disabling Range for this session.`, err);
-        this.rangeSupported = false;
-        // Падаем в fallback ниже
-      }
-    }
-    
-    // Качаем весь файл (надежно)
+    // Отключаем использование Range-запросов, так как данный S3 веб-сервер возвращает 403 Forbidden.
+    // Используем полную загрузку файла для индексации. 
+    // Это надежнее и убирает ошибки из консоли.
     return await this.getObjectAsBlob(key);
   }
 
