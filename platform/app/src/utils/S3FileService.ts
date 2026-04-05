@@ -59,9 +59,7 @@ class S3FileService {
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
       }
-      // Official SDK way to handle streams in browser
-      const bytes = await (body as any).transformToByteArray();
-      return new Blob([bytes]);
+      return await new Response(body as any).blob();
     } catch (error) {
       console.error(`Detailed S3 fetch error for key "${key}":`, error);
       throw error;
@@ -81,8 +79,7 @@ class S3FileService {
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
       }
-      const bytes = await (body as any).transformToByteArray();
-      return new Blob([bytes]);
+      return await new Response(body as any).blob();
     } catch (error) {
       console.error(`Detailed S3 range fetch error for key "${key}" (${range}):`, error);
       throw error;
