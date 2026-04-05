@@ -52,10 +52,10 @@ const defineValues = {
   'process.env.REACT_APP_I18N_DEBUG': JSON.stringify(process.env.REACT_APP_I18N_DEBUG || ''),
   'process.env.TEST_ENV': JSON.stringify(process.env.TEST_ENV || ''),
   /* S3 Storage */
-  'process.env.S3_ENDPOINT': JSON.stringify(process.env.S3_ENDPOINT || 'https://s3.regru.cloud'),
+  'process.env.S3_ENDPOINT': JSON.stringify(process.env.S3_ENDPOINT_URL || 'https://s3.regru.cloud'),
   'process.env.S3_ACCESS_KEY': JSON.stringify(process.env.S3_ACCESS_KEY || ''),
   'process.env.S3_SECRET_KEY': JSON.stringify(process.env.S3_SECRET_KEY || ''),
-  'process.env.S3_BUCKET': JSON.stringify(process.env.S3_BUCKET || 'patient-hot-msk2'),
+  'process.env.S3_BUCKET': JSON.stringify(process.env.S3_BUCKET_NAME || 'patient-hot-msk2'),
 };
 
 // Only redefine updated values.  This avoids warning messages in the logs

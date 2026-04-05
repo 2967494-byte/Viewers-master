@@ -128,6 +128,7 @@ module.exports = (env, argv) => {
         },
       }),
       // Generate a service worker for fast local loads
+      /*
       ...(IS_COVERAGE
         ? []
         : [
@@ -140,6 +141,7 @@ module.exports = (env, argv) => {
               maximumFileSizeToCacheInBytes: 1024 * 1024 * 50,
             }),
           ]),
+      */
     ],
     // https://webpack.js.org/configuration/dev-server/
     devServer: {
