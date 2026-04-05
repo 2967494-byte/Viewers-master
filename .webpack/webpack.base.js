@@ -51,6 +51,11 @@ const defineValues = {
   'process.env.LOCIZE_API_KEY': JSON.stringify(process.env.LOCIZE_API_KEY || ''),
   'process.env.REACT_APP_I18N_DEBUG': JSON.stringify(process.env.REACT_APP_I18N_DEBUG || ''),
   'process.env.TEST_ENV': JSON.stringify(process.env.TEST_ENV || ''),
+  /* S3 Storage */
+  'process.env.S3_ENDPOINT': JSON.stringify(process.env.S3_ENDPOINT || 'https://s3.regru.cloud'),
+  'process.env.S3_ACCESS_KEY': JSON.stringify(process.env.S3_ACCESS_KEY || ''),
+  'process.env.S3_SECRET_KEY': JSON.stringify(process.env.S3_SECRET_KEY || ''),
+  'process.env.S3_BUCKET': JSON.stringify(process.env.S3_BUCKET || 'patient-hot-msk2'),
 };
 
 // Only redefine updated values.  This avoids warning messages in the logs
@@ -213,7 +218,7 @@ module.exports = (env, argv, { SRC_DIR, ENTRY }) => {
         SRC_DIR,
       ],
       // Attempt to resolve these extensions in order.
-      extensions: ['.js', '.jsx', '.json', '.ts', '.tsx', '*'],
+      extensions: ['.js', '.jsx', '.json', '.ts', '.tsx', '.*'],
       // symlinked resources are resolved to their real path, not their symlinked location
       symlinks: true,
       fallback: {
