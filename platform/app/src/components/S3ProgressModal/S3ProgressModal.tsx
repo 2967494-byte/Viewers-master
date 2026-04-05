@@ -64,7 +64,7 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
           <Icons.LoadingOHIFMark className="h-6 w-6 animate-pulse" />
           Загрузка данных из S3
         </Typography>
-        <Typography variant="subtitle" className="text-gray-400">
+        <Typography variant="subtitle" className="text-gray-400" component="span">
           {progress}%
         </Typography>
       </div>

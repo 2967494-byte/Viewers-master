@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import classnames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { DicomMetadataStore, MODULE_TYPES, useSystem } from '@ohif/core';
+import { Typography } from '@ohif/ui';
 import Dropzone from 'react-dropzone';
 
 import filesToStudies from './filesToStudies';
@@ -222,7 +223,7 @@ function Local({ modePath }: LocalProps) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Typography variant="h4" className="text-purple-600 font-bold tracking-tight">
+                    <Typography variant="h4" className="text-purple-600 font-bold tracking-tight" component="h1">
                       Orbital3D Viewer
                     </Typography>
                     <p className="text-gray-600 text-lg font-medium">
