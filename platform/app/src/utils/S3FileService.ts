@@ -86,15 +86,23 @@ class S3FileService {
     }
   }
 
+  private rangeSupported = true;
+
   async getMetadataChunk(key: string): Promise<Blob> {
-    try {
-      // Пытаемся получить только метаданные (быстро)
-      return await this.getObjectRange(key, 'bytes=0-131071');
-    } catch (err) {
-      console.warn(`S3 Range request failed for ${key}, falling back to full download. Check CORS "Range" header.`, err);
-      // Если Range заблокирован CORS или не поддерживается - качаем весь файл (медленно, но надежно)
-      return await this.getObjectAsBlob(key);
+    if (this.rangeSupported) {
+      try {
+        // Пытаемся получить только метаданные (быстро)
+        return await this.getObjectRange(key, 'bytes=0-131071');
+      } catch (err) {
+        // Если получили 403/405 или другую ошибку - запоминаем, что Range не работает
+        console.warn(`S3 Range request failed for ${key}, disabling Range for this session.`, err);
+        this.rangeSupported = false;
+        // Падаем в fallback ниже
+      }
     }
+    
+    // Качаем весь файл (надежно)
+    return await this.getObjectAsBlob(key);
   }
 
   async listAllObjects(prefix: string): Promise<string[]> {
