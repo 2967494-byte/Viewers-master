@@ -111,7 +111,7 @@ function Local({ modePath }: LocalProps) {
 
     try {
       const allKeys = await s3FileService.listAllObjects(prefix);
-      const fileKeys = allKeys.filter(key => !key.endsWith('/'));
+      const fileKeys = allKeys.filter(key => !key.endsWith('/')).sort();
 
       if (fileKeys.length === 0) {
         alert('Папка пуста');
@@ -119,14 +119,14 @@ function Local({ modePath }: LocalProps) {
         return;
       }
 
-      // Скачиваем первые 3 файла для мгновенной инициализации вьювера
-      const initialKeys = fileKeys.slice(0, 3);
-      const remainingKeys = fileKeys.slice(3);
+      // Скачиваем первые 20 файлов для мгновенной инициализации вьювера
+      const initialKeys = fileKeys.slice(0, 20);
+      const remainingKeys = fileKeys.slice(20);
 
       const downloadInitial = async (key: string, index: number) => {
         const blob = await s3FileService.getObjectAsBlob(key);
-        const file = blob as any;
-        file.name = key.split('/').pop() || `s3-init-${index}.dcm`;
+        const filename = key.split('/').pop() || `s3-init-${index}.dcm`;
+        const file = new File([blob], filename, { type: 'application/dicom' });
         return file;
       };
 
@@ -236,19 +236,21 @@ function Local({ modePath }: LocalProps) {
                   </div>
                 )}
               </div>
-              <div className="flex justify-center flex-wrap gap-4 pt-8">
-                {getLoadButton(onDrop, 'Локальные файлы', false)}
-                {getLoadButton(onDrop, 'Локальная папка', true)}
-                <Button
-                  variant="default"
-                  className="min-w-32 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md shadow-blue-500/20 active:scale-95 transition-all"
-                  onClick={handleS3Load}
-                >
-                  Облачное хранилище S3
-                </Button>
-              </div>
               {!dropInitiated && (
-                <p className="text-center text-[10px] text-gray-400 mt-8">
+                <div className="flex justify-center flex-wrap gap-4 pt-8">
+                  {getLoadButton(onDrop, 'Локальные файлы', false)}
+                  {getLoadButton(onDrop, 'Локальная папка', true)}
+                  <Button
+                    variant="default"
+                    className="min-w-32 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                    onClick={handleS3Load}
+                  >
+                    Облачное хранилище S3
+                  </Button>
+                </div>
+              )}
+              {!dropInitiated && (
+                <p className="text-center text-[10px] text-gray-400 mt-8 font-medium italic opacity-50 uppercase tracking-widest">
                   Данные обрабатываются локально и не передаются на сервер
                 </p>
               )}

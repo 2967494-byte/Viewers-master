@@ -15,33 +15,38 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
 
   useEffect(() => {
     let active = true;
+    let nextIndex = 0;
+    const CONCURRENCY = 40;
 
-    const runDownload = async () => {
-      const BATCH_SIZE = 15;
-      for (let i = 0; i < fileKeys.length; i += BATCH_SIZE) {
-        if (!active) break;
+    const worker = async () => {
+      while (active) {
+        const i = nextIndex++;
+        if (i >= fileKeys.length) return;
 
-        const batch = fileKeys.slice(i, i + BATCH_SIZE);
-        await Promise.all(
-          batch.map(async (key, idx) => {
-            try {
-              const blob = await s3FileService.getObjectAsBlob(key);
-              const file = blob as any;
-              file.name = key.split('/').pop() || `s3-file-${i + idx}.dcm`;
-              await processFile(file);
-            } catch (err) {
-              console.error('Failed to download/process S3 file:', key, err);
-            }
-          })
-        );
-        
-        if (active) {
-          setDownloaded(prev => Math.min(prev + batch.length, total));
+        const key = fileKeys[i];
+        try {
+          const blob = await s3FileService.getObjectAsBlob(key);
+          const filename = key.split('/').pop() || `s3-file-${i}.dcm`;
+          const file = new File([blob], filename, { type: 'application/dicom' });
+          await processFile(file);
+          
+          if (active) {
+            setDownloaded(prev => prev + 1);
+          }
+        } catch (err) {
+          console.error('Failed to download/process S3 file:', key, err);
+          if (active) {
+            setDownloaded(prev => prev + 1); // Считаем как обработанный (ошибка), чтобы прогресс дошел до конца
+          }
         }
       }
+    };
+
+    const runDownload = async () => {
+      const workers = Array.from({ length: Math.min(CONCURRENCY, fileKeys.length) }, () => worker());
+      await Promise.all(workers);
 
       if (active) {
-        // Даем секунду пользователю увидеть 100%
         setTimeout(() => {
           if (active) hide();
         }, 1500);
@@ -58,38 +63,51 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
   const progress = Math.round((downloaded / total) * 100);
 
   return (
-    <div className="flex flex-col bg-gray-900 text-white p-6 rounded-lg shadow-2xl" style={{ minWidth: '400px' }}>
-      <div className="flex items-center justify-between mb-6">
-        <Typography variant="h6" color="primary" component="h2" className="flex items-center gap-2">
-          <Icons.LoadingOHIFMark className="h-6 w-6 animate-pulse" />
-          Загрузка данных из S3
-        </Typography>
-        <Typography variant="subtitle" className="text-gray-400" component="span">
-          {progress}%
-        </Typography>
+    <div className="flex flex-col bg-gray-900 text-white p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10" style={{ minWidth: '450px' }}>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-500/20 rounded-lg">
+            <Icons.LoadingOHIFMark className="h-6 w-6 text-purple-400 animate-pulse" />
+          </div>
+          <Typography variant="h6" color="primary" component="h2" className="font-bold tracking-wide">
+            Синхронизация S3
+          </Typography>
+        </div>
+        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+          <Typography variant="subtitle" className="text-purple-400 font-mono text-sm" component="span">
+            {progress}%
+          </Typography>
+        </div>
       </div>
 
-      <div className="w-full bg-gray-800 rounded-full h-3 mb-4 overflow-hidden border border-gray-700">
+      <div className="w-full bg-white/5 rounded-full h-2.5 mb-6 overflow-hidden p-0.5 border border-white/5">
         <div 
-          className="bg-purple-600 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(147,51,234,0.5)]" 
+          className="bg-gradient-to-r from-purple-600 to-blue-500 h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_15px_rgba(147,51,234,0.6)]" 
           style={{ width: `${progress}%` }}
         ></div>
       </div>
 
-      <div className="flex justify-between items-center text-sm text-gray-400">
-        <span>Файлов: {downloaded} / {total}</span>
+      <div className="flex justify-between items-center text-xs tracking-tight">
+        <div className="flex flex-col gap-1">
+          <span className="text-gray-400 uppercase font-semibold">Прогресс загрузки</span>
+          <span className="text-white font-mono">{downloaded} из {total} снимков</span>
+        </div>
         {progress === 100 ? (
-          <span className="text-green-400 flex items-center gap-1 font-bold">
-            Готово!
-          </span>
+          <div className="flex items-center gap-2 text-green-400 font-bold bg-green-400/10 px-3 py-2 rounded-lg border border-green-400/20">
+             <Icons.StatusSuccess className="h-4 w-4" />
+             Готово
+          </div>
         ) : (
-          <span className="animate-pulse italic">Обработка слоев...</span>
+          <div className="flex flex-col items-end gap-1 text-gray-500 italic">
+            <span>Идет обработка...</span>
+            <span className="text-[10px] text-purple-400/70">40 потоков активно</span>
+          </div>
         )}
       </div>
       
-      <div className="mt-4 pt-4 border-t border-gray-800">
-        <p className="text-xs text-gray-500 italic text-center">
-          Исследование уже открыто. Вы можете начинать просмотр, пока остальные снимки загружаются.
+      <div className="mt-8 pt-4 border-t border-white/5">
+        <p className="text-[11px] text-gray-500 leading-relaxed text-center bg-black/20 p-3 rounded-lg border border-white/5">
+          <span className="text-purple-400 font-bold">Подсказка:</span> Вы уже можете просматривать снимки в левой панели. Они появляются там по мере загрузки.
         </p>
       </div>
     </div>
