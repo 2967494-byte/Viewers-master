@@ -24,7 +24,7 @@ async function mapPool(items, limit, mapper) {
   return results;
 }
 
-const processFile = async file => {
+export const processFile = async file => {
   try {
     const fileLoaderService = new FileLoaderService(file);
     const imageId = fileLoaderService.addFile(file);

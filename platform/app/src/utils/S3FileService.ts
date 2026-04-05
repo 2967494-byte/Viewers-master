@@ -6,7 +6,7 @@ const bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'patient-h
 const accessKeyId = process.env.S3_ACCESS_KEY;
 const secretAccessKey = process.env.S3_SECRET_KEY;
 
-console.log('S3 Config Initialization:', { endpoint, bucket, accessKeySet: !!accessKeyId });
+console.log('S3 Service Init:', { endpoint, bucket, accessKeySet: !!accessKeyId });
 
 class S3FileService {
   private client: S3Client;
