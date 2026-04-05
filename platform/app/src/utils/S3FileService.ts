@@ -66,6 +66,31 @@ class S3FileService {
     }
   }
 
+  async getObjectRange(key: string, range: string): Promise<Blob> {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Range: range, // e.g., 'bytes=0-131071'
+    });
+
+    try {
+      const response = await this.client.send(command);
+      const body = response.Body;
+      if (typeof body === 'undefined') {
+        throw new Error('Response body is undefined');
+      }
+      return new Response(body as any).blob();
+    } catch (error) {
+      console.error(`Detailed S3 range fetch error for key "${key}" (${range}):`, error);
+      throw error;
+    }
+  }
+
+  async getMetadataChunk(key: string): Promise<Blob> {
+    // Fetch first 128KB which usually contains all DICOM metadata
+    return this.getObjectRange(key, 'bytes=0-131071');
+  }
+
   async listAllObjects(prefix: string): Promise<string[]> {
     let continuationToken: string | undefined;
     const allKeys: string[] = [];

@@ -11,12 +11,13 @@ interface S3ProgressModalProps {
 
 const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => {
   const [downloaded, setDownloaded] = useState(0);
+  const [errors, setErrors] = useState(0);
   const total = fileKeys.length;
 
   useEffect(() => {
     let active = true;
     let nextIndex = 0;
-    const CONCURRENCY = 40;
+    const CONCURRENCY = 15; // Снижаем нагрузку на браузер
 
     const worker = async () => {
       while (active) {
@@ -36,7 +37,7 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
         } catch (err) {
           console.error('Failed to download/process S3 file:', key, err);
           if (active) {
-            setDownloaded(prev => prev + 1); // Считаем как обработанный (ошибка), чтобы прогресс дошел до конца
+            setErrors(prev => prev + 1);
           }
         }
       }
@@ -60,7 +61,7 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
     };
   }, [fileKeys, hide]);
 
-  const progress = Math.round((downloaded / total) * 100);
+  const progress = Math.round(((downloaded + errors) / total) * 100);
 
   return (
     <div className="flex flex-col bg-gray-900 text-white p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10" style={{ minWidth: '450px' }}>
@@ -73,10 +74,17 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
             Синхронизация S3
           </Typography>
         </div>
-        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
-          <Typography variant="subtitle" className="text-purple-400 font-mono text-sm" component="span">
-            {progress}%
-          </Typography>
+        <div className="flex flex-col items-end gap-1">
+          <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+            <Typography variant="subtitle" className="text-purple-400 font-mono text-sm" component="span">
+              {progress}%
+            </Typography>
+          </div>
+          {errors > 0 && (
+            <span className="text-[10px] text-red-400 font-bold uppercase animate-pulse">
+              {errors} ошибок
+            </span>
+          )}
         </div>
       </div>
 
@@ -90,7 +98,7 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
       <div className="flex justify-between items-center text-xs tracking-tight">
         <div className="flex flex-col gap-1">
           <span className="text-gray-400 uppercase font-semibold">Прогресс загрузки</span>
-          <span className="text-white font-mono">{downloaded} из {total} снимков</span>
+          <span className="text-white font-mono">{downloaded + errors} из {total} снимков</span>
         </div>
         {progress === 100 ? (
           <div className="flex items-center gap-2 text-green-400 font-bold bg-green-400/10 px-3 py-2 rounded-lg border border-green-400/20">
@@ -100,7 +108,7 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
         ) : (
           <div className="flex flex-col items-end gap-1 text-gray-500 italic">
             <span>Идет обработка...</span>
-            <span className="text-[10px] text-purple-400/70">40 потоков активно</span>
+            <span className="text-[10px] text-purple-400/70">15 потоков активно</span>
           </div>
         )}
       </div>

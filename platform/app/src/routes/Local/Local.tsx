@@ -119,36 +119,51 @@ function Local({ modePath }: LocalProps) {
         return;
       }
 
-      // Скачиваем первые 20 файлов для мгновенной инициализации вьювера
-      const initialKeys = fileKeys.slice(0, 20);
-      const remainingKeys = fileKeys.slice(20);
-
-      const downloadInitial = async (key: string, index: number) => {
-        const blob = await s3FileService.getObjectAsBlob(key);
-        const filename = key.split('/').pop() || `s3-init-${index}.dcm`;
-        const file = new File([blob], filename, { type: 'application/dicom' });
-        return file;
+      // Индексация метаданных (первые 128КБ) для ВСЕХ файлов
+      // Это необходимо для того, чтобы вьювер сразу увидел полный объем серии
+      const { processFile } = await import('./filesToStudies');
+      
+      const INDEX_CONCURRENCY = 30;
+      let indexedCount = 0;
+      
+      const indexWorker = async (keys: string[]) => {
+        for (const key of keys) {
+          try {
+            const blob = await s3FileService.getMetadataChunk(key);
+            const filename = key.split('/').pop() || `s3-meta-${indexedCount}.dcm`;
+            const file = new File([blob], filename, { type: 'application/dicom' });
+            await processFile(file);
+            indexedCount++;
+          } catch (err) {
+            console.warn(`Failed to index metadata for ${key}:`, err);
+          }
+        }
       };
 
-      const initialFiles = await Promise.all(initialKeys.map((k, i) => downloadInitial(k, i)));
-      const { processFile } = await import('./filesToStudies');
-      await Promise.all(initialFiles.map(f => processFile(f)));
+      // Распределяем индексацию по потокам
+      const chunks = [];
+      const chunkSize = Math.ceil(fileKeys.length / INDEX_CONCURRENCY);
+      for (let i = 0; i < fileKeys.length; i += chunkSize) {
+        chunks.push(fileKeys.slice(i, i + chunkSize));
+      }
+      
+      await Promise.all(chunks.map(chunk => indexWorker(chunk)));
       
       const studies = DicomMetadataStore.getStudyInstanceUIDs();
       const studyUID = studies[studies.length - 1];
 
       if (studyUID) {
-        // Мгновенный переход во вьювер
+        // Мгновенный переход во вьювер (теперь с полным списком ImageId в базе)
         const query = new URLSearchParams();
         query.append('StudyInstanceUIDs', studyUID);
         navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
         
-        // Открываем модальное окно прогресса ПОВЕРХ вьювера
+        // Открываем модальное окно прогресса для фоновой загрузки ПОЛНЫХ файлов
         show({
           content: S3ProgressModal,
-          title: '', // Убираем заголовок для красоты
+          title: '', 
           contentProps: {
-            fileKeys: remainingKeys,
+            fileKeys: fileKeys, // Загружаем ВСЕ файлы полностью (включая первые, которые были только проиндексированы)
             hide: hide,
           },
         });
