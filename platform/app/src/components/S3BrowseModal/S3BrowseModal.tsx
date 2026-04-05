@@ -50,7 +50,7 @@ const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
     <div className="flex flex-col bg-black text-white p-6 rounded-lg shadow-2xl" style={{ minWidth: '600px', maxHeight: '80vh' }}>
       <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-4">
         <Typography variant="h6" color="primary" component="h2" className="flex items-center gap-2">
-          <Icons.CloudServer className="h-6 w-6" />
+          <Icons.Database className="h-6 w-6" />
           S3 Browser: {currentPrefix || '/'}
         </Typography>
         <button onClick={hide} className="text-gray-400 hover:text-white transition-colors">
@@ -100,7 +100,7 @@ const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
 
               {items.files.map(file => (
                 <div key={file} className="flex items-center space-x-3 rounded-md p-3 text-gray-500 hover:bg-white/5 transition-colors group">
-                  <Icons.ByName name="list-bullets" className="h-5 w-5 text-blue-500 group-hover:text-blue-400" />
+                  <Icons.Series className="h-5 w-5 text-blue-500 group-hover:text-blue-400" />
                   <span className="truncate flex-1 text-sm">{file.replace(currentPrefix, '')}</span>
                   <span className="text-[10px] text-gray-700 uppercase font-bold tracking-widest hidden group-hover:inline">DICOM</span>
                 </div>
@@ -112,7 +112,7 @@ const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
 
       <div className="flex items-center justify-between border-t border-gray-800 pt-5 mt-4">
         <div className="flex flex-col">
-          <Typography variant="caption" className="text-gray-500 font-medium">
+          <Typography variant="caption" className="text-gray-500 font-medium" component="p">
              Статистика папки
           </Typography>
           <Typography variant="subtitle" component="span" className="text-gray-400 text-xs">
