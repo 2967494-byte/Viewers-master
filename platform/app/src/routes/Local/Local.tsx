@@ -119,8 +119,37 @@ function Local({ modePath }: LocalProps) {
         return;
       }
 
-      // «Умный старт»: Индексируем только первые 50 файлов для создания объема, 
-      // чтобы пользователь мог зайти во вьювер как можно скорее.
+      // Пытаемся сначала по «Быстрому Пути» (Fast Path): Поиск предсгенерированного индекса метаданных
+      const metadataIndex = await s3FileService.getMetadataIndex(prefix);
+      
+      if (metadataIndex && Array.isArray(metadataIndex)) {
+        console.log('Fast Path: Using pre-generated metadata index');
+        metadataIndex.forEach(instance => {
+          // Гарантируем, что у инстанции есть URL для Cornerstone
+          if (instance._url && !instance.url) {
+            instance.url = instance._url;
+          }
+          DicomMetadataStore.addInstance(instance);
+        });
+
+        const studies = DicomMetadataStore.getStudyInstanceUIDs();
+        const studyUID = studies[studies.length - 1];
+        
+        if (studyUID) {
+          const query = new URLSearchParams();
+          query.append('StudyInstanceUIDs', studyUID);
+          navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
+          
+          show({
+            content: S3ProgressModal,
+            title: '', 
+            contentProps: { fileKeys: fileKeys, hide: hide },
+          });
+          return; // Успешно вышли по быстрому пути
+        }
+      }
+
+      // Если индекса нет — используем «Умный старт» (Smart Start)
       const { processFile } = await import('./filesToStudies');
       
       const MAX_INITIAL_INDEX = 50; // Достаточно для базового MPR

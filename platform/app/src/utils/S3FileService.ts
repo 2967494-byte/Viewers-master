@@ -112,6 +112,26 @@ class S3FileService {
 
     return allKeys;
   }
+
+  async getMetadataIndex(prefix: string): Promise<any[] | null> {
+    const indexKey = prefix.endsWith('/') ? `${prefix}ohif_metadata.json` : `${prefix}/ohif_metadata.json`;
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: indexKey,
+    });
+
+    try {
+      const response = await this.client.send(command);
+      const body = response.Body;
+      if (typeof body === 'undefined') return null;
+      const text = await new Response(body as any).text();
+      return JSON.parse(text);
+    } catch (error) {
+      // Это нормально, если файла нет
+      console.log('No pre-generated metadata index found at', indexKey);
+      return null;
+    }
+  }
 }
 
 export const s3FileService = new S3FileService();
