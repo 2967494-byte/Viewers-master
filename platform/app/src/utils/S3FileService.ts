@@ -12,6 +12,13 @@ class S3FileService {
   private client: S3Client;
 
   constructor() {
+    // ПРОВЕРКА КЛЮЧЕЙ (для отладки)
+    console.log('S3 Credentials check:', {
+      hasAccessKey: !!accessKeyId,
+      accessKeyStart: accessKeyId ? accessKeyId.substring(0, 3) + '...' : 'NONE',
+      hasSecretKey: !!secretAccessKey
+    });
+
     this.client = new S3Client({
       endpoint,
       region: 'ru-1',
@@ -19,7 +26,7 @@ class S3FileService {
         accessKeyId: accessKeyId || '',
         secretAccessKey: secretAccessKey || '',
       },
-      forcePathStyle: false, // Меняем на Virtual-hosted style
+      forcePathStyle: true, // Возвращаем Path-style для Регру
       apiVersion: 'latest',
       maxAttempts: 3,
     });
