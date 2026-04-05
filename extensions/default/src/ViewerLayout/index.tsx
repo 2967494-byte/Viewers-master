@@ -8,6 +8,7 @@ import ViewerHeader from './ViewerHeader';
 import SidePanelWithServices from '../Components/SidePanelWithServices';
 import { Onboarding, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@ohif/ui-next';
 import useResizablePanels from './ResizablePanelsHook';
+import { Toolbar } from '../Toolbar/Toolbar';
 
 const resizableHandleClassName = 'mt-[1px] bg-black';
 
@@ -28,6 +29,10 @@ function ViewerLayout({
   rightPanelInitialExpandedWidth,
   leftPanelMinimumExpandedWidth,
   rightPanelMinimumExpandedWidth,
+  verticalPrimaryToolbar = false,  // NEW: показывать primary toolbar вертикально слева
+  showHeaderUndoRedo = true,
+  showHeaderPatientInfo = true,
+  showHeaderMenu = true,
 }: withAppTypes): React.FunctionComponent {
   const [appConfig] = useAppConfig();
 
@@ -156,6 +161,10 @@ function ViewerLayout({
         extensionManager={extensionManager}
         servicesManager={servicesManager}
         appConfig={appConfig}
+        showPrimaryToolbar={!verticalPrimaryToolbar}
+        showHeaderUndoRedo={showHeaderUndoRedo}
+        showHeaderPatientInfo={showHeaderPatientInfo}
+        showHeaderMenu={showHeaderMenu}
       />
       <div
         className="relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black"
@@ -163,6 +172,19 @@ function ViewerLayout({
       >
         <React.Fragment>
           {showLoadingIndicator && <LoadingIndicatorProgress className="h-full w-full bg-black" />}
+          {/* VERTICAL PRIMARY TOOLBAR — вместо горизонтального верхнего */}
+          {verticalPrimaryToolbar && (
+            <div
+              className="flex flex-col items-center gap-1 py-2 px-1 overflow-y-auto overflow-x-hidden shrink-0"
+              style={{
+                width: '52px',
+                background: 'var(--color-secondary-dark, #1a1a2e)',
+                borderRight: '1px solid var(--color-secondary-light, #2d2d4e)',
+              }}
+            >
+              <Toolbar buttonSection="primary" />
+            </div>
+          )}
           <ResizablePanelGroup {...resizablePanelGroupProps}>
             {/* LEFT SIDEPANELS */}
             {hasLeftPanels ? (
@@ -235,6 +257,9 @@ ViewerLayout.propTypes = {
   rightPanels: PropTypes.array,
   leftPanelClosed: PropTypes.bool.isRequired,
   rightPanelClosed: PropTypes.bool.isRequired,
+  showHeaderUndoRedo: PropTypes.bool,
+  showHeaderPatientInfo: PropTypes.bool,
+  showHeaderMenu: PropTypes.bool,
   /** Responsible for rendering our grid of viewports; provided by consuming application */
   children: PropTypes.oneOfType([PropTypes.node, PropTypes.func]).isRequired,
   viewports: PropTypes.array,

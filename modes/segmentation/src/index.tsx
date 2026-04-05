@@ -301,6 +301,7 @@ function modeFactory({ modeConfiguration }) {
         'Zoom',
         'TrackballRotate',
         'Capture',
+        'DentalPanorama',
         'Layout',
         'Crosshairs',
         'DentalImplant',
@@ -457,10 +458,15 @@ function modeFactory({ modeConfiguration }) {
             id: ohif.layout,
             props: {
               leftPanels: [],
+              leftPanelClosed: true,
               leftPanelResizable: false,
+              verticalPrimaryToolbar: true,
+              showHeaderUndoRedo: false,
+              showHeaderPatientInfo: false,
+              showHeaderMenu: false,
               rightPanels: [],
+              rightPanelClosed: true,
               rightPanelResizable: false,
-              // leftPanelClosed: true,
               viewports: [
                 {
                   namespace: cornerstone.viewport,

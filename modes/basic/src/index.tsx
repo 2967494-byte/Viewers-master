@@ -216,6 +216,7 @@ export const toolbarSections = {
     'TrackballRotate',
     'WindowLevel',
     'Capture',
+    'DentalPanorama',
     'Layout',
     'Crosshairs',
     'MoreTools',

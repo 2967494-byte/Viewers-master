@@ -1,22 +1,90 @@
 import FileLoaderService from './fileLoaderService';
 import { DicomMetadataStore } from '@ohif/core';
+import { readDicomMetadataFromFile } from './readDicomMetadataFast';
+
+/** Limit parallel metadata reads to avoid memory spikes with huge folder drops. */
+const METADATA_PARSE_CONCURRENCY = 8;
+
+async function mapPool(items, limit, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= items.length) {
+        return;
+      }
+      results[i] = await mapper(items[i], i);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
 
 const processFile = async file => {
   try {
     const fileLoaderService = new FileLoaderService(file);
     const imageId = fileLoaderService.addFile(file);
-    const image = await fileLoaderService.loadFile(file, imageId);
-    const dicomJSONDataset = await fileLoaderService.getDataset(image, imageId);
 
-    DicomMetadataStore.addInstance(dicomJSONDataset);
+    if (file.type === 'application/pdf') {
+      const image = await fileLoaderService.loadFile(file, imageId);
+      const dicomJSONDataset = await fileLoaderService.getDataset(image, imageId);
+      DicomMetadataStore.addInstance(dicomJSONDataset);
+      return;
+    }
+
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+
+    try {
+      const { dataset, bytesRead, usedFullFile } = await readDicomMetadataFromFile(file);
+      dataset.url = imageId;
+      DicomMetadataStore.addInstance(dataset);
+
+      if (process.env.NODE_ENV === 'development' && t0) {
+        const ms = performance.now() - t0;
+        // eslint-disable-next-line no-console
+        console.debug(
+          `[DICOM local] metadata: ${file.name} in ${ms.toFixed(1)}ms (${(bytesRead / 1024).toFixed(1)} KiB read${usedFullFile ? ', full prefix' : ''})`
+        );
+      }
+    } catch (partialErr) {
+      const image = await fileLoaderService.loadFile(file, imageId);
+      const dicomJSONDataset = await fileLoaderService.getDataset(image, imageId);
+      DicomMetadataStore.addInstance(dicomJSONDataset);
+
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[DICOM local] partial metadata failed for ${file.name}, used full read:`,
+          partialErr?.message || partialErr
+        );
+      }
+    }
   } catch (error) {
-    console.log(error.name, ':Error when trying to load and process local files:', error.message);
+    // eslint-disable-next-line no-console
+    console.log(
+      error.name,
+      ':Error when trying to load and process local files:',
+      error.message
+    );
   }
 };
 
 export default async function filesToStudies(files) {
-  const processFilesPromises = files.map(processFile);
-  await Promise.all(processFilesPromises);
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+
+  await mapPool(files, METADATA_PARSE_CONCURRENCY, processFile);
+
+  if (process.env.NODE_ENV === 'development' && t0 && files.length) {
+    const total = performance.now() - t0;
+    // eslint-disable-next-line no-console
+    console.info(
+      `[DICOM local] indexed ${files.length} file(s) in ${total.toFixed(0)}ms (partial metadata, concurrency ${METADATA_PARSE_CONCURRENCY})`
+    );
+  }
 
   return DicomMetadataStore.getStudyInstanceUIDs();
 }

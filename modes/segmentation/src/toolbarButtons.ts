@@ -267,6 +267,17 @@ export const toolbarButtons: Button[] = [
     },
   },
   {
+    id: 'DentalPanorama',
+    uiType: 'ohif.toolButton',
+    props: {
+      icon: 'tool-capture',
+      label: '🦷 Панорама',
+      tooltip: 'Создать панорамный снимок челюсти из 3D объёма',
+      commands: 'generateDentalPanorama',
+      evaluate: 'evaluate.action',
+    },
+  },
+  {
     id: 'Layout',
     uiType: 'ohif.layoutSelector',
     props: {

@@ -59,6 +59,8 @@ import i18n from '@ohif/i18n';
 const { add, intersect, subtract, copy } = cstUtils.contourSegmentation;
 
 import ImplantLibraryModal from './components/ImplantLibrary/ImplantLibraryModal';
+import PanoramaModal from './components/PanoramaModal/PanoramaModal';
+import { generatePanorama } from './components/PanoramaModal/panoramaGenerator';
 import React from 'react';
 
 const { DefaultHistoryMemo } = csUtils.HistoryMemo;
@@ -267,6 +269,26 @@ function commandsModule({
           onClose,
         },
         title: 'Dental Implant Library',
+      });
+    },
+
+    generateDentalPanorama: () => {
+      const { uiModalService } = servicesManager.services;
+
+      const onClose = () => {
+        uiModalService.hide();
+      };
+
+      const runGenerate = (config?: any) => generatePanorama(config);
+
+      uiModalService.show({
+        content: PanoramaModal,
+        contentProps: {
+          onClose,
+          generatePanorama: runGenerate,
+        },
+        title: '🦷 Панорамный снимок',
+        shouldCloseOnEsc: false,
       });
     },
     jumpToMeasurementViewport: ({ annotationUID, measurement }) => {
@@ -2496,6 +2518,9 @@ function commandsModule({
   };
 
   const definitions = {
+    generateDentalPanorama: {
+      commandFn: actions.generateDentalPanorama,
+    },
     // The command here is to show the viewer context menu, as being the
     // context menu
     showCornerstoneContextMenu: {
