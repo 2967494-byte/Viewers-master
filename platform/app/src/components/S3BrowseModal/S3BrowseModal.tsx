@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { s3FileService } from '../../utils/S3FileService';
 import { Button, Icons } from '@ohif/ui-next';
 import { Typography } from '@ohif/ui';
 
 interface S3BrowseModalProps {
-  onLoad: (files: Blob[]) => void;
-  onClose: () => void;
+  onConfirm: (prefix: string) => void;
+  hide: () => void;
 }
 
-const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onLoad, onClose }) => {
-const S3BrowseModal = ({ onLoad, onConfirm, hide }) => {
+const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
   const [items, setItems] = useState({ folders: [], files: [] });
   const [currentPrefix, setCurrentPrefix] = useState('');
   const [loading, setLoading] = useState(false);
@@ -125,7 +124,5 @@ const S3BrowseModal = ({ onLoad, onConfirm, hide }) => {
     </div>
   );
 };
-
-export default S3BrowseModal;
 
 export default S3BrowseModal;
