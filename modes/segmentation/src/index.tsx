@@ -295,18 +295,7 @@ function modeFactory({ modeConfiguration }) {
 
       toolbarService.register(toolbarButtons);
 
-      toolbarService.updateSection(toolbarService.sections.primary, [
-        'WindowLevel',
-        'Pan',
-        'Zoom',
-        'TrackballRotate',
-        'Capture',
-        'DentalPanorama',
-        'Layout',
-        'Crosshairs',
-        'DentalImplant',
-        'MoreTools',
-      ]);
+      toolbarService.updateSection(toolbarService.sections.primary, []);
 
       toolbarService.clearButtonSection(toolbarService.sections.viewportActionMenu.topLeft);
 
@@ -460,7 +449,7 @@ function modeFactory({ modeConfiguration }) {
               leftPanels: [],
               leftPanelClosed: true,
               leftPanelResizable: false,
-              verticalPrimaryToolbar: true,
+              verticalPrimaryToolbar: false,
               showHeaderUndoRedo: false,
               showHeaderPatientInfo: false,
               showHeaderMenu: false,
