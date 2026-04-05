@@ -119,13 +119,19 @@ function Local({ modePath }: LocalProps) {
         return;
       }
 
-      // Индексация метаданных (первые 128КБ) для ВСЕХ файлов
-      // Это необходимо для того, чтобы вьювер сразу увидел полный объем серии
+      // «Умный старт»: Индексируем только первые 50 файлов для создания объема, 
+      // чтобы пользователь мог зайти во вьювер как можно скорее.
       const { processFile } = await import('./filesToStudies');
       
-      const INDEX_CONCURRENCY = 15; // Снижаем конкурентность для надежности
+      const MAX_INITIAL_INDEX = 50; // Достаточно для базового MPR
+      const initialBatch = fileKeys.slice(0, MAX_INITIAL_INDEX);
+      
+      const INDEX_CONCURRENCY = 10; 
       let indexedCount = 0;
       
+      const progressEl = document.getElementById('indexing-progress');
+      const barEl = document.getElementById('indexing-bar');
+
       const indexWorker = async (keys: string[]) => {
         for (const key of keys) {
           try {
@@ -135,21 +141,21 @@ function Local({ modePath }: LocalProps) {
             await processFile(file);
             indexedCount++;
             
-            // Небольшая пауза для разгрузки главного потока при массовой индексации
-            if (indexedCount % 50 === 0) {
-              await new Promise(r => setTimeout(r, 100));
-            }
+            // Обновляем UI напрямую через DOM для отзывчивости
+            if (progressEl) progressEl.innerText = `Подготовка: ${indexedCount} из ${initialBatch.length}`;
+            if (barEl) barEl.style.width = `${(indexedCount / initialBatch.length) * 100}%`;
+            
           } catch (err) {
-            console.error(`ERROR: Failed to index metadata for ${key}. Error details:`, err);
+            console.error(`Error indexing ${key}:`, err);
           }
         }
       };
 
-      // Распределяем индексацию по потокам
+      // Распределяем индексацию начальной пачки
       const batches = [];
-      const batchSize = Math.ceil(fileKeys.length / INDEX_CONCURRENCY);
-      for (let i = 0; i < fileKeys.length; i += batchSize) {
-        batches.push(fileKeys.slice(i, i + batchSize));
+      const batchSize = Math.ceil(initialBatch.length / INDEX_CONCURRENCY);
+      for (let i = 0; i < initialBatch.length; i += batchSize) {
+        batches.push(initialBatch.slice(i, i + batchSize));
       }
       
       await Promise.all(batches.map(batch => indexWorker(batch)));
@@ -158,17 +164,17 @@ function Local({ modePath }: LocalProps) {
       const studyUID = studies[studies.length - 1];
 
       if (studyUID) {
-        // Мгновенный переход во вьювер (теперь с полным списком ImageId в базе)
+        // Переход во вьювер с частичными данными (объем уже будет иметь 50+ слоев)
         const query = new URLSearchParams();
         query.append('StudyInstanceUIDs', studyUID);
         navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
         
-        // Открываем модальное окно прогресса для фоновой загрузки ПОЛНЫХ файлов
+        // Фоновая загрузка ВСЕХ файлов (включая те, что уже проиндексированы, и новые)
         show({
           content: S3ProgressModal,
           title: '', 
           contentProps: {
-            fileKeys: fileKeys, // Загружаем ВСЕ файлы полностью (включая первые, которые были только проиндексированы)
+            fileKeys: fileKeys, 
             hide: hide,
           },
         });
@@ -231,15 +237,18 @@ function Local({ modePath }: LocalProps) {
                 </div>
                 {dropInitiated ? (
                   <div className="flex flex-col items-center justify-center gap-4">
-                     {LoadingIndicatorProgress && LoadingIndicatorProgress.component ? (
-                       <LoadingIndicatorProgress.component
-                         className={'h-full w-full'}
-                         style={{ backgroundColor: 'white' }}
-                       />
-                     ) : (
-                       <div className="text-purple-600 font-bold animate-pulse text-lg">Запуск системы...</div>
-                     )}
-                     <p className="text-gray-400 text-sm italic">Пожалуйста, подождите. Инициализируем DICOM модуль.</p>
+                     <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="text-purple-600 font-bold text-2xl mb-2" id="indexing-progress">
+                           {/* Сюда будем выводить прогресс через DOM для скорости */}
+                           Инициализация...
+                        </div>
+                        <div className="w-64 bg-gray-100 rounded-full h-2 overflow-hidden border border-purple-100">
+                           <div id="indexing-bar" className="bg-purple-500 h-full w-0 transition-all duration-300"></div>
+                        </div>
+                     </div>
+                     <p className="text-gray-400 text-sm italic">
+                        Подготовка DICOM объектов...
+                     </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
