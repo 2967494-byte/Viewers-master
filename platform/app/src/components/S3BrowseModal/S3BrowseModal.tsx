@@ -1,18 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { s3FileService } from '../../utils/S3FileService';
 import { Button, Icons } from '@ohif/ui-next';
 import { Typography } from '@ohif/ui';
 
 interface S3BrowseModalProps {
-  onLoad: (files: Blob[]) => void;
+  onConfirm: (prefix: string) => void;
   hide: () => void;
 }
 
-const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onLoad, hide }) => {
+const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
   const [items, setItems] = useState({ folders: [], files: [] });
   const [currentPrefix, setCurrentPrefix] = useState('');
   const [loading, setLoading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
 
   const fetchItems = async (prefix = '') => {
     setLoading(true);
@@ -43,124 +42,95 @@ const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onLoad, hide }) => {
   };
 
   const handleLoadSelected = async () => {
-    setLoading(true);
-    try {
-      const allKeys = await s3FileService.listAllObjects(currentPrefix);
-      const fileKeys = allKeys.filter(key => !key.endsWith('/'));
-
-      if (fileKeys.length === 0) {
-        alert('No files found in this folder!');
-        setLoading(false);
-        return;
-      }
-
-      setDownloadProgress({ current: 0, total: fileKeys.length });
-      
-      const blobs: Blob[] = [];
-      const BATCH_SIZE = 10;
-      
-      for (let i = 0; i < fileKeys.length; i += BATCH_SIZE) {
-        const batch = fileKeys.slice(i, i + BATCH_SIZE);
-        const results = await Promise.all(
-          batch.map(key => s3FileService.getObjectAsBlob(key))
-        );
-        blobs.push(...results);
-        setDownloadProgress({ current: Math.min(i + BATCH_SIZE, fileKeys.length), total: fileKeys.length });
-      }
-      
-      onLoad(blobs);
-    } catch (err) {
-      console.error('Failed to download S3 study:', err);
-      alert('Error downloading from S3. Check CORS or credentials.');
-    } finally {
-      setLoading(false);
-    }
+    onConfirm(currentPrefix);
+    hide();
   };
 
   return (
-    <div className="flex flex-col bg-black text-white" style={{ minWidth: '500px', maxHeight: '80vh' }}>
-      <div className="flex items-center justify-between border-b border-gray-700 p-4">
-        <Typography variant="h6" color="primary" component="h2" className="">
+    <div className="flex flex-col bg-black text-white p-6 rounded-lg shadow-2xl" style={{ minWidth: '600px', maxHeight: '80vh' }}>
+      <div className="flex items-center justify-between border-b border-gray-800 pb-4 mb-4">
+        <Typography variant="h6" color="primary" component="h2" className="flex items-center gap-2">
+          <Icons.CloudServer className="h-6 w-6" />
           S3 Browser: {currentPrefix || '/'}
         </Typography>
-        <button onClick={hide} className="text-gray-400 hover:text-white">
+        <button onClick={hide} className="text-gray-400 hover:text-white transition-colors">
           <Icons.Close className="h-6 w-6" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4" style={{ minHeight: '300px' }}>
-        {loading && downloadProgress.total === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <Typography variant="subtitle" component="p" className="">Loading list...</Typography>
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ minHeight: '350px' }}>
+        {loading ? (
+          <div className="flex flex-col h-full items-center justify-center space-y-3 py-12">
+            <Icons.LoadingOHIFMark className="h-10 w-10 animate-spin text-purple-500" />
+            <Typography variant="subtitle" component="p" className="text-gray-500">Загрузка списка...</Typography>
           </div>
-        ) : loading && downloadProgress.total > 0 ? (
-           <div className="flex flex-col h-full items-center justify-center space-y-4">
-             <div className="w-full bg-gray-700 rounded-full h-2.5">
-               <div 
-                 className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
-                 style={{ width: `${(downloadProgress.current / downloadProgress.total) * 100}%` }}
-               ></div>
-             </div>
-             <Typography variant="subtitle" component="p" className="">
-               Downloading: {downloadProgress.current} / {downloadProgress.total} files
-             </Typography>
-           </div>
         ) : (
           <div className="space-y-1">
             {currentPrefix && (
               <div
                 onClick={handleBack}
-                className="flex cursor-pointer items-center space-x-2 rounded p-2 hover:bg-gray-800"
+                className="flex cursor-pointer items-center space-x-3 rounded-md p-3 hover:bg-gray-800/50 transition-colors group"
               >
-                <Icons.ArrowLeft className="h-5 w-5 text-blue-400" />
-                <Typography variant="subtitle" component="span" className="">.. / (Back)</Typography>
+                <Icons.ArrowLeft className="h-5 w-5 text-purple-400 group-hover:-translate-x-1 transition-transform" />
+                <Typography variant="subtitle" component="span" className="text-purple-300">.. / (Назад)</Typography>
               </div>
             )}
             
             {items.folders.length === 0 && items.files.length === 0 && !loading && (
-              <div className="py-10 text-center">
-                <Typography variant="subtitle" color="error" component="p" className="">
-                  No items found or failed to fetch. Check S3 CORS settings.
+              <div className="py-16 text-center space-y-3">
+                <Icons.Search className="h-12 w-12 mx-auto text-gray-700" />
+                <Typography variant="subtitle" color="error" component="p" className="max-w-xs mx-auto">
+                  Папка пуста или нет доступа к S3. Откройте консоль (F12) для диагностики CORS.
                 </Typography>
               </div>
             )}
 
-            {items.folders.map(folder => (
-              <div
-                key={folder}
-                onClick={() => handleFolderClick(folder)}
-                className="flex cursor-pointer items-center space-x-2 rounded p-2 hover:bg-gray-800"
-              >
-                <Icons.Database className="h-5 w-5 text-yellow-500" />
-                <span className="truncate">{folder.replace(currentPrefix, '')}</span>
-              </div>
-            ))}
+            <div className="grid grid-cols-1 gap-1">
+              {items.folders.map(folder => (
+                <div
+                  key={folder}
+                  onClick={() => handleFolderClick(folder)}
+                  className="flex cursor-pointer items-center space-x-3 rounded-md p-3 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group"
+                >
+                  <Icons.Database className="h-5 w-5 text-yellow-500 group-hover:scale-110 transition-transform" />
+                  <span className="truncate flex-1 font-medium">{folder.replace(currentPrefix, '')}</span>
+                  <Icons.ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-white opacity-0 group-hover:opacity-100 transition-all" />
+                </div>
+              ))}
 
-            {items.files.map(file => (
-              <div key={file} className="flex items-center space-x-2 rounded p-2 text-gray-400 hover:bg-gray-800">
-                <Icons.ByName name="list-bullets" className="h-5 w-5 text-blue-400" />
-                <span className="truncate">{file.replace(currentPrefix, '')}</span>
-              </div>
-            ))}
+              {items.files.map(file => (
+                <div key={file} className="flex items-center space-x-3 rounded-md p-3 text-gray-500 hover:bg-white/5 transition-colors group">
+                  <Icons.ByName name="list-bullets" className="h-5 w-5 text-blue-500 group-hover:text-blue-400" />
+                  <span className="truncate flex-1 text-sm">{file.replace(currentPrefix, '')}</span>
+                  <span className="text-[10px] text-gray-700 uppercase font-bold tracking-widest hidden group-hover:inline">DICOM</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-gray-700 p-4 bg-gray-900">
-        <Typography variant="subtitle" component="span" className="">
-          {items.folders.length} folders, {items.files.length} files
-        </Typography>
-        <div className="space-x-2">
-          <Button onClick={hide} variant="outline" color="primary">
-            Cancel
+      <div className="flex items-center justify-between border-t border-gray-800 pt-5 mt-4">
+        <div className="flex flex-col">
+          <Typography variant="caption" className="text-gray-500 font-medium">
+             Статистика папки
+          </Typography>
+          <Typography variant="subtitle" component="span" className="text-gray-400 text-xs">
+            {items.folders.length} папок, {items.files.length} файлов
+          </Typography>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={hide} variant="outline" color="primary" className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white">
+            Отмена
           </Button>
           <Button
             onClick={handleLoadSelected}
             variant="default"
             color="primary"
+            className="shadow-lg shadow-purple-900/20 px-6"
             disabled={loading || (!currentPrefix && items.files.length === 0)}
           >
-            {loading ? 'Processing...' : 'Load Current Folder'}
+            Загрузить Эту Папку
           </Button>
         </div>
       </div>

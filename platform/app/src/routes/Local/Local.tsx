@@ -2,14 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import classnames from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import { DicomMetadataStore, MODULE_TYPES, useSystem } from '@ohif/core';
-
 import Dropzone from 'react-dropzone';
+
 import filesToStudies from './filesToStudies';
-
 import { extensionManager } from '../../App';
-
 import { Button, Icons, useModal } from '@ohif/ui-next';
 import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
+import S3ProgressModal from '../../components/S3ProgressModal/S3ProgressModal';
+import { s3FileService } from '../../utils/S3FileService';
 
 const getLoadButton = (onDrop, text, isDir) => {
   return (
@@ -21,12 +21,7 @@ const getLoadButton = (onDrop, text, isDir) => {
         <div {...getRootProps()}>
           <Button
             variant="default"
-            className="min-w-32"
-            style={{
-              backgroundColor: '#9333ea',
-              color: 'white',
-              border: 'none',
-            }}
+            className="min-w-32 bg-purple-600 hover:bg-purple-700 text-white border-none shadow-md transition-all active:scale-95"
             disabled={false}
             onClick={() => {}}
           >
@@ -101,41 +96,83 @@ function Local({ modePath }: LocalProps) {
 
       if (smStudies.length > 0) {
         smStudies.forEach(id => query.append('StudyInstanceUIDs', id));
-
         modePath = 'microscopy';
       }
     }
 
-    // Todo: navigate to work list and let user select a mode
-    // Filter out undefined values that may come from failed file processing
     studies.filter(id => id).forEach(id => query.append('StudyInstanceUIDs', id));
-    // Note: datasources param not needed since modePath includes the data source
-
     navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
+  };
+
+  const handleS3StreamLoad = async (prefix: string) => {
+    hide(); // Закрываем окно браузера S3
+    setDropInitiated(true);
+
+    try {
+      const allKeys = await s3FileService.listAllObjects(prefix);
+      const fileKeys = allKeys.filter(key => !key.endsWith('/'));
+
+      if (fileKeys.length === 0) {
+        alert('Папка пуста');
+        setDropInitiated(false);
+        return;
+      }
+
+      // Скачиваем первые 3 файла для мгновенной инициализации вьювера
+      const initialKeys = fileKeys.slice(0, 3);
+      const remainingKeys = fileKeys.slice(3);
+
+      const downloadInitial = async (key: string, index: number) => {
+        const blob = await s3FileService.getObjectAsBlob(key);
+        const file = blob as any;
+        file.name = key.split('/').pop() || `s3-init-${index}.dcm`;
+        return file;
+      };
+
+      const initialFiles = await Promise.all(initialKeys.map((k, i) => downloadInitial(k, i)));
+      const { processFile } = await import('./filesToStudies');
+      await Promise.all(initialFiles.map(f => processFile(f)));
+      
+      const studies = DicomMetadataStore.getStudyInstanceUIDs();
+      const studyUID = studies[studies.length - 1];
+
+      if (studyUID) {
+        // Мгновенный переход во вьювер
+        const query = new URLSearchParams();
+        query.append('StudyInstanceUIDs', studyUID);
+        navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
+        
+        // Открываем модальное окно прогресса ПОВЕРХ вьювера
+        show({
+          content: S3ProgressModal,
+          title: '', // Убираем заголовок для красоты
+          contentProps: {
+            fileKeys: remainingKeys,
+            hide: hide,
+          },
+        });
+      } else {
+        alert('Не удалось определить ID исследования.');
+        setDropInitiated(false);
+      }
+    } catch (err) {
+      console.error('S3 Load error:', err);
+      alert('Ошибка при загрузке из S3');
+      setDropInitiated(false);
+    }
   };
 
   const handleS3Load = () => {
     show({
       content: S3BrowseModal,
-      title: 'Load from S3',
+      title: 'Orbital3D S3 Explorer',
       contentProps: {
-        onLoad: async (blobs) => {
-          hide();
-          setDropInitiated(true);
-          // filesToStudies expects File-like objects (with name)
-          const files = blobs.map((blob, index) => {
-            const file = blob as any;
-            file.name = file.name || `s3-file-${index}.dcm`;
-            return file;
-          });
-          onDrop(files);
-        },
-        onClose: hide,
+        onConfirm: handleS3StreamLoad,
+        hide: hide,
       },
     });
   };
 
-  // Set body style
   useEffect(() => {
     document.body.classList.add('bg-white');
     return () => {
@@ -157,56 +194,63 @@ function Local({ modePath }: LocalProps) {
           {...getRootProps()}
           style={{ width: '100%', height: '100%', backgroundColor: 'white' }}
         >
-          <div className="flex h-screen w-screen items-center justify-center" style={{ backgroundColor: 'white' }}>
+          <div className="flex h-screen w-screen items-center justify-center p-4" style={{ backgroundColor: 'white' }}>
             <div
-              className="mx-auto space-y-2 rounded-xl py-12 px-12 drop-shadow-md"
+              className="mx-auto space-y-4 rounded-2xl py-16 px-16 drop-shadow-2xl border-2 border-dashed border-purple-500/30 transition-all duration-500"
               style={{
                 backgroundColor: 'white',
-                border: '2px dashed #9333ea',
-                boxShadow: '0 4px 20px rgba(147, 51, 234, 0.2)'
+                boxShadow: '0 10px 40px rgba(147, 51, 234, 0.15)'
               }}
             >
-              <div className="space-y-2 py-6 text-center">
+              <div className="space-y-4 text-center">
+                <div className="flex justify-center mb-6">
+                   <div className="p-4 bg-purple-50 rounded-full">
+                     <Icons.LoadingOHIFMark className="h-12 w-12 text-purple-600 animate-pulse" />
+                   </div>
+                </div>
                 {dropInitiated ? (
-                  <div className="flex flex-col items-center justify-center pt-12">
+                  <div className="flex flex-col items-center justify-center gap-4">
                      {LoadingIndicatorProgress && LoadingIndicatorProgress.component ? (
                        <LoadingIndicatorProgress.component
                          className={'h-full w-full'}
                          style={{ backgroundColor: 'white' }}
                        />
                      ) : (
-                       <div className="text-[#9333ea] animate-pulse">Загрузка...</div>
+                       <div className="text-purple-600 font-bold animate-pulse text-lg">Запуск системы...</div>
                      )}
+                     <p className="text-gray-400 text-sm italic">Пожалуйста, подождите. Инициализируем DICOM модуль.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <p className="pt-0 text-xl" style={{ color: '#9333ea' }}>
-                      Перетащите DICOM файлы и папки сюда <br />
-                      для локальной загрузки.
+                  <div className="space-y-3">
+                    <Typography variant="h4" className="text-purple-600 font-bold tracking-tight">
+                      Orbital3D Viewer
+                    </Typography>
+                    <p className="text-gray-600 text-lg font-medium">
+                      Перетащите DICOM файлы сюда <br />
+                      для локальной загрузки
                     </p>
-                    <p className="text-gray-500 text-base">
-                      Примечание: Ваши данные остаются в браузере
-                      <br /> и никогда не загружаются на сервер.
+                    <p className="text-gray-400 text-xs uppercase tracking-widest font-bold">
+                      или выберите источник ниже
                     </p>
                   </div>
                 )}
               </div>
-              <div className="flex justify-center gap-4 pt-4">
-                {getLoadButton(onDrop, 'Загрузить файлы', false)}
-                {getLoadButton(onDrop, 'Загрузить папку', true)}
+              <div className="flex justify-center flex-wrap gap-4 pt-8">
+                {getLoadButton(onDrop, 'Локальные файлы', false)}
+                {getLoadButton(onDrop, 'Локальная папка', true)}
                 <Button
                   variant="default"
-                  className="min-w-32"
-                  style={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                  }}
+                  className="min-w-32 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md shadow-blue-500/20 active:scale-95 transition-all"
                   onClick={handleS3Load}
                 >
-                  Загрузить из S3
+                  Облачное хранилище S3
                 </Button>
               </div>
+              {!dropInitiated && (
+                <p className="text-center text-[10px] text-gray-400 mt-8">
+                  Данные обрабатываются локально и не передаются на сервер
+                </p>
+              )}
             </div>
           </div>
         </div>
