@@ -7,7 +7,7 @@ import { Icons } from '@ohif/ui-next';
 interface S3ProgressModalProps {
   fileKeys: string[];
   hide: () => void;
-  onComplete?: () => void;
+  onComplete?: (uids: string[]) => void;
 }
 
 const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide, onComplete }) => {
@@ -20,7 +20,8 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide, onCom
   useEffect(() => {
     let active = true;
     let nextIndex = 0;
-    const CONCURRENCY = 15;
+    const CONCURRENCY = 8;
+    const studyUIDs = new Set<string>();
 
     const worker = async () => {
       while (active) {
@@ -32,7 +33,11 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide, onCom
           const blob = await s3FileService.getObjectAsBlob(key);
           const filename = key.split('/').pop() || `s3-file-${i}.dcm`;
           const file = new File([blob], filename, { type: 'application/dicom' });
-          await processFile(file);
+          const uid = await processFile(file);
+          
+          if (uid) {
+            studyUIDs.add(uid);
+          }
           
           if (active) {
             setDownloaded(prev => {
@@ -64,7 +69,9 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide, onCom
         setTimeout(() => {
           if (active) {
             hide();
-            if (onComplete) onComplete();
+            if (onComplete) {
+              onComplete(Array.from(studyUIDs));
+            }
           }
         }, 1500);
       }

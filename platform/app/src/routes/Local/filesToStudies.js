@@ -33,7 +33,7 @@ export const processFile = async file => {
       const image = await fileLoaderService.loadFile(file, imageId);
       const dicomJSONDataset = await fileLoaderService.getDataset(image, imageId);
       DicomMetadataStore.addInstance(dicomJSONDataset);
-      return;
+      return dicomJSONDataset.StudyInstanceUID || dicomJSONDataset.studyInstanceUid || (dicomJSONDataset['0020000D'] && dicomJSONDataset['0020000D'].Value && dicomJSONDataset['0020000D'].Value[0]);
     }
 
     const lowerName = file.name.toLowerCase();
@@ -55,6 +55,7 @@ export const processFile = async file => {
           `[DICOM local] metadata: ${file.name} in ${ms.toFixed(1)}ms (${(bytesRead / 1024).toFixed(1)} KiB read${usedFullFile ? ', full prefix' : ''})`
         );
       }
+      return dataset.StudyInstanceUID || dataset.studyInstanceUid || (dataset['0020000D'] && dataset['0020000D'].Value && dataset['0020000D'].Value[0]);
     } catch (partialErr) {
       const image = await fileLoaderService.loadFile(file, imageId);
       const dicomJSONDataset = await fileLoaderService.getDataset(image, imageId);
@@ -67,6 +68,7 @@ export const processFile = async file => {
           partialErr?.message || partialErr
         );
       }
+      return dicomJSONDataset.StudyInstanceUID || dicomJSONDataset.studyInstanceUid || (dicomJSONDataset['0020000D'] && dicomJSONDataset['0020000D'].Value && dicomJSONDataset['0020000D'].Value[0]);
     }
   } catch (error) {
     // eslint-disable-next-line no-console

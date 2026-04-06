@@ -133,15 +133,23 @@ function Local({ modePath }: LocalProps) {
       }
 
       // Функция для перехода во вьювер после полной загрузки
-      const handleComplete = () => {
-        const studies = DicomMetadataStore.getStudyInstanceUIDs();
-        const studyUID = studies[studies.length - 1];
+      const handleComplete = (uids?: string[]) => {
+        // Пытаемся взять UID из переданных (при медленной загрузке)
+        // или из DicomMetadataStore (как запасной вариант)
+        const studies = (uids && uids.length > 0) ? uids : DicomMetadataStore.getStudyInstanceUIDs();
+        
+        // Фильтруем пустые значения и берем последний найденный UID
+        const validUIDs = studies.filter(Boolean);
+        const studyUID = validUIDs[validUIDs.length - 1];
+
         if (studyUID) {
+          console.log('Navigating to study:', studyUID);
           const query = new URLSearchParams();
           query.append('StudyInstanceUIDs', studyUID);
           navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
         } else {
-          alert('Не удалось определить ID исследования.');
+          console.error('Final check: No StudyInstanceUID found in metadata store or results', studies);
+          alert('Не удалось определить ID исследования. Попробуйте обновить страницу или проверить файлы.');
           setDropInitiated(false);
         }
       };
@@ -151,16 +159,28 @@ function Local({ modePath }: LocalProps) {
       
       if (metadataIndex && Array.isArray(metadataIndex)) {
         console.log('Fast Path: Using pre-generated metadata index');
+        const fastUIDs = new Set<string>();
+
         metadataIndex.forEach(instance => {
+          // Стандартизируем URL
           if (instance._url && !instance.url) {
             instance.url = instance._url;
           }
+          
           if (instance.url) {
             DicomMetadataStore.addInstance(instance);
+            
+            // Явно вытаскиваем UID из JSON для надежности (разные форматы тегов)
+            const uid = instance.StudyInstanceUID || 
+                        instance.studyInstanceUid || 
+                        (instance['0020000D'] && instance['0020000D'].Value && instance['0020000D'].Value[0]);
+            if (uid) {
+              fastUIDs.add(uid);
+            }
           }
         });
 
-        handleComplete();
+        handleComplete(Array.from(fastUIDs));
         return;
       }
 
@@ -170,7 +190,7 @@ function Local({ modePath }: LocalProps) {
         contentProps: {
           fileKeys: fileKeys, 
           hide: hide,
-          onComplete: handleComplete
+          onComplete: (uids: string[]) => handleComplete(uids)
         },
       });
     } catch (err) {

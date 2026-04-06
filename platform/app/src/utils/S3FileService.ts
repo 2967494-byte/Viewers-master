@@ -24,6 +24,34 @@ class S3FileService {
     });
   }
 
+  /**
+   * Helper to wrap S3 calls with retry logic for transient errors like ERR_CONNECTION_RESET
+   */
+  private async withRetries<T>(operation: () => Promise<T>, maxRetries = 3, delay = 500): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (err: any) {
+        lastError = err;
+        const isNetworkError = 
+          err.name === 'FetchError' || 
+          err.name === 'TypeError' || 
+          err.message?.includes('Failed to fetch') ||
+          err.message?.includes('NetworkError');
+        
+        if (isNetworkError && attempt < maxRetries - 1) {
+          const waitTime = delay * Math.pow(2, attempt);
+          console.warn(`S3 connection issue (attempt ${attempt + 1}/${maxRetries}). Retrying in ${waitTime}ms...`, err.message);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
+
   async listPrefixes(prefix = ''): Promise<{ folders: string[]; files: string[] }> {
     console.log(`Listing S3 prefixes for: "${prefix}" at bucket "${bucket}"`);
     const command = new ListObjectsV2Command({
@@ -33,25 +61,13 @@ class S3FileService {
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await this.withRetries(() => this.client.send(command));
       console.log('S3 List Response:', response);
-      const folders = response.CommonPrefixes?.map(cp => cp.Prefix) || [];
-      const files = response.Contents?.filter(c => c.Key !== prefix).map(c => c.Key) || [];
+      const folders = response.CommonPrefixes?.map(cp => cp.Prefix).filter(Boolean) || [];
+      const files = response.Contents?.filter(c => c.Key !== prefix).map(c => c.Key).filter(Boolean) || [];
       return { folders, files };
     } catch (error: any) {
-      console.error('Detailed S3 listing error:', error);
-      
-      // Попытка вычитать сырой ответ для диагностики
-      if (error.$response) {
-        console.warn('Raw S3 Response Status:', error.$response.statusCode);
-        try {
-          const bodyText = await new Response(error.$response.body).text();
-          console.warn('Raw S3 Response Body:', bodyText);
-        } catch (e) {
-          console.warn('Could not read raw response body');
-        }
-      }
-
+      console.error('Detailed S3 listing error after retries:', error);
       return { folders: [], files: [] };
     }
   }
@@ -63,7 +79,7 @@ class S3FileService {
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await this.withRetries(() => this.client.send(command));
       const body = response.Body;
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
@@ -79,11 +95,11 @@ class S3FileService {
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
-      Range: range, // e.g., 'bytes=0-131071'
+      Range: range,
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await this.withRetries(() => this.client.send(command));
       const body = response.Body;
       if (typeof body === 'undefined') {
         throw new Error('Response body is undefined');
@@ -96,9 +112,6 @@ class S3FileService {
   }
 
   async getMetadataChunk(key: string): Promise<Blob> {
-    // Отключаем использование Range-запросов, так как данный S3 веб-сервер возвращает 403 Forbidden.
-    // Используем полную загрузку файла для индексации. 
-    // Это надежнее и убирает ошибки из консоли.
     return await this.getObjectAsBlob(key);
   }
 
@@ -113,8 +126,8 @@ class S3FileService {
         ContinuationToken: continuationToken,
       });
 
-      const response = await this.client.send(command);
-      const keys = response.Contents?.map(c => c.Key) || [];
+      const response = await this.withRetries(() => this.client.send(command));
+      const keys = response.Contents?.map(c => c.Key).filter(Boolean) || [];
       allKeys.push(...keys);
       continuationToken = response.NextContinuationToken;
     } while (continuationToken);
@@ -130,14 +143,13 @@ class S3FileService {
     });
 
     try {
-      const response = await this.client.send(command);
+      const response = await this.withRetries(() => this.client.send(command));
       const body = response.Body;
       if (typeof body === 'undefined') return null;
       const text = await new Response(body as any).text();
       return JSON.parse(text);
     } catch (error) {
-      // Это нормально, если файла нет
-      console.log('No pre-generated metadata index found at', indexKey);
+      console.log('No metadata index found or error fetching it at', indexKey, '. Falling back to slow path.');
       return null;
     }
   }
@@ -145,3 +157,4 @@ class S3FileService {
 
 export const s3FileService = new S3FileService();
 export default s3FileService;
+
