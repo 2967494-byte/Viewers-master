@@ -11,7 +11,7 @@ const PUBLIC_DIR = path.resolve(__dirname, './platform/app/public');
 
 // Environment variables (similar to webpack.pwa.js)
 const APP_CONFIG = process.env.APP_CONFIG || 'config/default.js';
-const PUBLIC_URL = process.env.PUBLIC_URL || '/3dviewer/';
+const PUBLIC_URL = '/3dviewer/';
 
 // Add these constants
 const NODE_ENV = process.env.NODE_ENV;
@@ -137,6 +137,8 @@ export default defineConfig({
     },
   },
   server: {
+    base: PUBLIC_URL,
+    host: '0.0.0.0',
     port: OHIF_PORT,
     open: OHIF_OPEN,
     // Configure proxy
@@ -161,6 +163,9 @@ export default defineConfig({
     historyApiFallback: {
       disableDotRule: true,
       index: `${PUBLIC_URL}index.html`,
+      rewrites: [
+        { from: /^\/$/, to: `${PUBLIC_URL}index.html` }
+      ]
     },
   },
 });
