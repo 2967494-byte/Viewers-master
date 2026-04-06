@@ -160,7 +160,14 @@ module.exports = (env, argv) => {
       },
       proxy: [
         {
-          '/dicomweb': 'http://localhost:5000',
+          context: ['/dicomweb'],
+          target: 'http://localhost:5000',
+        },
+        {
+          context: ['/s3-proxy'],
+          target: 'http://s3.regru.cloud',
+          changeOrigin: true,
+          pathRewrite: { '^/s3-proxy': '' },
         },
       ],
       static: [
