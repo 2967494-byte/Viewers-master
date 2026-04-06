@@ -7,6 +7,7 @@ import DataSourceWrapper from './DataSourceWrapper';
 import WorkList from './WorkList';
 import Local from './Local';
 import Debug from './Debug';
+import TokenViewer from './TokenViewer';
 import NotFound from './NotFound';
 import buildModeRoutes from './buildModeRoutes';
 import PrivateRoute from './PrivateRoute';
@@ -76,6 +77,10 @@ const bakedInRoutes = [
   {
     path: `/localbasic`,
     children: Local.bind(null, { modePath: 'viewer/dicomlocal' }),
+  },
+  {
+    path: `/v/:token`,
+    children: TokenViewer,
   },
 ];
 

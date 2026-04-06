@@ -11,7 +11,7 @@ const PUBLIC_DIR = path.resolve(__dirname, './platform/app/public');
 
 // Environment variables (similar to webpack.pwa.js)
 const APP_CONFIG = process.env.APP_CONFIG || 'config/default.js';
-const PUBLIC_URL = process.env.PUBLIC_URL || '/';
+const PUBLIC_URL = process.env.PUBLIC_URL || '/3dviewer/';
 
 // Add these constants
 const NODE_ENV = process.env.NODE_ENV;
@@ -101,6 +101,7 @@ export default defineConfig({
     },
   },
   output: {
+    assetPrefix: PUBLIC_URL,
     copy: [
       // Copy plugin files (handled by writePluginImportsFile)
       ...(writePluginImportsFile(SRC_DIR, DIST_DIR) || []),

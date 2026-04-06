@@ -11,6 +11,7 @@ import { Button, Icons, useModal } from '@ohif/ui-next';
 import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
 import S3ProgressModal from '../../components/S3ProgressModal/S3ProgressModal';
 import { s3FileService } from '../../utils/S3FileService';
+import { useS3Loader } from '../../utils/useS3Loader';
 
 const getLoadButton = (onDrop, text, isDir) => {
   return (
@@ -105,99 +106,12 @@ function Local({ modePath }: LocalProps) {
     navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
   };
 
+  const { loadFromS3, loading: s3Loading } = useS3Loader(modePath);
+  
   const handleS3StreamLoad = async (prefix: string) => {
     hide(); // Закрываем окно браузера S3
     setDropInitiated(true);
-
-    try {
-      const allKeys = await s3FileService.listAllObjects(prefix);
-      
-      const fileKeys = allKeys.filter(key => {
-        if (key.endsWith('/')) return false;
-        
-        const lowerKey = key.toLowerCase();
-        // Пропускаем метаданные и системные файлы
-        if (lowerKey.endsWith('ohif_metadata.json')) return false;
-        if (lowerKey.endsWith('.json')) return false;
-        if (lowerKey.endsWith('.txt')) return false;
-        if (lowerKey.endsWith('.png') || lowerKey.endsWith('.jpg')) return false;
-        if (lowerKey.includes('thumbs.db')) return false;
-        
-        return true;
-      }).sort();
-
-      if (fileKeys.length === 0) {
-        alert('Папка пуста');
-        setDropInitiated(false);
-        return;
-      }
-
-      // Функция для перехода во вьювер после полной загрузки
-      const handleComplete = (uids?: string[]) => {
-        // Пытаемся взять UID из переданных (при медленной загрузке)
-        // или из DicomMetadataStore (как запасной вариант)
-        const studies = (uids && uids.length > 0) ? uids : DicomMetadataStore.getStudyInstanceUIDs();
-        
-        // Фильтруем пустые значения и берем последний найденный UID
-        const validUIDs = studies.filter(Boolean);
-        const studyUID = validUIDs[validUIDs.length - 1];
-
-        if (studyUID) {
-          console.log('Navigating to study:', studyUID);
-          const query = new URLSearchParams();
-          query.append('StudyInstanceUIDs', studyUID);
-          navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
-        } else {
-          console.error('Final check: No StudyInstanceUID found in metadata store or results', studies);
-          alert('Не удалось определить ID исследования. Попробуйте обновить страницу или проверить файлы.');
-          setDropInitiated(false);
-        }
-      };
-
-      // Пытаемся сначала по «Быстрому Пути» (Fast Path): Поиск предсгенерированного индекса метаданных
-      const metadataIndex = await s3FileService.getMetadataIndex(prefix);
-      
-      if (metadataIndex && Array.isArray(metadataIndex)) {
-        console.log('Fast Path: Using pre-generated metadata index');
-        const fastUIDs = new Set<string>();
-
-        metadataIndex.forEach(instance => {
-          // Стандартизируем URL
-          if (instance._url && !instance.url) {
-            instance.url = instance._url;
-          }
-          
-          if (instance.url) {
-            DicomMetadataStore.addInstance(instance);
-            
-            // Явно вытаскиваем UID из JSON для надежности (разные форматы тегов)
-            const uid = instance.StudyInstanceUID || 
-                        instance.studyInstanceUid || 
-                        (instance['0020000D'] && instance['0020000D'].Value && instance['0020000D'].Value[0]);
-            if (uid) {
-              fastUIDs.add(uid);
-            }
-          }
-        });
-
-        handleComplete(Array.from(fastUIDs));
-        return;
-      }
-
-      // Если индекса нет — показываем окно прогресса и ждем 100% загрузки
-      show({
-        content: S3ProgressModal,
-        contentProps: {
-          fileKeys: fileKeys, 
-          hide: hide,
-          onComplete: (uids: string[]) => handleComplete(uids)
-        },
-      });
-    } catch (err) {
-      console.error('S3 Load error:', err);
-      alert('Ошибка при загрузке из S3');
-      setDropInitiated(false);
-    }
+    loadFromS3(prefix);
   };
 
   const handleS3Load = () => {
