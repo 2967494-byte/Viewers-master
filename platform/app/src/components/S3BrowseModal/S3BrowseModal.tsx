@@ -61,7 +61,6 @@ const S3BrowseModal: React.FC<S3BrowseModalProps> = ({ onConfirm, hide }) => {
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ minHeight: '350px' }}>
         {loading ? (
           <div className="flex flex-col h-full items-center justify-center space-y-3 py-12">
-            <Icons.LoadingOHIFMark className="h-10 w-10 animate-spin text-purple-500" />
             <Typography variant="subtitle" component="p" className="text-gray-500">Загрузка списка...</Typography>
           </div>
         ) : (
