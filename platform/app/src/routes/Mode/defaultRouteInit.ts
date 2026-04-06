@@ -152,6 +152,11 @@ export async function defaultRouteInit(
     await Promise.allSettled(allPromises).then(applyHangingProtocol);
     startRemainingPromises(remainingPromises);
     applyHangingProtocol();
+
+    // Notify the loader iframe parent that the viewer is ready to display
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage('ohif-ready', '*');
+    }
   });
 
   return unsubscriptions;

@@ -9,6 +9,7 @@ import HeaderPatientInfo from './HeaderPatientInfo';
 import { PatientInfoVisibility } from './HeaderPatientInfo/HeaderPatientInfo';
 import { preserveQueryParameters } from '@ohif/app';
 import { Types } from '@ohif/core';
+import LoadingProgressBar from './LoadingProgressBar';
 
 function ViewerHeader({
   appConfig,
@@ -101,7 +102,12 @@ function ViewerHeader({
       isReturnEnabled={!!appConfig.showStudyList}
       onClickReturnButton={onClickReturnButton}
       WhiteLabeling={appConfig.whiteLabeling}
-      Secondary={<Toolbar buttonSection="secondary" />}
+      Secondary={
+        <div className="flex items-center gap-2">
+          <LoadingProgressBar />
+          <Toolbar buttonSection="secondary" />
+        </div>
+      }
       PatientInfo={
         showHeaderPatientInfo &&
         appConfig.showPatientInfo !== PatientInfoVisibility.DISABLED && (
