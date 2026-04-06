@@ -132,102 +132,47 @@ function Local({ modePath }: LocalProps) {
         return;
       }
 
+      // Функция для перехода во вьювер после полной загрузки
+      const handleComplete = () => {
+        const studies = DicomMetadataStore.getStudyInstanceUIDs();
+        const studyUID = studies[studies.length - 1];
+        if (studyUID) {
+          const query = new URLSearchParams();
+          query.append('StudyInstanceUIDs', studyUID);
+          navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
+        } else {
+          alert('Не удалось определить ID исследования.');
+          setDropInitiated(false);
+        }
+      };
+
       // Пытаемся сначала по «Быстрому Пути» (Fast Path): Поиск предсгенерированного индекса метаданных
       const metadataIndex = await s3FileService.getMetadataIndex(prefix);
       
       if (metadataIndex && Array.isArray(metadataIndex)) {
         console.log('Fast Path: Using pre-generated metadata index');
         metadataIndex.forEach(instance => {
-          // Гарантируем, что у инстанции есть URL для Cornerstone
           if (instance._url && !instance.url) {
             instance.url = instance._url;
           }
           if (instance.url) {
             DicomMetadataStore.addInstance(instance);
-          } else {
-            console.warn('S3 Fast Path: Instance missing URL, skipping', instance.SOPInstanceUID);
           }
         });
 
-        const studies = DicomMetadataStore.getStudyInstanceUIDs();
-        const studyUID = studies[studies.length - 1];
-        
-        if (studyUID) {
-          const query = new URLSearchParams();
-          query.append('StudyInstanceUIDs', studyUID);
-          navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
-          
-          show({
-            content: S3ProgressModal,
-            title: '', 
-            contentProps: { fileKeys: fileKeys, hide: hide },
-          });
-          return; // Успешно вышли по быстрому пути
-        }
+        handleComplete();
+        return;
       }
 
-      // Если индекса нет — используем «Умный старт» (Smart Start)
-      const { processFile } = await import('./filesToStudies');
-      
-      const MAX_INITIAL_INDEX = 50; // Достаточно для базового MPR
-      const initialBatch = fileKeys.slice(0, MAX_INITIAL_INDEX);
-      
-      const INDEX_CONCURRENCY = 10; 
-      let indexedCount = 0;
-      
-      const progressEl = document.getElementById('indexing-progress');
-      const barEl = document.getElementById('indexing-bar');
-
-      const indexWorker = async (keys: string[]) => {
-        for (const key of keys) {
-          try {
-            const blob = await s3FileService.getMetadataChunk(key);
-            const filename = key.split('/').pop() || `s3-meta-${Date.now()}-${indexedCount}.dcm`;
-            const file = new File([blob], filename, { type: 'application/dicom' });
-            await processFile(file);
-            indexedCount++;
-            
-            // Обновляем UI напрямую через DOM для отзывчивости
-            if (progressEl) progressEl.innerText = `Подготовка: ${indexedCount} из ${initialBatch.length}`;
-            if (barEl) barEl.style.width = `${(indexedCount / initialBatch.length) * 100}%`;
-            
-          } catch (err) {
-            console.error(`Error indexing ${key}:`, err);
-          }
-        }
-      };
-
-      // Распределяем индексацию начальной пачки
-      const batches = [];
-      const batchSize = Math.ceil(initialBatch.length / INDEX_CONCURRENCY);
-      for (let i = 0; i < initialBatch.length; i += batchSize) {
-        batches.push(initialBatch.slice(i, i + batchSize));
-      }
-      
-      await Promise.all(batches.map(batch => indexWorker(batch)));
-      
-      const studies = DicomMetadataStore.getStudyInstanceUIDs();
-      const studyUID = studies[studies.length - 1];
-
-      if (studyUID) {
-        // Переход во вьювер с частичными данными (объем уже будет иметь 50+ слоев)
-        const query = new URLSearchParams();
-        query.append('StudyInstanceUIDs', studyUID);
-        navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
-        
-        // Фоновая загрузка ВСЕХ файлов (включая те, что уже проиндексированы, и новые)
-        show({
-          content: S3ProgressModal,
-          title: '', 
-          contentProps: {
-            fileKeys: fileKeys, 
-            hide: hide,
-          },
-        });
-      } else {
-        alert('Не удалось определить ID исследования.');
-        setDropInitiated(false);
-      }
+      // Если индекса нет — показываем окно прогресса и ждем 100% загрузки
+      show({
+        content: S3ProgressModal,
+        contentProps: {
+          fileKeys: fileKeys, 
+          hide: hide,
+          onComplete: handleComplete
+        },
+      });
     } catch (err) {
       console.error('S3 Load error:', err);
       alert('Ошибка при загрузке из S3');
