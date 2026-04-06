@@ -1,7 +1,7 @@
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
-const endpoint = process.env.S3_ENDPOINT || process.env.S3_ENDPOINT_URL || 'https://s3.regru.cloud';
-const region = 'ru-1'; 
+const endpoint = process.env.S3_ENDPOINT || process.env.S3_ENDPOINT_URL || 'http://s3.regru.cloud';
+const region = 'us-east-1'; 
 const bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'patient-hot-msk2';
 const accessKeyId = process.env.S3_ACCESS_KEY;
 const secretAccessKey = process.env.S3_SECRET_KEY;
@@ -12,23 +12,16 @@ class S3FileService {
   private client: S3Client;
 
   constructor() {
-    // ПРОВЕРКА КЛЮЧЕЙ (для отладки)
-    console.log('S3 Credentials check:', {
-      hasAccessKey: !!accessKeyId,
-      accessKeyStart: accessKeyId ? accessKeyId.substring(0, 3) + '...' : 'NONE',
-      hasSecretKey: !!secretAccessKey
-    });
-
     this.client = new S3Client({
       endpoint,
-      region: 'ru-1',
+      region,
       credentials: {
         accessKeyId: accessKeyId || '',
         secretAccessKey: secretAccessKey || '',
       },
-      forcePathStyle: true, // Возвращаем Path-style для Регру
+      forcePathStyle: true,
+      tls: false,
       apiVersion: 'latest',
-      maxAttempts: 3,
     });
   }
 
