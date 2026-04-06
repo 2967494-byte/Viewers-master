@@ -127,21 +127,22 @@ function LoadingProgressBar() {
 
   return (
     <div
-      className="flex items-center gap-2 ml-4"
-      style={{ minWidth: 260, maxWidth: 360 }}
+      className="flex items-center gap-3 ml-4 self-center"
+      style={{ minWidth: 300, maxWidth: 420, height: 48 }}
     >
       {/* Процент */}
       <span
         style={{
-          fontSize: 12,
+          fontSize: 15,
           fontWeight: 700,
-          color: done ? '#4ade80' : '#a78bfa',
-          minWidth: 34,
+          color: done ? '#4ade80' : '#c084fc',
+          minWidth: 42,
           textAlign: 'right',
           fontVariantNumeric: 'tabular-nums',
           transition: 'color 0.5s ease',
-          letterSpacing: '0.03em',
+          letterSpacing: '0.02em',
           fontFamily: 'monospace',
+          lineHeight: 1,
         }}
       >
         {percent}%
@@ -151,12 +152,13 @@ function LoadingProgressBar() {
       <div
         style={{
           flex: 1,
-          height: 5,
+          height: 15,
           borderRadius: 999,
-          background: 'rgba(255,255,255,0.07)',
+          background: 'rgba(255,255,255,0.08)',
           overflow: 'hidden',
           position: 'relative',
-          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4)',
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+          alignSelf: 'center',
         }}
       >
         <div
@@ -170,19 +172,35 @@ function LoadingProgressBar() {
               : 'linear-gradient(90deg, #6d28d9, #8b5cf6, #38bdf8)',
             transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1), background 0.6s ease',
             boxShadow: done
-              ? '0 0 10px rgba(74,222,128,0.5)'
-              : '0 0 10px rgba(139,92,246,0.4)',
+              ? '0 0 12px rgba(74,222,128,0.6)'
+              : '0 0 12px rgba(139,92,246,0.5)',
           }}
         />
+        {/* Верхний блик для объёма */}
+        {percent > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: `${percent}%`,
+              height: '45%',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)',
+              borderRadius: '999px 999px 0 0',
+              pointerEvents: 'none',
+              transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
+            }}
+          />
+        )}
         {/* Бегущий блик shimmer */}
         {!done && percent > 0 && (
           <div
             style={{
               position: 'absolute',
               top: 0, bottom: 0,
-              width: 60,
-              left: `calc(${percent}% - 40px)`,
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+              width: 80,
+              left: `calc(${percent}% - 55px)`,
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
               borderRadius: 999,
               animation: 'ohif-shimmer 1.8s ease infinite',
               pointerEvents: 'none',
@@ -194,16 +212,18 @@ function LoadingProgressBar() {
       {/* Оставшееся время */}
       <span
         style={{
-          fontSize: 11,
-          color: done ? '#4ade80' : 'rgba(255,255,255,0.4)',
-          minWidth: 52,
+          fontSize: 14,
+          fontWeight: 500,
+          color: done ? '#4ade80' : 'rgba(255,255,255,0.5)',
+          minWidth: 64,
           textAlign: 'left',
           fontVariantNumeric: 'tabular-nums',
           transition: 'color 0.5s ease',
           whiteSpace: 'nowrap',
+          lineHeight: 1,
         }}
       >
-        {done ? '✓ Готово' : remainingSec !== null ? `~${formatTime(remainingSec)}` : '⏳ ...'}
+        {done ? '✓ Готово' : remainingSec !== null ? `~${formatTime(remainingSec)}` : '...'}
       </span>
 
       <style>{`
