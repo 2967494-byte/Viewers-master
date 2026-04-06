@@ -1,12 +1,12 @@
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
-const endpoint = window.location.origin + '/s3-proxy';
+const endpoint = process.env.S3_ENDPOINT || process.env.S3_ENDPOINT_URL || 'https://s3.regru.cloud';
 const region = 'ru-1'; 
 const bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'patient-hot-msk2';
 const accessKeyId = process.env.S3_ACCESS_KEY;
 const secretAccessKey = process.env.S3_SECRET_KEY;
 
-console.log('S3 Service Init via Proxy:', { endpoint, bucket, accessKeySet: !!accessKeyId });
+console.log('S3 Service Direct Init:', { endpoint, bucket, accessKeySet: !!accessKeyId });
 
 class S3FileService {
   private client: S3Client;
@@ -20,7 +20,6 @@ class S3FileService {
         secretAccessKey: secretAccessKey || '',
       },
       forcePathStyle: true,
-      tls: false,
       apiVersion: 'latest',
     });
   }
