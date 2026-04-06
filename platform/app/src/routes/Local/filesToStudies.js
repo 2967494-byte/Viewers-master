@@ -36,6 +36,11 @@ export const processFile = async file => {
       return;
     }
 
+    const lowerName = file.name.toLowerCase();
+    if (lowerName.endsWith('.json') || lowerName.endsWith('.txt') || lowerName.endsWith('.png') || lowerName.endsWith('.jpg')) {
+      return;
+    }
+
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
 
     try {

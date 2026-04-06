@@ -29,7 +29,24 @@ export async function readDicomMetadataFromFile(file) {
   while (chunk <= size) {
     const buffer = await file.slice(0, chunk).arrayBuffer();
     try {
-      const dicomData = dcmjs.data.DicomMessage.readFile(buffer, READ_UNTIL_PIXEL_DATA);
+      let dicomData;
+      try {
+        dicomData = dcmjs.data.DicomMessage.readFile(buffer, READ_UNTIL_PIXEL_DATA);
+      } catch (err) {
+        // Fallback for DICOM files without standard 128-byte preamble + "DICM" prefix
+        if (err.message && err.message.includes('expected header is missing')) {
+          const preamble = new Uint8Array(128).fill(0);
+          const dicm = new Uint8Array([68, 73, 67, 77]); // "DICM"
+          const combined = new Uint8Array(preamble.length + dicm.length + buffer.byteLength);
+          combined.set(preamble, 0);
+          combined.set(dicm, 128);
+          combined.set(new Uint8Array(buffer), 132);
+          dicomData = dcmjs.data.DicomMessage.readFile(combined.buffer, READ_UNTIL_PIXEL_DATA);
+        } else {
+          throw err;
+        }
+      }
+
       const dataset = dcmjs.data.DicomMetaDictionary.naturalizeDataset(dicomData.dict);
       dataset._meta = dcmjs.data.DicomMetaDictionary.namifyDataset(dicomData.meta);
       dataset.AvailableTransferSyntaxUID =

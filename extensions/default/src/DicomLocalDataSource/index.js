@@ -153,14 +153,17 @@ function createDicomLocalApi(dicomLocalConfig) {
               } = instance;
 
               instance.imageId = imageId;
-
-              // Add imageId specific mapping to this data as the URL isn't necessarily WADO-URI.
-              metadataProvider.addImageIdToUIDs(imageId, {
-                StudyInstanceUID,
-                SeriesInstanceUID,
-                SOPInstanceUID,
-                frameIndex: isMultiframe ? index : 1,
-              });
+              if (imageId) {
+                // Add imageId specific mapping to this data as the URL isn't necessarily WADO-URI.
+                metadataProvider.addImageIdToUIDs(imageId, {
+                  StudyInstanceUID,
+                  SeriesInstanceUID,
+                  SOPInstanceUID,
+                  frameIndex: isMultiframe ? index : 1,
+                });
+              } else {
+                console.warn('DicomLocalDataSource: Instance has no imageId (url). Skipping metadata mapping.', instance);
+              }
             });
 
             DicomMetadataStore._broadcastEvent(EVENTS.INSTANCES_ADDED, {

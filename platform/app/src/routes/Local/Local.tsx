@@ -111,7 +111,20 @@ function Local({ modePath }: LocalProps) {
 
     try {
       const allKeys = await s3FileService.listAllObjects(prefix);
-      const fileKeys = allKeys.filter(key => !key.endsWith('/')).sort();
+      
+      const fileKeys = allKeys.filter(key => {
+        if (key.endsWith('/')) return false;
+        
+        const lowerKey = key.toLowerCase();
+        // Пропускаем метаданные и системные файлы
+        if (lowerKey.endsWith('ohif_metadata.json')) return false;
+        if (lowerKey.endsWith('.json')) return false;
+        if (lowerKey.endsWith('.txt')) return false;
+        if (lowerKey.endsWith('.png') || lowerKey.endsWith('.jpg')) return false;
+        if (lowerKey.includes('thumbs.db')) return false;
+        
+        return true;
+      }).sort();
 
       if (fileKeys.length === 0) {
         alert('Папка пуста');
@@ -129,7 +142,11 @@ function Local({ modePath }: LocalProps) {
           if (instance._url && !instance.url) {
             instance.url = instance._url;
           }
-          DicomMetadataStore.addInstance(instance);
+          if (instance.url) {
+            DicomMetadataStore.addInstance(instance);
+          } else {
+            console.warn('S3 Fast Path: Instance missing URL, skipping', instance.SOPInstanceUID);
+          }
         });
 
         const studies = DicomMetadataStore.getStudyInstanceUIDs();
