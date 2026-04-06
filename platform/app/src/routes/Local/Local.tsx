@@ -277,9 +277,6 @@ function Local({ modePath }: LocalProps) {
             >
               <div className="space-y-4 text-center">
                 <div className="flex justify-center mb-6">
-                   <div className="p-4 bg-purple-50 rounded-full">
-                     <Icons.LoadingOHIFMark className="h-12 w-12 text-purple-600 animate-pulse" />
-                   </div>
                 </div>
                 {dropInitiated ? (
                   <div className="flex flex-col items-center justify-center gap-4">

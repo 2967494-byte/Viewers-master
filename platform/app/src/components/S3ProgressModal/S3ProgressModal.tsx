@@ -67,24 +67,21 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
     <div className="flex flex-col bg-gray-900 text-white p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10" style={{ minWidth: '450px' }}>
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <Icons.LoadingOHIFMark className="h-6 w-6 text-purple-400 animate-pulse" />
-          </div>
-          <Typography variant="h6" color="primary" component="h2" className="font-bold tracking-wide">
+          <Typography variant="h6" color="primary" component="h2" className="font-bold tracking-wide text-purple-400 uppercase">
             Синхронизация S3
           </Typography>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
-            <Typography variant="subtitle" className="text-purple-400 font-mono text-sm" component="span">
-              {progress}%
-            </Typography>
-          </div>
           {errors > 0 && (
             <span className="text-[10px] text-red-400 font-bold uppercase animate-pulse">
               {errors} ошибок
             </span>
           )}
+          <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+            <Typography variant="subtitle" className="text-purple-400 font-mono text-sm" component="span">
+              {progress}%
+            </Typography>
+          </div>
         </div>
       </div>
 
@@ -113,11 +110,6 @@ const S3ProgressModal: React.FC<S3ProgressModalProps> = ({ fileKeys, hide }) => 
         )}
       </div>
       
-      <div className="mt-8 pt-4 border-t border-white/5">
-        <p className="text-[11px] text-gray-500 leading-relaxed text-center bg-black/20 p-3 rounded-lg border border-white/5">
-          <span className="text-purple-400 font-bold">Подсказка:</span> Вы уже можете просматривать снимки в левой панели. Они появляются там по мере загрузки.
-        </p>
-      </div>
     </div>
   );
 };
