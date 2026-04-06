@@ -1,7 +1,7 @@
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const endpoint = process.env.S3_ENDPOINT || process.env.S3_ENDPOINT_URL || 'http://s3.regru.cloud';
-const region = 'us-east-1'; 
+const region = 'ru-1'; 
 const bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'patient-hot-msk2';
 const accessKeyId = process.env.S3_ACCESS_KEY;
 const secretAccessKey = process.env.S3_SECRET_KEY;
@@ -39,13 +39,21 @@ class S3FileService {
       const folders = response.CommonPrefixes?.map(cp => cp.Prefix) || [];
       const files = response.Contents?.filter(c => c.Key !== prefix).map(c => c.Key) || [];
       return { folders, files };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Detailed S3 listing error:', error);
-      if (error instanceof Error) {
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
+      
+      // Попытка вычитать сырой ответ для диагностики
+      if (error.$response) {
+        console.warn('Raw S3 Response Status:', error.$response.statusCode);
+        try {
+          const bodyText = await new Response(error.$response.body).text();
+          console.warn('Raw S3 Response Body:', bodyText);
+        } catch (e) {
+          console.warn('Could not read raw response body');
+        }
       }
-      throw error;
+
+      return { folders: [], files: [] };
     }
   }
 
