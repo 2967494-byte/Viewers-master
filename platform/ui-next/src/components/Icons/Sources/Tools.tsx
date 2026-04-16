@@ -3595,3 +3595,56 @@ export const ToolLabelmapEditWithContour = (props: IconProps) => (
     />
   </svg>
 );
+
+export const ToolImplant = (props: IconProps) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M7 4H17V7C17 7.55228 16.5523 8 16 8H8C7.44772 8 7 7.55228 7 7V4Z"
+      fill="currentColor"
+    />
+    <path
+      d="M8 8H16L15 11H9L8 8Z"
+      fill="currentColor"
+      opacity="0.8"
+    />
+    <path
+      d="M10 11H14V20C14 20.5523 13.5523 21 13 21H11C10.4477 21 10 20.5523 10 20V11Z"
+      fill="currentColor"
+    />
+    <path
+      d="M10 13H14M10 16H14M10 19H14"
+      stroke="white"
+      strokeWidth="1"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const ToolPanorama = (props: IconProps) => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M4 14C4 9.58172 7.58172 6 12 6C16.4183 6 20 9.58172 20 14"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path d="M6 10L7 11M12 6V8M18 10L17 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <rect x="14" y="12" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M16 14L18 18L20 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+

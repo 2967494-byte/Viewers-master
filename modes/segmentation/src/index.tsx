@@ -295,7 +295,7 @@ function modeFactory({ modeConfiguration }) {
 
       toolbarService.register(toolbarButtons);
 
-      toolbarService.updateSection(toolbarService.sections.primary, []);
+      toolbarService.updateSection(toolbarService.sections.primary, ['DentalImplant', 'DentalPanorama']);
 
       toolbarService.clearButtonSection(toolbarService.sections.viewportActionMenu.topLeft);
 

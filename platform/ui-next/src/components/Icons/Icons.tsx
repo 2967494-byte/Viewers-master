@@ -148,6 +148,8 @@ import {
   ToolSegmentLabel,
   ToolSculptor,
   ToolLabelmapEditWithContour,
+  ToolImplant,
+  ToolPanorama,
 } from './Sources/Tools';
 import ActionNewDialog from './Sources/ActionNewDialog';
 import NotificationInfo from './Sources/NotificationInfo';
@@ -632,6 +634,8 @@ export const Icons = {
   HelperCombineSubtract,
   HelperCombineIntersect,
   HelperCombineMerge,
+  ToolImplant,
+  ToolPanorama,
   //
   //
   //
@@ -783,6 +787,8 @@ export const Icons = {
   'tool-point': (props: IconProps) => ToolCircle(props),
   'tool-freehand-line': (props: IconProps) => ToolFreehand(props),
   'tool-labelmap-edit-with-contour': (props: IconProps) => ToolLabelmapEditWithContour(props),
+  'tool-implant': (props: IconProps) => ToolImplant(props),
+  'tool-panorama': (props: IconProps) => ToolPanorama(props),
   'actions-smooth': (props: IconProps) => ActionsSmooth(props),
   'actions-simplify': (props: IconProps) => ActionsSimplify(props),
   'actions-combine': (props: IconProps) => ActionsCombine(props),

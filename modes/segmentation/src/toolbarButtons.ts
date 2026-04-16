@@ -270,7 +270,7 @@ export const toolbarButtons: Button[] = [
     id: 'DentalPanorama',
     uiType: 'ohif.toolButton',
     props: {
-      icon: 'tool-capture',
+      icon: 'tool-panorama',
       label: '🦷 Панорама',
       tooltip: 'Создать панорамный снимок челюсти из 3D объёма',
       commands: 'generateDentalPanorama',
@@ -309,8 +309,8 @@ export const toolbarButtons: Button[] = [
     id: 'DentalImplant',
     uiType: 'ohif.toolButton',
     props: {
-      icon: 'tool-length', // Placeholder icon
-      label: 'Dental Implant',
+      icon: 'tool-implant',
+      label: '🦷 Импланты',
       commands: 'openImplantLibrary',
       evaluate: 'evaluate.action',
     },
