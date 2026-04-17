@@ -451,11 +451,8 @@ class DentalImplantTool extends LengthTool {
 
           actor.setUserMatrix(mat);
 
-          // Safe rendering
-          const renderWindow = viewport.getRenderWindow ? viewport.getRenderWindow() : null;
-          if (renderWindow && renderWindow.getInteractor && renderWindow.getInteractor()) {
-              renderWindow.render();
-          }
+          // DO NOT call renderWindow.render() here, as this is already inside a render loop!
+          // Nested render calls corrupt VTK.js WebGL state and cause 'isAttributeUsed' null errors.
       } catch (err) {
           console.warn("DentalImplantTool: _update3DActor failed safely", err);
       }
