@@ -378,86 +378,87 @@ class DentalImplantTool extends LengthTool {
    * Manages the VTK Actor for 3D Viewports
    */
   _update3DActor(viewport, annotationUID, start, end, diameter, colorHex) {
-      console.log("DentalImplantTool: _update3DActor called", { annotationUID, start, end, diameter });
-
-      const renderer = viewport.getRenderer();
+      const renderer = viewport.getRenderer ? viewport.getRenderer() : null;
       if (!renderer) {
-          console.warn("DentalImplantTool: No renderer for 3D viewport");
           return;
       }
 
-      if (!this.actorMap) this.actorMap = new Map();
-      const key = `${annotationUID}-${viewport.id}`;
+      try {
+          if (!this.actorMap) this.actorMap = new Map();
+          const key = `${annotationUID}-${viewport.id}`;
 
-      let actor = this.actorMap.get(key);
+          let actor = this.actorMap.get(key);
 
-      if (!actor) {
-          console.log("DentalImplantTool: Creating new VTK actor for", key);
-          // Create Actor
-          const cylinderSource = vtkCylinderSource.newInstance({
-              resolution: 20,
-              height: 1,
-              radius: 0.5,
-              capping: true,
-          });
-          const mapper = vtkMapper.newInstance();
-          mapper.setInputConnection(cylinderSource.getOutputPort());
+          if (!actor) {
+              // Create Actor
+              const cylinderSource = vtkCylinderSource.newInstance({
+                  resolution: 20,
+                  height: 1,
+                  radius: 0.5,
+                  capping: true,
+              });
+              const mapper = vtkMapper.newInstance();
+              mapper.setInputConnection(cylinderSource.getOutputPort());
 
-          actor = vtkActor.newInstance();
-          actor.setMapper(mapper);
-          actor.getProperty().setLighting(true);
+              actor = vtkActor.newInstance();
+              actor.setMapper(mapper);
+              actor.getProperty().setLighting(true);
 
-          renderer.addActor(actor);
-          this.actorMap.set(key, actor);
+              renderer.addActor(actor);
+              this.actorMap.set(key, actor);
+          }
+
+          // Update Color
+          const r = parseInt(colorHex.slice(1, 3), 16) / 255;
+          const g = parseInt(colorHex.slice(3, 5), 16) / 255;
+          const b = parseInt(colorHex.slice(5, 7), 16) / 255;
+          actor.getProperty().setColor(r, g, b);
+          actor.getProperty().setOpacity(1.0);
+          actor.getProperty().setAmbient(0.3);
+          actor.getProperty().setDiffuse(0.8);
+          actor.getProperty().setSpecular(0.2);
+
+          // Transform
+          const vec = vec3.create();
+          vec3.subtract(vec, end, start);
+          const length = vec3.length(vec);
+
+          if (length < 0.1) return;
+
+          const center = vec3.create();
+          vec3.add(center, start, end);
+          vec3.scale(center, center, 0.5);
+
+          actor.setScale(1, 1, 1);
+          actor.setPosition(0, 0, 0);
+          actor.setOrientation(0, 0, 0);
+
+          const direction = vec3.create();
+          vec3.normalize(direction, vec);
+
+          const up = vec3.fromValues(0, 1, 0);
+          const axis = vec3.create();
+          vec3.cross(axis, up, direction);
+          const angleRad = Math.acos(vec3.dot(up, direction));
+
+          actor.setPosition(center[0], center[1], center[2]);
+          actor.setScale(diameter, length, diameter);
+
+          const mat = mat4.create();
+          mat4.translate(mat, mat, center);
+          mat4.rotate(mat, mat, angleRad, axis);
+          mat4.scale(mat, mat, [diameter, length, diameter]);
+
+          actor.setUserMatrix(mat);
+
+          // Safe rendering
+          const renderWindow = viewport.getRenderWindow ? viewport.getRenderWindow() : null;
+          if (renderWindow && renderWindow.getInteractor && renderWindow.getInteractor()) {
+              renderWindow.render();
+          }
+      } catch (err) {
+          console.warn("DentalImplantTool: _update3DActor failed safely", err);
       }
-
-      // Update Color
-      const r = parseInt(colorHex.slice(1, 3), 16) / 255;
-      const g = parseInt(colorHex.slice(3, 5), 16) / 255;
-      const b = parseInt(colorHex.slice(5, 7), 16) / 255;
-      actor.getProperty().setColor(r, g, b);
-      actor.getProperty().setOpacity(1.0);
-      actor.getProperty().setAmbient(0.3);
-      actor.getProperty().setDiffuse(0.8);
-      actor.getProperty().setSpecular(0.2);
-
-      // Transform
-      const vec = vec3.create();
-      vec3.subtract(vec, end, start);
-      const length = vec3.length(vec);
-
-      if (length < 0.1) return;
-
-      const center = vec3.create();
-      vec3.add(center, start, end);
-      vec3.scale(center, center, 0.5);
-
-      actor.setScale(1, 1, 1);
-      actor.setPosition(0, 0, 0);
-      actor.setOrientation(0, 0, 0);
-
-      const direction = vec3.create();
-      vec3.normalize(direction, vec);
-
-      const up = vec3.fromValues(0, 1, 0);
-      const axis = vec3.create();
-      vec3.cross(axis, up, direction);
-      const angleRad = Math.acos(vec3.dot(up, direction));
-
-      actor.setPosition(center[0], center[1], center[2]);
-      actor.setScale(diameter, length, diameter);
-
-      const mat = mat4.create();
-      mat4.translate(mat, mat, center);
-      mat4.rotate(mat, mat, angleRad, axis);
-      mat4.scale(mat, mat, [diameter, length, diameter]);
-
-      actor.setUserMatrix(mat);
-
-      // Force render of the VTK Window
-      const renderWindow = viewport.getRenderWindow ? viewport.getRenderWindow() : null;
-      if (renderWindow) renderWindow.render();
-      else viewport.render();
   }
 
   renderAnnotation = (enabledElement, svgDrawingHelper) => {

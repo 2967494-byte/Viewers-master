@@ -246,7 +246,7 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
 
   // Remove WindowLevel from active tools to replace with Crosshairs
   tools.active = tools.active.filter(tool => tool.toolName !== 'WindowLevel');
-  tools.enabled.push({ toolName: 'DentalImplant' });
+  tools.passive.push({ toolName: 'DentalImplant' });
 
   tools.active.push(
     {
@@ -327,9 +327,6 @@ function initVolume3DToolGroup(extensionManager, toolGroupService) {
         toolName: 'OrientationMarker',
       },
       {
-        toolName: 'DentalImplant',
-      },
-      {
         toolName: 'Crosshairs',
         configuration: {
           viewportIndicators: true,
@@ -344,6 +341,11 @@ function initVolume3DToolGroup(extensionManager, toolGroupService) {
              return '#00ff00';
           },
         },
+      },
+    ],
+    passive: [
+      {
+        toolName: 'DentalImplant',
       },
     ],
   };
