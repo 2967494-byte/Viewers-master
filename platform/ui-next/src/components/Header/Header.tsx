@@ -31,6 +31,7 @@ interface HeaderProps {
   PatientInfo?: ReactNode;
   Secondary?: ReactNode;
   UndoRedo?: ReactNode;
+  FullHeightTools?: ReactNode;
 }
 
 function Header({
@@ -43,6 +44,7 @@ function Header({
   PatientInfo,
   UndoRedo,
   Secondary,
+  FullHeightTools,
   ...props
 }: HeaderProps): ReactNode {
   const onClickReturn = () => {
@@ -50,6 +52,10 @@ function Header({
       onClickReturnButton();
     }
   };
+
+  const publicUrl =
+    (typeof window !== 'undefined' && (window as any).PUBLIC_URL) || '/';
+  const logoSrc = `${String(publicUrl).replace(/\/?$/, '/')}assets/custom-logo.png`;
 
   const settingsMenu =
     menuOptions.length > 0 ? (
@@ -113,7 +119,11 @@ function Header({
               {isReturnEnabled && <Icons.ArrowLeft className="text-primary ml-1 h-7 w-7" />}
               <div className="ml-1">
                 {WhiteLabeling?.createLogoComponentFn?.(React, props) || (
-                  <img src="/assets/custom-logo.png" alt="Logo" style={{ height: '32px' }} />
+                  <img
+                    src={logoSrc}
+                    alt="Logo"
+                    style={{ height: '32px' }}
+                  />
                 )}
               </div>
             </div>
@@ -122,7 +132,8 @@ function Header({
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
             <div className="flex items-center justify-center space-x-2">{children}</div>
           </div>
-          <div className="absolute right-0 top-1/2 flex -translate-y-1/2 select-none items-center">
+          <div className="absolute right-0 top-0 flex h-full select-none items-center">
+            {FullHeightTools}
             {headerRightSlots.map((node, index) => (
               <React.Fragment key={index}>
                 {index > 0 ? (

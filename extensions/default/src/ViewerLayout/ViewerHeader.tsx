@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -10,6 +10,8 @@ import { PatientInfoVisibility } from './HeaderPatientInfo/HeaderPatientInfo';
 import { preserveQueryParameters } from '@ohif/app';
 import { Types } from '@ohif/core';
 import LoadingProgressBar from './LoadingProgressBar';
+import DentalPanoramaButton from './DentalPanoramaButton';
+import DentalToolsToolbar from './DentalToolsToolbar';
 
 function ViewerHeader({
   appConfig,
@@ -25,7 +27,18 @@ function ViewerHeader({
   showHeaderMenu?: boolean;
 }>) {
   const { servicesManager, extensionManager, commandsManager } = useSystem();
-  const { customizationService } = servicesManager.services;
+  const { customizationService, viewportGridService } = servicesManager.services;
+  const [hasAxialViewport, setHasAxialViewport] = useState(false);
+  useEffect(() => {
+    const update = () =>
+      setHasAxialViewport(viewportGridService.getState().viewports.has('mpr-axial'));
+    const subscriptions = [
+      viewportGridService.EVENTS.GRID_STATE_CHANGED,
+      viewportGridService.EVENTS.VIEWPORTS_READY,
+    ].map(event => viewportGridService.subscribe(event, update));
+    update();
+    return () => subscriptions.forEach(subscription => subscription.unsubscribe());
+  }, [viewportGridService]);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,57 +110,80 @@ function ViewerHeader({
   }
 
   return (
-    <Header
-      menuOptions={menuOptions}
-      isReturnEnabled={!!appConfig.showStudyList}
-      onClickReturnButton={onClickReturnButton}
-      WhiteLabeling={appConfig.whiteLabeling}
-      Secondary={
-        <div className="flex items-center gap-2">
-          <LoadingProgressBar />
-          <Toolbar buttonSection="secondary" />
-        </div>
-      }
-      PatientInfo={
-        showHeaderPatientInfo &&
-        appConfig.showPatientInfo !== PatientInfoVisibility.DISABLED && (
-          <HeaderPatientInfo
-            servicesManager={servicesManager}
-            appConfig={appConfig}
-          />
-        )
-      }
-      UndoRedo={
-        showHeaderUndoRedo ? (
-          <div className="text-primary flex cursor-pointer items-center">
-            <Button
-              variant="ghost"
-              className="hover:bg-primary-dark"
-              onClick={() => {
-                commandsManager.run('undo');
-              }}
+    <>
+      <Header
+        menuOptions={menuOptions}
+        isReturnEnabled={!!appConfig.showStudyList}
+        onClickReturnButton={onClickReturnButton}
+        WhiteLabeling={appConfig.whiteLabeling}
+        FullHeightTools={
+          <div className="flex h-full items-center">
+            {hasAxialViewport && <DentalToolsToolbar commandsManager={commandsManager} />}
+            <div
+              id="orbital-panorama-header-slot"
+              className="flex h-full"
             >
-              <Icons.Undo className="" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="hover:bg-primary-dark"
-              onClick={() => {
-                commandsManager.run('redo');
-              }}
-            >
-              <Icons.Redo className="" />
-            </Button>
+              {hasAxialViewport && (
+                <>
+                  <DentalPanoramaButton
+                    onClick={() => commandsManager.run('generateDentalPanorama')}
+                  />
+                  <DentalPanoramaButton
+                    automatic
+                    onClick={() => commandsManager.run('generateAutomaticDentalPanorama')}
+                  />
+                </>
+              )}
+            </div>
           </div>
-        ) : null
-      }
-    >
-      {showPrimaryToolbar && (
-        <div className="relative flex justify-center gap-[4px]">
-          <Toolbar buttonSection="primary" />
-        </div>
-      )}
-    </Header>
+        }
+        Secondary={
+          <div className="flex items-center gap-2">
+            <Toolbar buttonSection="secondary" />
+          </div>
+        }
+        PatientInfo={
+          showHeaderPatientInfo &&
+          appConfig.showPatientInfo !== PatientInfoVisibility.DISABLED && (
+            <HeaderPatientInfo
+              servicesManager={servicesManager}
+              appConfig={appConfig}
+            />
+          )
+        }
+        UndoRedo={
+          showHeaderUndoRedo ? (
+            <div className="text-primary flex cursor-pointer items-center">
+              <Button
+                variant="ghost"
+                className="hover:bg-primary-dark"
+                onClick={() => {
+                  commandsManager.run('undo');
+                }}
+              >
+                <Icons.Undo className="" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="hover:bg-primary-dark"
+                onClick={() => {
+                  commandsManager.run('redo');
+                }}
+              >
+                <Icons.Redo className="" />
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {showPrimaryToolbar && (
+          <div className="relative flex justify-center gap-[4px]">
+            <Toolbar buttonSection="primary" />
+          </div>
+        )}
+      </Header>
+      <LoadingProgressBar />
+    </>
   );
 }
 

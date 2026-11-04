@@ -63,3 +63,28 @@ tests/playwright-report/
 
 # Backup files
 *~
+
+# Local experiments, release bundles, patient test data and marketing output.
+# Keep these on disk; publish only reviewed source and documentation.
+/tmp/
+/.tmp/
+/output/
+/uploads/
+/Viewers-master.zip
+*.DCM
+*.dicom
+*.DICOM
+*.raw
+*.RAW
+
+# Local UI proofs and historical review iterations of the retired uploader.
+/docs/specs/*-preview.*
+/docs/specs/journal-upload-buttons.png
+/docs/specs/mpr-slice-line-and-handles.png
+/docs/specs/ohif-dental-volume-rendering.png
+/docs/specs/orbital-uploader-gemini-review-*.md
+
+# Xcode user/build state; shared projects, schemes and source remain versioned.
+DerivedData/
+xcuserdata/
+*.xcuserstate

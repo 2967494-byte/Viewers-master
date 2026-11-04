@@ -254,6 +254,8 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
       bindings: [{ mouseButton: Enums.MouseBindings.Primary }],
       configuration: {
         viewportIndicators: false,
+        handleRadius: 8,
+        explainHandles: true,
         // Thin crosshair lines
         lineWidth: 1,
         // No gap in center - lines meet at intersection point
@@ -292,7 +294,11 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
 
   // Focal point dot is now drawn by VerticalScaleOverlayTool directly
 
-  tools.passive.push({ toolName: 'Length' }, { toolName: 'ReferenceLines' });
+  tools.passive.push(
+    ...['Length', 'Angle', 'DentalLength2D', 'DentalLength3D', 'DentalAngle3D', 'DentalTapeLine', 'DentalTapeCurve', 'DentalCanal']
+      .map(toolName => ({ toolName })),
+    { toolName: 'ReferenceLines' }
+  );
   toolGroupService.createToolGroupAndAddTools('mpr', tools);
 }
 
@@ -344,6 +350,8 @@ function initVolume3DToolGroup(extensionManager, toolGroupService) {
       },
     ],
     passive: [
+      ...['DentalLength2D', 'DentalLength3D', 'DentalAngle3D', 'DentalTapeLine', 'DentalTapeCurve', 'DentalCanal']
+        .map(toolName => ({ toolName })),
       {
         toolName: 'DentalImplant',
       },

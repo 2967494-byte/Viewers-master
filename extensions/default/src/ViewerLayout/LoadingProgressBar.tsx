@@ -1,240 +1,161 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { eventTarget, EVENTS as csEvents } from '@cornerstonejs/core';
+import React, { useEffect, useRef, useState } from 'react';
+import { cache, eventTarget, EVENTS as csEvents, Enums } from '@cornerstonejs/core';
 import { useSystem } from '@ohif/core';
+import './LoadingProgressBar.css';
 
-/**
- * LoadingProgressBar — красивая полоска загрузки в шапке вьювера.
- *
- * Тактика:
- * 1. При монтировании — сразу подписываемся на IMAGE_LOADED.
- * 2. Появляемся при первом IMAGE_LOADED (значит загрузка уже идёт).
- * 3. Считаем total из displaySetService.activeDisplaySets (уже заполнены к моменту монтирования).
- * 4. По IMAGE_VOLUME_LOADING_COMPLETED — фиксируем 100%.
- */
-function LoadingProgressBar() {
+/** Loading follows the viewport boundary and never consumes toolbar space. */
+export default function LoadingProgressBar() {
   const { servicesManager } = useSystem();
-  const [percent, setPercent] = useState(0);
-  const [done, setDone] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const [remainingSec, setRemainingSec] = useState<number | null>(null);
-
-  const totalRef = useRef(0);
-  const loadedRef = useRef(0);
-  const startTimeRef = useRef<number | null>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initializedRef = useRef(false);
-
-  const markDone = useCallback(() => {
-    setPercent(100);
-    setDone(true);
-    setRemainingSec(0);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setVisible(false), 3500);
-  }, []);
-
-  // Инициализируем total из уже загруженных displaySets
-  const initTotal = useCallback(() => {
-    if (initializedRef.current) return;
-    const { displaySetService } = servicesManager.services;
-    if (!displaySetService) return;
-
-    const activeSets = displaySetService.getActiveDisplaySets?.() ?? displaySetService.activeDisplaySets ?? [];
-    const total = activeSets.reduce((acc: number, ds: any) => {
-      return acc + (ds.numImageFrames || ds.images?.length || 0);
-    }, 0);
-
-    if (total > 0) {
-      totalRef.current = total;
-      initializedRef.current = true;
-    }
-  }, [servicesManager]);
-
-  // Горячий путь — считаем каждый загруженный кадр
-  const handleImageLoaded = useCallback(() => {
-    // При первом образе — показываем бар и инициализируем total
-    if (!visible) {
-      initTotal();
-      startTimeRef.current = Date.now();
-      setVisible(true);
-    }
-
-    loadedRef.current += 1;
-    const total = totalRef.current;
-    if (total <= 0) return;
-
-    const pct = Math.min(Math.round((loadedRef.current / total) * 100), 99);
-    setPercent(pct);
-
-    if (startTimeRef.current && pct > 3) {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      const totalEst = (elapsed / pct) * 100;
-      const remaining = Math.round(totalEst - elapsed);
-      setRemainingSec(remaining > 0 ? remaining : 0);
-    }
-  }, [visible, initTotal]);
-
-  // Финальный сигнал от Cornerstone — том загружен
-  const handleVolumeComplete = useCallback(() => {
-    setVisible(true); // на случай если мало кадров и бар не успел появиться
-    markDone();
-  }, [markDone]);
-
-  // Также подписываемся на DISPLAY_SETS_ADDED для случая если будущие displaySets добавятся позже
+  const root = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState({ percent: 0, visible: false, done: false, loaded: 0, total: 0, failed: 0 });
   useEffect(() => {
-    const { displaySetService } = servicesManager.services;
+    const { displaySetService, viewportGridService } = servicesManager.services;
     if (!displaySetService) return;
-
-    // Пробуем инициализировать total сразу (для уже имеющихся displaySets)
-    initTotal();
-
-    const { unsubscribe } = displaySetService.subscribe(
-      displaySetService.EVENTS.DISPLAY_SETS_ADDED,
-      ({ displaySetsAdded }: { displaySetsAdded: any[] }) => {
-        const extra = displaySetsAdded.reduce((acc: number, ds: any) => {
-          return acc + (ds.numImageFrames || ds.images?.length || 0);
-        }, 0);
-        if (extra > 0) {
-          totalRef.current += extra;
-          if (!initializedRef.current) {
-            initializedRef.current = true;
-          }
-        }
-      }
-    );
-
-    return () => unsubscribe();
-  }, [servicesManager, initTotal]);
-
-  useEffect(() => {
-    eventTarget.addEventListener(csEvents.IMAGE_LOADED, handleImageLoaded);
-    eventTarget.addEventListener(csEvents.IMAGE_VOLUME_LOADING_COMPLETED, handleVolumeComplete);
-    return () => {
-      eventTarget.removeEventListener(csEvents.IMAGE_LOADED, handleImageLoaded);
-      eventTarget.removeEventListener(csEvents.IMAGE_VOLUME_LOADING_COMPLETED, handleVolumeComplete);
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    let timer: ReturnType<typeof setTimeout>;
+    let total = 0;
+    let expected = new Set<string>();
+    let seen = new Set<string>();
+    let failed = new Set<string>();
+    let identities = new Set<string>();
+    let finished = false;
+    let disposed = false;
+    const publish = (percent: number, done = false) => {
+      if (disposed) return;
+      clearTimeout(timer);
+      finished = done;
+      setState({ percent, done, visible: true, loaded: seen.size, total, failed: failed.size });
+      if (done) timer = setTimeout(() => setState(s => ({ ...s, visible: false })), 2000);
     };
-  }, [handleImageLoaded, handleVolumeComplete]);
-
-  if (!visible) return null;
-
-  const formatTime = (sec: number): string => {
-    if (sec <= 0) return '0 с';
-    if (sec < 60) return `${sec} с`;
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m} м ${s} с`;
-  };
-
+    const update = () => {
+      if (!total) return;
+      const loaded = expected.size ? [...seen].filter(id => expected.has(id)).length : seen.size;
+      publish(Math.min(100, Math.floor((loaded * 100) / total)), loaded >= total);
+    };
+    const refreshSets = () => {
+      let sets =
+        displaySetService.getActiveDisplaySets?.() ?? displaySetService.activeDisplaySets ?? [];
+      const viewports = viewportGridService?.getState?.()?.viewports;
+      if (viewports?.size) {
+        const displayed = new Set([...viewports.values()].flatMap((viewport: any) => viewport.displaySetInstanceUIDs || []));
+        sets = sets.filter(ds => displayed.has(ds.displaySetInstanceUID));
+      }
+      const nextIdentities = new Set<string>(
+        sets.map(ds => ds.displaySetInstanceUID || ds.SeriesInstanceUID)
+      );
+      const changedStudy =
+        identities.size &&
+        nextIdentities.size &&
+        ![...nextIdentities].some(id => identities.has(id));
+      if (changedStudy) {
+        seen = new Set();
+        failed = new Set();
+        finished = false;
+      }
+      identities = nextIdentities;
+      expected = new Set(
+        sets.flatMap(
+          ds => ds.imageIds || ds.images?.map(image => image.imageId).filter(Boolean) || []
+        )
+      );
+      seen = new Set([...seen].filter(id => expected.has(id)));
+      failed = new Set([...failed].filter(id => expected.has(id)));
+      total = Math.max(
+        expected.size,
+        sets.reduce((sum, ds) => sum + (ds.numImageFrames || ds.images?.length || 0), 0)
+      );
+      expected.forEach(id => {
+        if (cache.getImage(id)) seen.add(id);
+      });
+      if (total) update();
+      else {
+        clearTimeout(timer);
+        setState({ percent: 0, visible: false, done: false, loaded: 0, total: 0, failed: 0 });
+      }
+    };
+    const imageLoaded = event => {
+      const id = event.detail?.image?.imageId;
+      if (!id || seen.has(id) || !expected.has(id)) return;
+      seen.add(id);
+      failed.delete(id);
+      if (!finished) update();
+    };
+    const volumeProgress = event => {
+      const volume = cache.getVolume(event.detail?.volumeId);
+      const ids = volume?.imageIds || [];
+      if (ids.length && !expected.size) refreshSets();
+      // A completion event also fires after failed frames. Only actual cached
+      // pixels/full-resolution frames count; errors must never show green 100%.
+      ids.forEach((id, i) => {
+        if (!expected.has(id)) return;
+        if (cache.getImage(id) || volume?.cachedFrames?.[i] === Enums.ImageQualityStatus.FULL_RESOLUTION) {
+          seen.add(id);
+          failed.delete(id);
+        }
+      });
+      if (ids.some(id => expected.has(id))) update();
+    };
+    const imageFailed = event => {
+      const id = event.detail?.imageId;
+      if (!expected.has(id) || seen.has(id)) return;
+      failed.add(id);
+      update();
+    };
+    refreshSets();
+    const subscription = displaySetService.subscribe(
+      displaySetService.EVENTS.DISPLAY_SETS_ADDED,
+      refreshSets
+    );
+    const changed = displaySetService.EVENTS.ACTIVE_DISPLAY_SETS_CHANGED;
+    const activeSubscription = changed ? displaySetService.subscribe(changed, refreshSets) : null;
+    const gridSubscriptions = ['GRID_STATE_CHANGED', 'VIEWPORTS_READY', 'LAYOUT_CHANGED']
+      .map(name => viewportGridService?.EVENTS?.[name])
+      .filter(Boolean)
+      .map(event => viewportGridService.subscribe(event, refreshSets));
+    eventTarget.addEventListener(csEvents.IMAGE_LOADED, imageLoaded);
+    eventTarget.addEventListener(csEvents.IMAGE_VOLUME_LOADING_COMPLETED, volumeProgress);
+    if (csEvents.IMAGE_VOLUME_MODIFIED) eventTarget.addEventListener(csEvents.IMAGE_VOLUME_MODIFIED, volumeProgress);
+    const failureEvents = [csEvents.IMAGE_LOAD_FAILED, csEvents.IMAGE_LOAD_ERROR].filter(Boolean);
+    failureEvents.forEach(event => eventTarget.addEventListener(event, imageFailed));
+    return () => {
+      disposed = true;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+      activeSubscription?.unsubscribe();
+      gridSubscriptions.forEach(subscription => subscription.unsubscribe());
+      eventTarget.removeEventListener(csEvents.IMAGE_LOADED, imageLoaded);
+      eventTarget.removeEventListener(csEvents.IMAGE_VOLUME_LOADING_COMPLETED, volumeProgress);
+      if (csEvents.IMAGE_VOLUME_MODIFIED) eventTarget.removeEventListener(csEvents.IMAGE_VOLUME_MODIFIED, volumeProgress);
+      failureEvents.forEach(event => eventTarget.removeEventListener(event, imageFailed));
+    };
+  }, [servicesManager]);
+  if (!state.visible) return null;
   return (
     <div
-      className="flex items-center gap-3 ml-4 self-center"
-      style={{ minWidth: 300, maxWidth: 420, height: 48 }}
+      ref={root}
+      className={['orbital-load-boundary', state.done && 'is-done'].filter(Boolean).join(' ')}
+      role="progressbar"
+      aria-label={state.done ? 'Открытые серии загружены' : 'Загрузка открытых серий'}
+      aria-valuetext={`Загружено ${state.loaded} из ${state.total} срезов${state.failed ? `, ошибок: ${state.failed}` : ''}`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={state.percent}
     >
-      {/* Процент */}
-      <span
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: done ? '#4ade80' : '#c084fc',
-          minWidth: 42,
-          textAlign: 'right',
-          fontVariantNumeric: 'tabular-nums',
-          transition: 'color 0.5s ease',
-          letterSpacing: '0.02em',
-          fontFamily: 'monospace',
-          lineHeight: 1,
-        }}
-      >
-        {percent}%
-      </span>
-
-      {/* Полоска прогресса */}
+      <div className="orbital-load-track" />
       <div
-        style={{
-          flex: 1,
-          height: 15,
-          borderRadius: 999,
-          background: 'rgba(255,255,255,0.08)',
-          overflow: 'hidden',
-          position: 'relative',
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
-          alignSelf: 'center',
-        }}
+        className="orbital-load-front"
+        style={{ width: `${state.percent}%` }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0, left: 0, bottom: 0,
-            width: `${percent}%`,
-            borderRadius: 999,
-            background: done
-              ? 'linear-gradient(90deg, #4ade80, #22d3ee)'
-              : 'linear-gradient(90deg, #6d28d9, #8b5cf6, #38bdf8)',
-            transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1), background 0.6s ease',
-            boxShadow: done
-              ? '0 0 12px rgba(74,222,128,0.6)'
-              : '0 0 12px rgba(139,92,246,0.5)',
-          }}
-        />
-        {/* Верхний блик для объёма */}
-        {percent > 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: `${percent}%`,
-              height: '45%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)',
-              borderRadius: '999px 999px 0 0',
-              pointerEvents: 'none',
-              transition: 'width 0.4s cubic-bezier(0.4,0,0.2,1)',
-            }}
-          />
-        )}
-        {/* Бегущий блик shimmer */}
-        {!done && percent > 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0, bottom: 0,
-              width: 80,
-              left: `calc(${percent}% - 55px)`,
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-              borderRadius: 999,
-              animation: 'ohif-shimmer 1.8s ease infinite',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
+        <div className="orbital-load-line" />
+        <span className="orbital-load-dot" />
+        <span
+          className={['orbital-load-percent', state.percent < 8 && 'at-start']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          {state.done ? '✓ 100%' : `${state.percent}%`} · {state.loaded}/{state.total}
+          {state.failed > 0 && ` · ошибок: ${state.failed}`}
+        </span>
       </div>
-
-      {/* Оставшееся время */}
-      <span
-        style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: done ? '#4ade80' : 'rgba(255,255,255,0.5)',
-          minWidth: 64,
-          textAlign: 'left',
-          fontVariantNumeric: 'tabular-nums',
-          transition: 'color 0.5s ease',
-          whiteSpace: 'nowrap',
-          lineHeight: 1,
-        }}
-      >
-        {done ? '✓ Готово' : remainingSec !== null ? `~${formatTime(remainingSec)}` : '...'}
-      </span>
-
-      <style>{`
-        @keyframes ohif-shimmer {
-          0%   { opacity: 0; transform: translateX(-20px); }
-          40%  { opacity: 1; }
-          100% { opacity: 0; transform: translateX(20px); }
-        }
-      `}</style>
     </div>
   );
 }
-
-export default LoadingProgressBar;

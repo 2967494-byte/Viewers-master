@@ -59,8 +59,9 @@ import i18n from '@ohif/i18n';
 const { add, intersect, subtract, copy } = cstUtils.contourSegmentation;
 
 import ImplantLibraryModal from './components/ImplantLibrary/ImplantLibraryModal';
-import PanoramaModal from './components/PanoramaModal/PanoramaModal';
-import { generatePanorama } from './components/PanoramaModal/panoramaGenerator';
+import { START_MANUAL_PANORAMA, START_AUTOMATIC_PANORAMA } from './components/ManualPanorama/ManualPanorama';
+import { activateDentalTool, DENTAL_TOOL_NAMES } from './utils/dentalToolControls';
+import { cancelDentalDraft, renderDentalAnnotations } from './tools/DentalMeasurementTools';
 import React from 'react';
 
 const { DefaultHistoryMemo } = csUtils.HistoryMemo;
@@ -210,52 +211,37 @@ function commandsModule({
   };
 
   const actions = {
+    activateDentalTool: ({ tool, implant }) => {
+      const changed = activateDentalTool(ToolGroupManager.getAllToolGroups(), tool, implant, () => {
+        const mpr = ToolGroupManager.getAllToolGroups().find(group => group.id === 'mpr');
+        if (mpr?.getActivePrimaryMouseButtonTool() === 'DentalImplant') actions.activateDentalTool({ tool: 'navigate' });
+      });
+      if (changed) window.dispatchEvent(new CustomEvent('orbital:dental-tool-changed', { detail: { tool } }));
+      return changed;
+    },
+    deleteDentalAnnotation: () => {
+      const enabled = _getActiveViewportEnabledElement();
+      const viewport = enabled?.viewport as any;
+      if (!viewport) return;
+      const selected = annotation.selection.getAnnotationsSelected();
+      const names = Object.values(DENTAL_TOOL_NAMES);
+      const candidates = annotation.state.getAllAnnotations().filter(item =>
+        names.includes(item.metadata.toolName) &&
+        item.metadata.FrameOfReferenceUID === viewport.getFrameOfReferenceUID() &&
+        (!(item.metadata as { dentalVolumeId?: string }).dentalVolumeId || (item.metadata as { dentalVolumeId?: string }).dentalVolumeId === viewport.getVolumeId?.()));
+      const item = candidates.filter(a => selected.includes(a.annotationUID)).pop() || candidates.pop();
+      if (!item) return;
+      if (annotation.locking.isAnnotationLocked(item.annotationUID)) return;
+      if (!cancelDentalDraft(item.annotationUID)) annotation.state.removeAnnotation(item.annotationUID);
+      renderDentalAnnotations();
+    },
     openImplantLibrary: () => {
       const { uiModalService } = servicesManager.services;
 
       const onSelect = (implant) => {
         uiModalService.hide();
 
-        console.log('Implant selected:', implant);
-
-        const allToolGroups = cornerstoneTools.ToolGroupManager.getAllToolGroups();
-
-        allToolGroups.forEach(toolGroup => {
-             const toolInstance = toolGroup.getToolInstance(toolNames.DentalImplant);
-             if (toolInstance) {
-                 console.log(`Found DentalImplant in ToolGroup ${toolGroup.id}, activating...`);
-
-                 // Explicitly set potentially conflicting tools to passive/disabled
-                 // Note: VolumeRotateMouseWheel is NOT disabled since wheel doesn't conflict with primary button
-                 const conflictingTools = [
-                     'Crosshairs',
-                     'WindowLevel',
-                     'Pan',
-                     'Zoom',
-                     'TrackballRotate'
-                 ];
-
-                 conflictingTools.forEach(toolName => {
-                     if (toolGroup.getToolInstance(toolName)) {
-                         // Disable tool to prevent runtime errors (e.g. Crosshairs mouseMove processing)
-                         toolGroup.setToolDisabled(toolName);
-                     }
-                 });
-
-                 // Set configuration
-                 toolGroup.setToolConfiguration(toolNames.DentalImplant, {
-                     implant,
-                 });
-
-                 // Activate the tool
-                 toolGroup.setToolActive(toolNames.DentalImplant, {
-                    bindings: [{ mouseButton: cornerstoneTools.Enums.MouseBindings.Primary }],
-                 });
-
-                 // Force refresh of the viewport to ensure cursor update (if applicable)
-                 // This is indirect, but setting tool active should trigger state change.
-             }
-        });
+        actions.activateDentalTool({ tool: 'implant', implant });
       };
 
       const onClose = () => {
@@ -268,28 +254,17 @@ function commandsModule({
           onSelect,
           onClose,
         },
-        title: 'Dental Implant Library',
+        title: 'Библиотека имплантов',
       });
     },
 
     generateDentalPanorama: () => {
-      const { uiModalService } = servicesManager.services;
-
-      const onClose = () => {
-        uiModalService.hide();
-      };
-
-      const runGenerate = (config?: any) => generatePanorama(config);
-
-      uiModalService.show({
-        content: PanoramaModal,
-        contentProps: {
-          onClose,
-          generatePanorama: runGenerate,
-        },
-        title: '🦷 Панорамный снимок',
-        shouldCloseOnEsc: false,
-      });
+      actions.activateDentalTool({ tool: 'navigate' });
+      window.dispatchEvent(new Event(START_MANUAL_PANORAMA));
+    },
+    generateAutomaticDentalPanorama: () => {
+      actions.activateDentalTool({ tool: 'navigate' });
+      window.dispatchEvent(new Event(START_AUTOMATIC_PANORAMA));
     },
     jumpToMeasurementViewport: ({ annotationUID, measurement }) => {
       cornerstoneTools.annotation.selection.setAnnotationSelected(annotationUID, true);
@@ -2518,8 +2493,13 @@ function commandsModule({
   };
 
   const definitions = {
+    activateDentalTool: { commandFn: actions.activateDentalTool },
+    deleteDentalAnnotation: { commandFn: actions.deleteDentalAnnotation },
     generateDentalPanorama: {
       commandFn: actions.generateDentalPanorama,
+    },
+    generateAutomaticDentalPanorama: {
+      commandFn: actions.generateAutomaticDentalPanorama,
     },
     // The command here is to show the viewer context menu, as being the
     // context menu

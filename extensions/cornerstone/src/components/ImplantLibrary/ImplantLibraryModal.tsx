@@ -1,164 +1,263 @@
-import React, { useState } from 'react';
-import { IMPLANT_DATA } from './implantData';
+import React, { useMemo, useState } from 'react';
+import { IMPLANT_DATA, IMPLANT_MODEL_COUNT, type ImplantModel } from './implantData';
+import './ImplantLibraryModal.css';
 
-const ImplantLibraryModal = ({ onSelect, onClose }) => {
-  const [selectedManufacturer, setSelectedManufacturer] = useState(IMPLANT_DATA[0]);
-  const [selectedLine, setSelectedLine] = useState(IMPLANT_DATA[0].lines[0]);
-  const [selectedModel, setSelectedModel] = useState(null);
-
-  const handleManufacturerChange = (manufacturer) => {
-    setSelectedManufacturer(manufacturer);
-    setSelectedLine(manufacturer.lines[0]);
-    setSelectedModel(null);
+export default function ImplantLibraryModal({ onSelect, onClose }) {
+  const [brandName, setBrandName] = useState(IMPLANT_DATA[0].manufacturer);
+  const brand = IMPLANT_DATA.find(item => item.manufacturer === brandName);
+  const [familyName, setFamilyName] = useState(brand.lines[0].name);
+  const [query, setQuery] = useState('');
+  const [diameter, setDiameter] = useState('');
+  const [length, setLength] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const family = brand.lines.find(item => item.name === familyName) || brand.lines[0];
+  const models = useMemo(
+    () =>
+      family.models.filter(
+        model =>
+          (!diameter || model.dimensions.diameter === Number(diameter)) &&
+          (!length || model.dimensions.length === Number(length)) &&
+          `${model.name} ${model.id}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+      ),
+    [family, query, diameter, length]
+  );
+  const selected = models.find(model => model.id === selectedId);
+  const reset = () => {
+    setSelectedId(null);
+    setDiameter('');
+    setLength('');
+    setQuery('');
   };
-
-  const handleLineChange = (line) => {
-    setSelectedLine(line);
-    setSelectedModel(null);
-  };
-
+  const sizes = (key: 'diameter' | 'length') =>
+    [...new Set(family.models.map(model => model.dimensions[key]))].sort((a, b) => a - b);
   return (
-    <div className="flex flex-col h-[500px] w-[800px] bg-primary-dark text-white rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-secondary-dark border-b border-secondary-light">
-        <h3 className="text-lg font-semibold">Implant Library</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-white">
-          ✕
+    <div className="implant-library">
+      <header className="implant-library-heading">
+        <div>
+          <h3>Библиотека имплантов</h3>
+          <p>{IMPLANT_MODEL_COUNT} типоразмеров · Straumann, Nobel Biocare, Osstem</p>
+        </div>
+        <button
+          type="button"
+          className="implant-library-close"
+          onClick={onClose}
+          aria-label="Закрыть библиотеку имплантов"
+        >
+          ×
         </button>
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel: Navigation Tree */}
-        <div className="w-1/3 border-r border-secondary-light p-2 overflow-y-auto bg-primary-dark">
-          <div className="mb-4">
-            <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Manufacturers</h4>
-            <ul>
-              {IMPLANT_DATA.map((manufacturer) => (
-                <li key={manufacturer.manufacturer}>
-                  <button
-                    onClick={() => handleManufacturerChange(manufacturer)}
-                    className={`w-full text-left px-3 py-2 rounded text-sm ${
-                      selectedManufacturer === manufacturer
-                        ? 'bg-secondary-active text-white'
-                        : 'text-gray-300 hover:bg-secondary-dark'
-                    }`}
-                  >
-                    {manufacturer.manufacturer}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {selectedManufacturer && (
-            <div>
-              <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Product Lines</h4>
-              <ul>
-                {selectedManufacturer.lines.map((line) => (
-                  <li key={line.name}>
-                    <button
-                      onClick={() => handleLineChange(line)}
-                      className={`w-full text-left px-3 py-2 rounded text-sm ${
-                        selectedLine === line
-                          ? 'bg-secondary-active text-white'
-                          : 'text-gray-300 hover:bg-secondary-dark'
-                      }`}
-                    >
-                      {line.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Middle Panel: Model List */}
-        <div className="w-1/3 border-r border-secondary-light p-2 overflow-y-auto bg-primary-dark">
-          <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Models</h4>
-          {selectedLine ? (
-            <ul>
-              {selectedLine.models.map((model) => (
-                <li key={model.id}>
-                  <button
-                    onClick={() => setSelectedModel(model)}
-                    className={`w-full text-left px-3 py-2 rounded text-sm border border-transparent ${
-                      selectedModel === model
-                        ? 'bg-secondary-active border-primary-active text-white'
-                        : 'text-gray-300 hover:bg-secondary-dark'
-                    }`}
-                  >
-                    <div className="font-semibold">{model.name}</div>
-                    <div className="text-xs text-gray-400">
-                      L: {model.dimensions.length}mm | Ø: {model.dimensions.diameter}mm
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="text-gray-500 text-sm text-center mt-10">Select a product line</div>
-          )}
-        </div>
-
-        {/* Right Panel: Preview (Placeholder) */}
-        <div className="w-1/3 p-4 bg-black flex flex-col items-center justify-center">
-          <h4 className="text-xs font-bold text-gray-500 uppercase mb-4 self-start">Preview</h4>
-          {selectedModel ? (
-            <div className="flex flex-col items-center">
-              <div
-                className="mb-4 bg-gray-800 border border-gray-600 flex items-center justify-center"
-                style={{
-                    width: '100px',
-                    height: '150px',
+      </header>
+      <div className="implant-library-body">
+        <aside aria-label="Производители имплантов">
+          <h4>Производители</h4>
+          {IMPLANT_DATA.map(item => (
+            <button
+              type="button"
+              key={item.manufacturer}
+              data-selected={brandName === item.manufacturer}
+              onClick={() => {
+                setBrandName(item.manufacturer);
+                setFamilyName(item.lines[0].name);
+                reset();
+              }}
+            >
+              <span>{item.manufacturer}</span>
+              <small>{item.lines.reduce((sum, line) => sum + line.models.length, 0)}</small>
+            </button>
+          ))}
+          <h4>Линейки</h4>
+          <div className="implant-family-list">
+            {brand.lines.map(item => (
+              <button
+                type="button"
+                key={item.name}
+                data-selected={family.name === item.name}
+                onClick={() => {
+                  setFamilyName(item.name);
+                  reset();
                 }}
               >
-                  {/* Schematic Representation */}
-                  <div
-                    style={{
-                        width: `${selectedModel.dimensions.diameter * 10}px`,
-                        height: `${selectedModel.dimensions.length * 10}px`,
-                        backgroundColor: selectedModel.color,
-                        opacity: 0.8
-                    }}
-                  ></div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-bold text-white">{selectedModel.name}</div>
-                <div className="text-sm text-gray-400">{selectedModel.id}</div>
-              </div>
+                <span>{item.name}</span>
+                <small>{item.models.length}</small>
+              </button>
+            ))}
+          </div>
+        </aside>
+        <main>
+          <div className="implant-library-filters">
+            <input
+              type="search"
+              aria-label="Поиск импланта"
+              placeholder="Название или код модели"
+              value={query}
+              onChange={event => {
+                setQuery(event.target.value);
+                setSelectedId(null);
+              }}
+            />
+            <div>
+              <label>
+                Диаметр
+                <select
+                  aria-label="Диаметр импланта"
+                  value={diameter}
+                  onChange={event => {
+                    setDiameter(event.target.value);
+                    setSelectedId(null);
+                  }}
+                >
+                  <option value="">Все</option>
+                  {sizes('diameter').map(value => (
+                    <option
+                      key={value}
+                      value={value}
+                    >
+                      Ø {value} мм
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Длина
+                <select
+                  aria-label="Длина импланта"
+                  value={length}
+                  onChange={event => {
+                    setLength(event.target.value);
+                    setSelectedId(null);
+                  }}
+                >
+                  <option value="">Все</option>
+                  {sizes('length').map(value => (
+                    <option
+                      key={value}
+                      value={value}
+                    >
+                      {value} мм
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
+          </div>
+          <div className="implant-model-count">
+            {family.name} · найдено {models.length}
+          </div>
+          <div
+            className="implant-model-list"
+            role="listbox"
+            aria-label="Типоразмеры имплантов"
+          >
+            {models.map(model => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={selected?.id === model.id}
+                key={model.id}
+                onClick={() => setSelectedId(model.id)}
+              >
+                <span>{model.name}</span>
+                <small>{model.id}</small>
+              </button>
+            ))}
+            {!models.length && <p>Нет подходящих типоразмеров. Измените фильтры.</p>}
+          </div>
+        </main>
+        <section
+          className="implant-library-preview"
+          aria-label="Предпросмотр импланта"
+        >
+          <h4>Предпросмотр</h4>
+          {selected ? (
+            <>
+              <ImplantPreview model={selected} />
+              <strong>{selected.manufacturer}</strong>
+              <span>{selected.family}</span>
+              <p>
+                Ø {selected.dimensions.diameter} × {selected.dimensions.length} мм
+              </p>
+            </>
           ) : (
-             <div className="text-gray-500 text-sm">Select a model to preview</div>
+            <p>Выберите типоразмер из списка</p>
           )}
-        </div>
+          <div className="implant-library-source">
+            <p>
+              Размеры по маркировке производителя. Форма показана условно, без точной резьбы, шейки
+              и конусности.
+            </p>
+            <a
+              href={family.sourceUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Открыть каталог производителя ↗
+            </a>
+          </div>
+        </section>
       </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 bg-secondary-dark border-t border-secondary-light flex justify-end space-x-2">
+      <footer>
+        <span>{selected ? selected.name : 'Выберите имплант для установки'}</span>
         <button
+          type="button"
           onClick={onClose}
-          className="px-4 py-2 bg-transparent hover:bg-gray-700 text-white rounded text-sm"
         >
-          Cancel
+          Отмена
         </button>
         <button
+          type="button"
+          className="implant-library-add"
+          disabled={!selected}
           onClick={() => {
-             if(selectedModel) onSelect(selectedModel);
+            if (selected) onSelect(selected);
           }}
-          disabled={!selectedModel}
-          className={`px-4 py-2 rounded text-sm font-semibold ${
-            selectedModel
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-          }`}
         >
-          Add Implant
+          Установить имплант
         </button>
-      </div>
+      </footer>
     </div>
   );
-};
+}
 
-export default ImplantLibraryModal;
+function ImplantPreview({ model }: { model: ImplantModel }) {
+  const height = model.dimensions.length * 8;
+  const width = model.dimensions.diameter * 8;
+  const top = (200 - height) / 2,
+    left = 85 - width / 2;
+  return (
+    <svg
+      viewBox="0 0 190 215"
+      className="implant-preview-svg"
+      role="img"
+      aria-label={`Схематический имплант, диаметр ${model.dimensions.diameter} мм, длина ${model.dimensions.length} мм`}
+    >
+      <path
+        d={`M${left} ${top}h${width}v${height}h-${width}z`}
+        fill={model.color}
+        fillOpacity="0.35"
+        stroke={model.color}
+        strokeWidth="1.5"
+      />
+      <path
+        d={`M${left + width + 15} ${top}v${height} M${left + width + 11} ${top}h8 M${left + width + 11} ${top + height}h8 M${left} ${top + height + 15}h${width}`}
+        fill="none"
+        stroke="#94a3b8"
+      />
+      <text
+        x={left + width + 22}
+        y="102"
+        fill="#e2e8f0"
+        fontSize="11"
+      >
+        {model.dimensions.length} мм
+      </text>
+      <text
+        x="85"
+        y={top + height + 30}
+        textAnchor="middle"
+        fill="#e2e8f0"
+        fontSize="11"
+      >
+        Ø {model.dimensions.diameter} мм
+      </text>
+    </svg>
+  );
+}

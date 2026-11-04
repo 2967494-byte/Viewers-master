@@ -9,6 +9,12 @@ import { setEnabledElement } from '../state';
 
 import './OHIFCornerstoneViewport.css';
 import CornerstoneOverlays from './Overlays/CornerstoneOverlays';
+import VolumeSliceIndicator from './Overlays/VolumeSliceIndicator';
+import ManualPanorama from '../components/ManualPanorama/ManualPanorama';
+import AutomaticPanoramaPane from '../components/ManualPanorama/AutomaticPanoramaPane';
+import MprFocusButton from './MprFocusButton';
+import ImplantEditor from '../components/ImplantLibrary/ImplantEditor';
+import { MPR_VIEWPORT_IDS } from '../utils/mprFocusLayout';
 import CinePlayer from '../components/CinePlayer';
 import type { Types } from '@ohif/core';
 
@@ -89,6 +95,7 @@ const OHIFCornerstoneViewport = React.memo(
       toolGroupService,
       syncGroupService,
       cornerstoneViewportService,
+      viewportGridService,
       segmentationService,
       cornerstoneCacheService,
       customizationService,
@@ -308,7 +315,7 @@ const OHIFCornerstoneViewport = React.memo(
 
     return (
       <React.Fragment>
-        <div className="viewport-wrapper">
+        <div className={`viewport-wrapper${MPR_VIEWPORT_IDS.includes(viewportId) ? ' mpr-focus-enabled' : ''}`}>
           <div
             className="cornerstone-viewport-element"
             style={{ height: '100%', width: '100%' }}
@@ -329,6 +336,16 @@ const OHIFCornerstoneViewport = React.memo(
             scrollbarHeight={scrollbarHeight}
             servicesManager={servicesManager}
           />
+          <VolumeSliceIndicator
+            element={elementRef.current}
+            sourceViewportId={viewportOptions.customViewportProps?.sliceIndicatorSource}
+          />
+          {(viewportId === 'mpr-axial' || viewportOptions.customViewportProps?.manualPanorama) && (
+            <ManualPanorama element={elementRef.current} getElement={() => elementRef.current} externalLauncher viewportGridService={viewportGridService} />
+          )}
+          <MprFocusButton viewportId={viewportId} viewportGridService={viewportGridService} />
+          {MPR_VIEWPORT_IDS.includes(viewportId) && <ImplantEditor element={enabledVPElement} />}
+          {viewportId === 'mpr-3d' && <AutomaticPanoramaPane element={enabledVPElement} />}
           <CinePlayer
             enabledVPElement={enabledVPElement}
             viewportId={viewportId}

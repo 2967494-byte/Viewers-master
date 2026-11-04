@@ -1,4 +1,5 @@
 import { Types } from '@ohif/core';
+import { DENTAL_VOLUME_PRESET_NAME } from '../customizations/volumeRenderingCustomization';
 
 export const VOI_SYNC_GROUP = {
   type: 'voi',
@@ -109,6 +110,7 @@ export const mpr2x2: Types.HangingProtocol.Protocol = {
         {
           viewportOptions: {
             viewportId: 'mpr-axial',
+            customViewportProps: { manualPanorama: true },
             toolGroupId: 'mpr',
             viewportType: 'volume',
             orientation: 'axial',
@@ -130,20 +132,24 @@ export const mpr2x2: Types.HangingProtocol.Protocol = {
             toolGroupId: 'mpr-3d',
             viewportType: 'volume3d',
             orientation: 'coronal',
-            initialImageOptions: {
-                // preset: 'middle',
-            },
-            syncGroups: [VOI_SYNC_GROUP],
+            // Keep the 3D material independent from grayscale MPR window/level changes.
+            syncGroups: [HYDRATE_SEG_SYNC_GROUP],
             customViewportProps: {
               hideOverlays: true,
-            }
+              sliceIndicatorSource: 'mpr-axial',
+            },
           },
           displaySets: [
             {
               id: 'activeDisplaySet',
-               options: {
-                 blendMode: 'MIP',
-               }
+              options: {
+                // The default COMPOSITE blend mode renders shaded surfaces instead of MIP.
+                displayPreset: {
+                  CT: DENTAL_VOLUME_PRESET_NAME,
+                  MR: 'MR-Default',
+                  default: DENTAL_VOLUME_PRESET_NAME,
+                },
+              },
             },
           ],
         },

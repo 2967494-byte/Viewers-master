@@ -59,6 +59,9 @@ function Local({ modePath }: LocalProps) {
   const { show, hide } = useModal();
   const dropzoneRef = useRef();
   const [dropInitiated, setDropInitiated] = useState(false);
+  const appConfig = (window as any).config || {};
+  // Only hideCloudStorage gates the button (standaloneMode may still enable S3 speed tests).
+  const hideCloudStorage = Boolean(appConfig.hideCloudStorage);
 
   const LoadingIndicatorProgress = customizationService.getCustomization(
     'ui.loadingIndicatorProgress'
@@ -106,10 +109,18 @@ function Local({ modePath }: LocalProps) {
     navigate(`/${modePath}?${decodeURIComponent(query.toString())}`);
   };
 
-  const { loadFromS3, loading: s3Loading } = useS3Loader(modePath);
-  
+  const { loadFromS3, loading: s3Loading, error: s3Error, setError: setS3Error, progress: s3Progress } =
+    useS3Loader(modePath);
+
+  useEffect(() => {
+    if (s3Error) {
+      setDropInitiated(false);
+    }
+  }, [s3Error]);
+
   const handleS3StreamLoad = async (prefix: string) => {
     hide(); // Закрываем окно браузера S3
+    setS3Error(null);
     setDropInitiated(true);
     loadFromS3(prefix);
   };
@@ -162,10 +173,10 @@ function Local({ modePath }: LocalProps) {
                      <div className="flex flex-col items-center justify-center gap-2">
                         <div className="text-purple-600 font-bold text-2xl mb-2" id="indexing-progress">
                            {/* Сюда будем выводить прогресс через DOM для скорости */}
-                           Инициализация...
+                           {s3Loading ? s3Progress.text : 'Инициализация...'}
                         </div>
                         <div className="w-64 bg-gray-100 rounded-full h-2 overflow-hidden border border-purple-100">
-                           <div id="indexing-bar" className="bg-purple-500 h-full w-0 transition-all duration-300"></div>
+                           <div id="indexing-bar" className="bg-purple-500 h-full w-0 transition-all duration-300" style={s3Loading ? { width: `${s3Progress.percent}%` } : undefined}></div>
                         </div>
                      </div>
                      <p className="text-gray-400 text-sm italic">
@@ -191,14 +202,21 @@ function Local({ modePath }: LocalProps) {
                 <div className="flex justify-center flex-wrap gap-4 pt-8">
                   {getLoadButton(onDrop, 'Локальные файлы', false)}
                   {getLoadButton(onDrop, 'Локальная папка', true)}
-                  <Button
-                    variant="default"
-                    className="min-w-32 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md shadow-blue-500/20 active:scale-95 transition-all"
-                    onClick={handleS3Load}
-                  >
-                    Облачное хранилище S3
-                  </Button>
+                  {!hideCloudStorage && (
+                    <Button
+                      variant="default"
+                      className="min-w-32 bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                      onClick={handleS3Load}
+                    >
+                      Загрузить из S3
+                    </Button>
+                  )}
                 </div>
+              )}
+              {s3Error && !dropInitiated && (
+                <p className="text-center text-sm text-red-500 mt-4 px-4 break-words">
+                  {s3Error}
+                </p>
               )}
               {!dropInitiated && (
                 <p className="text-center text-[10px] text-gray-400 mt-8 font-medium italic opacity-50 uppercase tracking-widest">

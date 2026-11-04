@@ -18,7 +18,6 @@ import {
   AngleTool,
   CobbAngleTool,
   MagnifyTool,
-  CrosshairsTool,
   RectangleScissorsTool,
   SphereScissorsTool,
   CircleScissorsTool,
@@ -57,6 +56,8 @@ import CalibrationLineTool from './tools/CalibrationLineTool';
 import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 import VolumeRotateMouseWheelTool from './tools/VolumeRotateMouseWheelTool';
 import DentalImplantTool from './tools/DentalImplantTool';
+import CrosshairsTool from './tools/DentalCrosshairsTool';
+import { dentalMeasurementTools } from './tools/DentalMeasurementTools';
 
 export default function initCornerstoneTools(configuration = {}) {
   CrosshairsTool.isAnnotation = false;
@@ -108,6 +109,7 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(ReferenceLinesTool, { name: 'ReferenceLinesSagittal' });
   addTool(ReferenceLinesTool, { name: 'ReferenceLinesCoronal' });
   addTool(DentalImplantTool);
+  dentalMeasurementTools.forEach(Tool => addTool(Tool));
 
   addTool(CalibrationLineTool);
   addTool(TrackballRotateTool);

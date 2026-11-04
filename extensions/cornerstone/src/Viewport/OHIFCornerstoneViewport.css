@@ -44,3 +44,20 @@
   -moz-user-select: none;
   -ms-user-select: none;
 }
+
+.viewport-wrapper:not(:hover) .dental-crosshair-help {
+  display: none;
+}
+
+.mpr-focus-button {
+  position: absolute; top: 6px; right: 7px; z-index: 15;
+  display: grid; place-items: center; width: 28px; height: 28px;
+  color: #cbd5e1; background: #07101dd9; border: 1px solid #344b61; border-radius: 5px;
+  cursor: pointer;
+}
+.mpr-focus-button:hover, .mpr-focus-button:focus-visible { color: #67e8f9; border-color: #38bdf8; outline: 2px solid #38bdf855; }
+.mpr-focus-button[aria-pressed="true"] { color: #67e8f9; background: #123249; }
+.mpr-focus-enabled [data-cy="viewport-overlay-top-right"] { right: 52px; }
+body.manual-panorama-active .mpr-focus-button { display: none; }
+.mpr-panorama-toggle { right: 41px; }
+.mpr-panorama-edit { right: 75px; }

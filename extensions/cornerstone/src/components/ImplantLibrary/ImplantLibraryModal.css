@@ -1,0 +1,237 @@
+.implant-library {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 94vw);
+  height: min(700px, 86vh);
+  min-height: 350px;
+  background: #0b1420;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 13px;
+}
+.implant-library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #122036;
+  border-bottom: 1px solid #334155;
+}
+.implant-library-heading h3 {
+  font-size: 19px;
+  font-weight: 600;
+}
+.implant-library-heading p {
+  margin: 5px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.implant-library-close {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 28px;
+  cursor: pointer;
+}
+.implant-library-body {
+  display: grid;
+  grid-template-columns: 240px minmax(230px, 1fr) 240px;
+  flex: 1;
+  min-height: 0;
+}
+.implant-library h4 {
+  margin: 14px 12px 8px;
+  color: #94a3b8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.implant-library aside {
+  overflow: auto;
+  border-right: 1px solid #243247;
+  padding: 0 7px;
+}
+.implant-library aside button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: transparent;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+.implant-library aside button[data-selected='true'] {
+  background: #18384c;
+  color: #67e8f9;
+}
+.implant-library aside button:hover {
+  background: #1e293b;
+}
+.implant-library aside small {
+  color: #64748b;
+}
+.implant-library main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.implant-library-filters {
+  padding: 13px;
+  border-bottom: 1px solid #243247;
+}
+.implant-library-filters input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #080f19;
+  color: #e2e8f0;
+}
+.implant-library-filters > div {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.implant-library-filters label {
+  flex: 1;
+  color: #94a3b8;
+  font-size: 11px;
+}
+.implant-library-filters select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #e2e8f0;
+  background: #122036;
+}
+.implant-model-count {
+  margin: 10px 13px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+.implant-model-list {
+  flex: 1;
+  overflow: auto;
+  padding: 0 7px 8px;
+}
+.implant-model-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.implant-model-list button:hover {
+  background: #17273b;
+}
+.implant-model-list button[aria-selected='true'] {
+  background: #153348;
+  border-color: #22d3ee;
+}
+.implant-model-list small {
+  font-size: 10px;
+  color: #94a3b8;
+}
+.implant-model-list > p {
+  padding: 20px 10px;
+  color: #94a3b8;
+}
+.implant-library-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 0 14px 14px;
+  background: #070d16;
+  border-left: 1px solid #243247;
+  text-align: center;
+  overflow: auto;
+}
+.implant-library-preview h4 {
+  align-self: flex-start;
+  margin-left: 0;
+}
+.implant-library-preview > span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.implant-preview-svg {
+  width: 100%;
+  height: 210px;
+  flex-shrink: 0;
+}
+.implant-library-source {
+  margin-top: auto;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.implant-library-source a {
+  display: block;
+  margin-top: 8px;
+  color: #7dd3fc;
+}
+.implant-library footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 17px;
+  background: #122036;
+  border-top: 1px solid #334155;
+}
+.implant-library footer span {
+  flex: 1;
+  font-size: 11px;
+  color: #94a3b8;
+}
+.implant-library footer button {
+  border: 1px solid #334155;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.implant-library footer .implant-library-add {
+  border-color: #0891b2;
+  background: #0e7490;
+}
+.implant-library footer button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.implant-library button:focus-visible,
+.implant-library input:focus-visible,
+.implant-library select:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+}
+@media (max-width: 800px) {
+  .implant-library-body {
+    grid-template-columns: 180px minmax(180px, 1fr);
+  }
+  .implant-library-preview {
+    display: none;
+  }
+  .implant-library footer span {
+    display: none;
+  }
+}
