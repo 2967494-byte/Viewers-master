@@ -1,3 +1,5 @@
+> **ORBITAL 3D fork:** перенос на MacBook, карта нашего viewer и начало iOS-разработки — [MAC_START_HERE.md](MAC_START_HERE.md). [ТЗ приложения с офлайн-просмотром](docs/specs/doctor-ios-app-tz-2026-11-04.md) · [Этапы контрольных сборок](docs/specs/doctor-ios-implementation-stages-2026-11-04.md).
+
 <!-- prettier-ignore-start -->
 <div align="center">
   <h1>OHIF Medical Imaging Viewer</h1>

@@ -1,0 +1,195 @@
+{
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "dims": [
+      192,
+      192,
+      128
+    ],
+    "spacing": [
+      0.7,
+      0.7,
+      0.7
+    ],
+    "sourceBytes": 9437184,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "max3DTextureSize": 2048
+  },
+  "cpu": {
+    "before": {
+      "medianMs": 416.6399998664856,
+      "timesMs": [
+        390.19000005722046,
+        450.2449998855591,
+        416.6399998664856
+      ],
+      "maxEventLoopGapMs": 30.97499990463257,
+      "width": 429,
+      "height": 200
+    },
+    "current": {
+      "medianMs": 175.6800000667572,
+      "timesMs": [
+        203.875,
+        175.6800000667572,
+        175.59500002861023
+      ],
+      "maxEventLoopGapMs": 16.240000009536743,
+      "width": 429,
+      "height": 200
+    },
+    "pixelDifference": {
+      "max": 0,
+      "different": 0
+    },
+    "denct": {
+      "medianMs": 39.96500015258789,
+      "timesMs": [
+        51.00999999046326,
+        39.96500015258789,
+        37.9300000667572
+      ],
+      "maxEventLoopGapMs": 51.044999837875366,
+      "width": 432,
+      "height": 127,
+      "slabSamples": 20,
+      "note": "Different curve, vertical extent and sample count: timings not a quality comparison"
+    }
+  },
+  "gpu": {
+    "mean": {
+      "coldMs": 199.07499980926514,
+      "warmMedianMs": 87.8349997997284,
+      "timesMs": [
+        84.02999997138977,
+        88.24000000953674,
+        87.53999996185303,
+        87.8349997997284,
+        89.36500000953674
+      ],
+      "uploads": 1,
+      "meanAbsoluteGrayError": 1.0231841921282896,
+      "maxGrayError": 5.525164909362793,
+      "black": 3825,
+      "count": 83300
+    },
+    "mip": {
+      "coldMs": 106.4850001335144,
+      "warmMedianMs": 88.20000004768372,
+      "timesMs": [
+        80.20000004768372,
+        88.85500001907349,
+        89.98000001907349,
+        88.20000004768372,
+        86.47499990463257
+      ],
+      "uploads": 1,
+      "meanAbsoluteGrayError": 15.368297616369198,
+      "maxGrayError": 63.9990389251709,
+      "black": 0,
+      "count": 83300
+    },
+    "curveEdit": {
+      "ms": 91.03500008583069,
+      "additionalUploads": 0
+    },
+    "glError": 0,
+    "signedMip": {
+      "expectedCentralHU": -784,
+      "expectedCentralGray": 13.77,
+      "actualCentralGray": 64,
+      "norm16Available": false
+    },
+    "partialSlab": {
+      "expectedCenterHU": 2550,
+      "expectedGray": 226.3125,
+      "actualGray": 240,
+      "policy": "CPU excludes unsampled offsets; stock VTK texture clamps the slab at the volume edge"
+    }
+  },
+  "denctArch": {
+    "points": [
+      [
+        -31.264604505069986,
+        21.549304643259905
+      ],
+      [
+        -33.95524567908037,
+        5.09657875573661
+      ],
+      [
+        -28.53677269393239,
+        -10.665356606532407
+      ],
+      [
+        -16.291389517201218,
+        -21.97185967482331
+      ],
+      [
+        -0.1486741497775652,
+        -26.118321275531162
+      ],
+      [
+        16.029610796860126,
+        -22.112887538069632
+      ],
+      [
+        28.373194307309806,
+        -10.913674757753565
+      ],
+      [
+        33.92900806207166,
+        4.8003759414622795
+      ],
+      [
+        31.38204463593516,
+        21.27595533531616
+      ]
+    ],
+    "ms": 7.514999866485596
+  },
+  "boundary": {
+    "denctOutside": -1024,
+    "oursOutside": "NaN"
+  },
+  "sample": {
+    "dimensions": [
+      274,
+      274,
+      217
+    ],
+    "decodedBytes": 32582984,
+    "archPoints": 20,
+    "cpu": {
+      "before": {
+        "medianMs": 771.1099998950958,
+        "timesMs": [
+          779.5750000476837,
+          771.1099998950958,
+          752.2800002098083
+        ],
+        "maxEventLoopGapMs": 35.78500008583069,
+        "width": 401,
+        "height": 229
+      },
+      "current": {
+        "medianMs": 574.579999923706,
+        "timesMs": [
+          574.579999923706,
+          560.0250000953674,
+          606.7400000095367
+        ],
+        "maxEventLoopGapMs": 15.670000076293945,
+        "width": 401,
+        "height": 229
+      }
+    },
+    "pixelDifference": {
+      "max": 0,
+      "different": 0,
+      "missingMaskDifferences": 0
+    }
+  },
+  "errors": [],
+  "logs": []
+}
