@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ORBITAL 3D — проверка графики</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#10121b;color:#e9eaf3;font:16px/1.5 system-ui,Arial,sans-serif}main{max-width:960px;margin:42px auto;padding:0 22px}.brand{font-size:28px;font-weight:800;letter-spacing:2px;color:#bd70ff}h1{font-size:28px;line-height:1.2;margin:24px 0 12px}p{color:#b8bece}.card{background:#191d29;border:1px solid #353a4e;border-radius:16px;padding:22px;margin:22px 0}.actions{display:flex;gap:10px;flex-wrap:wrap}button{border:1px solid #58506f;border-radius:9px;padding:12px 18px;background:#2a263a;color:#eee;cursor:pointer;font:600 15px system-ui}button.primary{background:linear-gradient(110deg,#7629b7,#992de5);border-color:#ad63e7}button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:3px solid #cb92ff;outline-offset:3px}#status{min-height:28px;margin-bottom:12px;font-weight:600}#results{padding-left:25px}#results li{margin:9px 0}.ok{color:#97e5b1}.fail{color:#ffb2b2}.skip{color:#c4bba4}.stage{font-size:14px;color:#bdc4d7}canvas{width:128px;height:128px;border:1px solid #353a4e;border-radius:8px;display:block;margin-top:18px}canvas[hidden]{display:none}textarea{width:100%;height:310px;resize:vertical;background:#11141e;color:#cad2e8;border:1px solid #373e53;border-radius:8px;padding:12px;font:12px/1.5 ui-monospace,Consolas,monospace}.note{font-size:14px}a{color:#ceadff}#copy-status{min-height:22px}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">ORBITAL 3D</div>
+  <h1>Проверка графики браузера</h1>
+  <p>Проверим небольшие 3D-текстуры отдельно от просмотрщика. Исследования не загружаются. Отчёт остаётся в браузере — после проверки его можно скопировать или скачать.</p>
+  <section class="card" aria-label="Проверка графики">
+    <div id="status" role="status">Готово к проверке</div>
+    <div class="actions"><button id="start">Начать проверку</button><button class="primary" id="extended">Расширенная проверка 16–64 МиБ</button><button id="stop" disabled>Остановить</button></div>
+    <p class="note">Используется один графический контекст. Обычная проверка — текстуры до 16 МиБ. Расширенная — 400×400 с последовательным увеличением до 64 МиБ и отрисовкой во время загрузки. Перед проверкой закройте вкладки со снимками. Полное исследование здесь не загружается.</p>
+    <div id="stage" class="stage" aria-live="polite"></div>
+    <canvas id="preview" width="128" height="128" aria-label="Результат тестовой отрисовки" hidden></canvas>
+    <ol id="results"></ol>
+  </section>
+  <section class="card" aria-label="Диагностика просмотрщика">
+    <h2>Проверка просмотрщика с лимитом 64 МиБ</h2>
+    <p>Тестовый режим уменьшает только текстуру снимка для видеокарты. Детализация отображения будет снижена. Все инструменты и исходные данные сохраняются.</p>
+    <p id="viewer-profile" role="status"></p>
+    <div class="actions"><button id="enable-profile">Включить тестовый режим 64 МиБ</button><button id="disable-profile">Выключить тестовый режим</button><button id="download-viewer">Скачать журнал просмотрщика</button></div>
+    <p class="note">Настройка действует только в этом браузере. После включения закройте прежние вкладки просмотрщика и откройте снимок заново из кабинета врача. Затем вернитесь сюда и скачайте журнал. При выключении также потребуется заново открыть снимок. Лимит 64 МиБ относится к текстуре, а не ко всей памяти приложения.</p>
+    <p id="viewer-message" class="note" role="status"></p>
+  </section>
+  <section class="card" aria-label="Диагностический отчёт">
+    <h2>Отчёт</h2>
+    <div class="actions"><button id="copy" disabled>Скопировать отчёт</button><button id="download" disabled>Скачать отчёт</button></div>
+    <p id="copy-status" class="note" role="status"></p>
+    <textarea id="report" readonly aria-label="Текст диагностического отчёта" spellcheck="false"></textarea>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const VERSION='orbital-gpu-check-20261114-v2';
+  const KEY='orbital:gpu-diagnostic:v1';
+  const PROFILE_KEY='orbital:gpu-diagnostic-profile:v1';
+  const VIEWER_KEY='orbital:gpu-render-report:v1';
+  const $=id=>document.getElementById(id);
+  let gl=null,program=null,stopped=false,running=false,report=null;
+  const sleep=()=>new Promise(resolve=>setTimeout(resolve,30));
+  const serialize=()=>JSON.stringify(report,null,2);
+  function save(){
+    report.updatedAt=new Date().toISOString();
+    $('report').value=serialize();$('copy').disabled=false;$('download').disabled=false;
+    try{localStorage.setItem(KEY,serialize());}catch(_error){/* Report remains on screen. */}
+  }
+  function stage(label){report.lastStage=label;report.lastStageAt=new Date().toISOString();$('stage').textContent=label;save();}
+  function row(label,state,detail=''){
+    const li=document.createElement('li');li.className=state;
+    li.textContent=(state==='ok'?'✓ ':state==='skip'?'— ':'✕ ')+label+(detail?' — '+detail:'');
+    $('results').appendChild(li);
+    report.tests.push({label,state,detail});save();
+  }
+  function check(label){
+    if(stopped)throw new Error('Проверка остановлена');
+    if(gl.isContextLost())throw new Error('Потерян графический контекст');
+    const error=gl.getError();
+    if(error!==gl.NO_ERROR)throw new Error(label+': WebGL error 0x'+error.toString(16));
+  }
+  function shader(type,source){
+    const value=gl.createShader(type);if(!value)throw new Error('Не удалось создать шейдер');
+    gl.shaderSource(value,source);gl.compileShader(value);
+    if(!gl.getShaderParameter(value,gl.COMPILE_STATUS)){
+      const message=gl.getShaderInfoLog(value);gl.deleteShader(value);throw new Error('Компиляция шейдера: '+message);
+    }
+    return value;
+  }
+  function setup(){
+    const shaders=[];
+    try{
+      shaders.push(shader(gl.VERTEX_SHADER,'#version 300 es\nvoid main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));gl_Position=vec4(p*2.0-1.0,0.0,1.0);}'));
+      shaders.push(shader(gl.FRAGMENT_SHADER,'#version 300 es\nprecision highp float;precision highp sampler3D;uniform sampler3D volume;out vec4 color;void main(){float value=texture(volume,vec3(0.5)).r;color=vec4(vec3(value),1.0);}'));
+      program=gl.createProgram();if(!program)throw new Error('Не удалось создать программу');
+      shaders.forEach(value=>gl.attachShader(program,value));gl.linkProgram(program);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Компоновка шейдера: '+gl.getProgramInfoLog(program));
+      gl.useProgram(program);gl.uniform1i(gl.getUniformLocation(program,'volume'),0);
+      gl.viewport(0,0,128,128);gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);check('Шейдер');
+    }finally{shaders.forEach(value=>gl.deleteShader(value));}
+  }
+  function read(){
+    const pixel=new Uint8Array(4);
+    gl.readPixels(64,64,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);check('Чтение результата');
+    return Array.from(pixel);
+  }
+  function assertPixel(pixel,expected){
+    if(pixel.slice(0,3).some(value=>Math.abs(value-expected)>4)||pixel[3]!==255)
+      throw new Error('Некорректный цвет: '+pixel.join(',')+'; ожидалось около '+expected);
+  }
+  async function textureTest(format,dimensions,streamed=false){
+    const [width,height,depth]=dimensions;
+    if(dimensions.some(value=>value>report.limits.max3DTextureSize)){
+      row(format.name+' '+dimensions.join('×'),'skip','Размер превышает лимит устройства');return;
+    }
+    const bytes=width*height*depth*format.bytes;
+    const label=format.name+' '+dimensions.join('×')+' ('+(bytes/1024/1024).toFixed(2)+' МиБ)';
+    report.activeTexture={format:format.name,internalFormat:format.internal,dimensions,textureBytes:bytes,uploadedSlices:0,streamed};
+    let texture=null;
+    try{
+      stage(label+': выделение памяти');await sleep();check('Перед выделением');
+      texture=gl.createTexture();if(!texture)throw new Error('Не удалось создать текстуру');
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_3D,texture);
+      gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_WRAP_R,gl.CLAMP_TO_EDGE);
+      gl.texStorage3D(gl.TEXTURE_3D,1,format.internal,width,height,depth);check('Выделение текстуры');
+      const slice=new format.array(width*height);
+      stage(label+': загрузка пикселей');
+      for(let z=0;z<depth;z++){
+        if(streamed&&z%8===0)stage(label+': загрузка слоя '+z+'/'+depth);
+        // An odd depth has a texel exactly at the centre; give it the midpoint value.
+        slice.fill(depth%2===1&&z===Math.floor(depth/2)?(format.low+format.high)/2:z<depth/2?format.low:format.high);
+        gl.texSubImage3D(gl.TEXTURE_3D,0,0,0,z,width,height,1,gl.RED,format.type,slice);check('Загрузка слоя '+z);
+        report.activeTexture.uploadedSlices=z+1;
+        if(streamed&&(z===0||z%8===7||z===depth-1)){
+          stage(label+': отрисовка при загрузке ('+(z+1)+'/'+depth+')');
+          gl.drawArrays(gl.TRIANGLES,0,3);gl.finish();check('Отрисовка при загрузке');await sleep();
+        }else if(!streamed&&z%8===0)await sleep();
+      }
+      stage(label+': отрисовка');
+      for(const filter of ['nearest','linear']){
+        if(filter==='linear'&&!format.linear){row(label+' / linear','skip','Расширение линейной фильтрации отсутствует');continue;}
+        const mode=filter==='nearest'?gl.NEAREST:gl.LINEAR;
+        gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,mode);
+        gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,mode);
+        gl.drawArrays(gl.TRIANGLES,0,3);gl.finish();check('Отрисовка '+filter);
+        const pixel=read(),expected=filter==='nearest'&&depth%2===0?Math.round(format.high/format.scale*255):Math.round((format.low+format.high)/2/format.scale*255);
+        assertPixel(pixel,expected);row(label+' / '+filter,'ok','RGBA '+pixel.join(','));await sleep();
+      }
+    }catch(error){
+      row(label,'fail',error.message||String(error));
+      if(stopped||gl.isContextLost())throw error;
+    }finally{
+      if(texture&&!gl.isContextLost()){gl.bindTexture(gl.TEXTURE_3D,null);gl.deleteTexture(texture);gl.finish();}
+    }
+  }
+  async function run(extended=false){
+    if(running)return;running=true;stopped=false;
+    $('start').disabled=true;$('extended').disabled=true;$('stop').disabled=false;$('results').textContent='';$('copy-status').textContent='';
+    report={version:VERSION,testMode:extended?'streamed-400x400-16-64MiB':'basic',startedAt:new Date().toISOString(),status:'running',lastStage:'starting',
+      environment:{userAgent:navigator.userAgent,deviceMemoryGiB:navigator.deviceMemory||null,hardwareConcurrency:navigator.hardwareConcurrency||null,
+        screen:[screen.width,screen.height],devicePixelRatio:window.devicePixelRatio},tests:[]};
+    save();$('status').textContent='Проверяем графику…';
+    try{
+      stage('Создание единственного WebGL 2 контекста');await sleep();
+      const canvas=$('preview');canvas.hidden=false;
+      if(!gl)gl=canvas.getContext('webgl2',{alpha:false,depth:false,stencil:false,antialias:false,preserveDrawingBuffer:false,powerPreference:'high-performance'});
+      if(!gl)throw new Error('Браузер не предоставил WebGL 2');
+      check('Создание контекста');
+      const debug=gl.getExtension('WEBGL_debug_renderer_info');
+      report.renderer={version:gl.getParameter(gl.VERSION),vendor:gl.getParameter(gl.VENDOR),
+        renderer:debug?gl.getParameter(debug.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER)};
+      report.limits={max3DTextureSize:gl.getParameter(gl.MAX_3D_TEXTURE_SIZE),maxTextureSize:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxRenderbufferSize:gl.getParameter(gl.MAX_RENDERBUFFER_SIZE)};
+      report.extensions=gl.getSupportedExtensions();save();
+      gl.viewport(0,0,128,128);gl.clearColor(.2,.4,.6,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.finish();
+      const pixel=read();if(pixel.slice(0,3).some((value,i)=>Math.abs(value-[51,102,153][i])>3))throw new Error('Базовая отрисовка вернула неверный цвет: '+pixel.join(','));
+      row('WebGL 2 и базовая отрисовка','ok','RGBA '+pixel.join(','));
+      stage('Компиляция небольшого шейдера для 3D-текстуры');setup();
+      const floatLinear=Boolean(gl.getExtension('OES_texture_float_linear'));
+      const norm16=gl.getExtension('EXT_texture_norm16');
+      const formats=[
+        {name:'R8',internal:gl.R8,type:gl.UNSIGNED_BYTE,array:Uint8Array,bytes:1,low:64,high:192,scale:255,linear:true},
+        {name:'R16F',internal:gl.R16F,type:gl.FLOAT,array:Float32Array,bytes:2,low:.25,high:.75,scale:1,linear:true},
+        {name:'R32F',internal:gl.R32F,type:gl.FLOAT,array:Float32Array,bytes:4,low:.25,high:.75,scale:1,linear:floatLinear},
+      ];
+      if(norm16)formats.push({name:'R16_SNORM',internal:norm16.R16_SNORM_EXT,type:gl.SHORT,array:Int16Array,bytes:2,low:8192,high:24576,scale:32767,linear:true});
+      else row('R16_SNORM','skip','Расширение EXT_texture_norm16 отсутствует');
+      if(extended){
+        // Match the failing viewer's actual width, height, format and 209-slice depth.
+        // Follow with an alternative format at the same texture-memory budgets.
+        for(const name of ['R16_SNORM','R32F']){
+          const format=formats.find(value=>value.name===name);
+          if(!format)continue;
+          for(const mib of [16,32,64]){
+            const depth=Math.floor(mib*1024*1024/(400*400*format.bytes));
+            await textureTest(format,[400,400,depth],true);
+          }
+        }
+      }else{
+        for(const format of formats)await textureTest(format,[32,32,32]);
+        for(const format of formats)await textureTest(format,[256,256,64]);
+      }
+      const failed=report.tests.filter(test=>test.state==='fail').length;
+      report.status=failed?'completed-with-errors':'completed';
+      report.completedAt=new Date().toISOString();
+      $('status').textContent=failed?'Проверка завершена: есть ошибки. Пришлите отчёт.':extended?'Расширенные тесты пройдены. Пришлите отчёт.':'Базовые тесты пройдены. Пришлите отчёт для разбора сбоя просмотрщика.';
+      stage('Проверка завершена');
+    }catch(error){
+      report.status=gl&&gl.isContextLost()?'context-lost':stopped?'stopped':'failed';
+      report.error=error.message||String(error);
+      $('status').textContent=report.status==='context-lost'?'Браузер потерял графический контекст. Пришлите отчёт.':report.error;
+      row('Проверка прервана','fail',report.error);
+    }finally{
+      if(program&&gl&&!gl.isContextLost()){gl.deleteProgram(program);program=null;}
+      running=false;$('stop').disabled=true;$('start').disabled=$('extended').disabled=Boolean(gl&&gl.isContextLost());save();
+    }
+  }
+  $('preview').addEventListener('webglcontextlost',event=>{
+    event.preventDefault();
+    if(!report)return;
+    report.contextLostAtStage=report.lastStage;report.contextLostAfterCompletion=Boolean(report.completedAt);report.contextLossMessage=event.statusMessage||'';report.status='context-lost';save();
+    $('start').disabled=true;$('extended').disabled=true;
+    $('status').textContent='Браузер потерял графический контекст. Последний этап сохранён в отчёте.';
+  });
+  $('start').addEventListener('click',()=>run(false));
+  $('extended').addEventListener('click',()=>run(true));
+  $('stop').addEventListener('click',()=>{stopped=true;});
+  $('copy').addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(serialize());$('copy-status').textContent='Отчёт скопирован. Вставьте его в переписку.';}
+    catch(_error){$('report').focus();$('report').select();$('copy-status').textContent='Отчёт выделен. Нажмите Ctrl+C, чтобы скопировать.';}
+  });
+  $('download').addEventListener('click',()=>{
+    const url=URL.createObjectURL(new Blob([serialize()],{type:'text/plain;charset=utf-8'}));
+    const a=document.createElement('a');a.href=url;a.download='orbital-gpu-check-'+new Date().toISOString().replace(/[:.]/g,'-')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  function showProfile(){
+    try{
+      const enabled=localStorage.getItem(PROFILE_KEY)==='64';
+      $('viewer-profile').textContent=enabled?'Тестовый режим включён. Для применения откройте исследование заново.':'Тестовый режим выключен. Просмотрщик использует обычные настройки.';
+      $('enable-profile').disabled=enabled;$('disable-profile').disabled=!enabled;
+    }catch(_error){$('viewer-profile').textContent='Хранилище браузера недоступно. Включить тестовый режим не удалось.';}
+  }
+  function setProfile(enabled){
+    try{
+      if(enabled)localStorage.setItem(PROFILE_KEY,'64');else localStorage.removeItem(PROFILE_KEY);
+      $('viewer-message').textContent='Закройте прежние вкладки просмотрщика и откройте исследование заново из кабинета врача.';
+      showProfile();
+    }catch(_error){$('viewer-message').textContent='Не удалось сохранить настройку в браузере.';}
+  }
+  $('enable-profile').addEventListener('click',()=>setProfile(true));
+  $('disable-profile').addEventListener('click',()=>setProfile(false));
+  $('download-viewer').addEventListener('click',()=>{
+    try{
+      const value=localStorage.getItem(VIEWER_KEY);
+      if(!value){$('viewer-message').textContent='Журнала пока нет. Включите тестовый режим и откройте снимок в новой версии просмотрщика.';return;}
+      const data=JSON.parse(value);
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'text/plain;charset=utf-8'}));
+      const a=document.createElement('a');a.href=url;a.download='orbital-viewer-gpu-'+new Date().toISOString().replace(/[:.]/g,'-')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      $('viewer-message').textContent='Журнал скачан. Проверьте время startedAt: он относится к последнему запуску просмотрщика в тестовом режиме.';
+    }catch(_error){$('viewer-message').textContent='Не удалось прочитать журнал. Если доступна консоль, сохраните её сообщения.';}
+  });
+  window.addEventListener('focus',showProfile);
+  window.addEventListener('storage',showProfile);
+  showProfile();
+  try{
+    const previous=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(previous&&previous.version===VERSION){report=previous;$('report').value=serialize();$('copy').disabled=false;$('download').disabled=false;$('status').textContent='Найден предыдущий отчёт. Его можно скачать или запустить новую проверку.';}
+  }catch(_error){/* Diagnostics also work with storage disabled. */}
+})();
+</script>
+</body>
+</html>

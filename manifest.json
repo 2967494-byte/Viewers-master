@@ -1,0 +1,12 @@
+{
+  "name": "Orbital3D Viewer",
+  "short_name": "Orbital3D",
+  "description": "Orbital3D Viewer",
+  "dir": "auto",
+  "lang": "en-US",
+  "orientation": "any",
+  "start_url": "./index.html",
+  "background_color": "#000000",
+  "display": "standalone",
+  "theme_color": "#20a5d6"
+}
