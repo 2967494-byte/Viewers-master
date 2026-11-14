@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "b6498742bbe72f29a0f3b5d3a973dc483d436c14",
-  "createdAt": "2026-11-14T17:54:03.347Z",
-  "mainBundle": "app.bundle.4237615fc1fe990f1c45.js",
-  "mainSha256": "0888ee11853f37ca69c7430e595221a863fbc6449e1eba1f715d6050bb2ba98b",
+  "sourceCommit": "9bf183eb7b4368ba8dc5e3a9a82944f01f41b14c",
+  "createdAt": "2026-11-14T18:42:38.692Z",
+  "mainBundle": "app.bundle.80bdcfd520aa730265d1.js",
+  "mainSha256": "ef6995918a6c843bb87f843fc8303786de4814c4c4224388f9df052caec8fea8",
   "files": [
     {
       "path": "1403.bundle.18a93e5f0477d9115ee5.js",
@@ -649,16 +649,16 @@
       "sha256": "79ae7c43da5805189d190de6b3a6d77a6cce250042da6104750d16551d2472b7"
     },
     {
-      "path": "app.bundle.4237615fc1fe990f1c45.js",
-      "sha256": "0888ee11853f37ca69c7430e595221a863fbc6449e1eba1f715d6050bb2ba98b"
+      "path": "app.bundle.80bdcfd520aa730265d1.js",
+      "sha256": "ef6995918a6c843bb87f843fc8303786de4814c4c4224388f9df052caec8fea8"
     },
     {
-      "path": "app.bundle.4237615fc1fe990f1c45.js.LICENSE.txt",
+      "path": "app.bundle.80bdcfd520aa730265d1.js.LICENSE.txt",
       "sha256": "a50edb82b22174c00271dcdc6ab5a8697a013a9e29ce08747ee7a93fe0244a89"
     },
     {
-      "path": "app.bundle.4237615fc1fe990f1c45.js.map",
-      "sha256": "e457afa3c9824bef92525d2882cb2e4cd39aa6ac40b7fc9bc3522f70fd70707d"
+      "path": "app.bundle.80bdcfd520aa730265d1.js.map",
+      "sha256": "7772fc2c39781fe84609fa069dfcfe545261c0f79cf072a7a5185b385b4a433e"
     },
     {
       "path": "app.bundle.8b756fdcf9577494d241.css",
@@ -1058,7 +1058,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "684ebd6da0a5fd77d740de5d6220adcce95c4cca06e973a72dc090eed94c9153"
+      "sha256": "a5df6e1bcaf258fcbcf431c5dd1e9f9b5e6b61940ee3b7893600b46f33e174e7"
     },
     {
       "path": "init-service-worker.js",
