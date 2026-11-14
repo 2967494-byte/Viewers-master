@@ -46,7 +46,8 @@ try {
   git(['read-tree', '--empty']);
   const hashes = git(['hash-object', '-w', '--stdin-paths'], files.map(({ file }) => JSON.stringify(file.replaceAll('\\','/'))).join('\n')+'\n').split(/\r?\n/);
   const manifest = git(['hash-object', '-w', '--stdin'], JSON.stringify(metadata, null, 2)+'\n');
-  const entries = files.map(({ rel }, i) => `100644 ${hashes[i]}\t${rel}\0`).join('') + `100644 ${manifest}\trelease.json\0`;
+  // Serve only public/: Git metadata and the deployment manifest stay outside the web root.
+  const entries = files.map(({ rel }, i) => `100644 ${hashes[i]}\tpublic/${rel}\0`).join('') + `100644 ${manifest}\trelease.json\0`;
   git(['update-index', '-z', '--index-info'], entries);
   const tree = git(['write-tree']);
   const commit = git(['commit-tree', tree, ...(parent ? ['-p', parent] : [])], `deploy: ORBITAL web viewer from ${source.slice(0,12)}\n`);
