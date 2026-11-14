@@ -1,5 +1,5 @@
-import React, { ReactElement, useEffect, useRef, useState } from 'react';
-import { AllInOneMenu, ScrollArea, Switch, Tabs, TabsList, TabsTrigger } from '@ohif/ui-next';
+import React, { ReactElement, useState } from 'react';
+import { AllInOneMenu, ScrollArea, Tabs, TabsList, TabsTrigger } from '@ohif/ui-next';
 import { useViewportRendering } from '../../hooks/useViewportRendering';
 import { useTranslation } from 'react-i18next';
 
@@ -17,22 +17,6 @@ export function Colormap({ viewportId }: { viewportId?: string } = {}): ReactEle
   });
 
   const { colormaps } = colorbarProperties;
-
-  const [showPreview, setShowPreview] = useState(false);
-  const [prePreviewColormap, setPrePreviewColormap] = useState(null);
-  const [currentColormap, setCurrentColormap] = useState(null);
-
-  const showPreviewRef = useRef(showPreview);
-  showPreviewRef.current = showPreview;
-  const prePreviewColormapRef = useRef(prePreviewColormap);
-  prePreviewColormapRef.current = prePreviewColormap;
-  const currentColormapRef = useRef(currentColormap);
-  currentColormapRef.current = currentColormap;
-
-  useEffect(() => {
-    setCurrentColormap(null);
-    setPrePreviewColormap(null);
-  }, [activeDisplaySetUID]);
 
   const handleSetColorLUT = (colormap, immediate = true) => {
     // Check if it's a fusion viewport
@@ -53,10 +37,7 @@ export function Colormap({ viewportId }: { viewportId?: string } = {}): ReactEle
         <div className="flex h-8 w-full flex-shrink-0 items-center justify-center px-2 text-base">
           <Tabs
             value={activeDisplaySetUID}
-            onValueChange={displaySetUID => {
-              setActiveDisplaySetUID(displaySetUID);
-              setPrePreviewColormap(null);
-            }}
+            onValueChange={setActiveDisplaySetUID}
           >
             <TabsList>
               {viewportDisplaySets.map(ds => (
@@ -72,26 +53,6 @@ export function Colormap({ viewportId }: { viewportId?: string } = {}): ReactEle
         </div>
       )}
 
-      <div
-        className="hover:bg-accent flex h-8 w-full flex-shrink-0 cursor-pointer items-center px-2 text-base hover:rounded"
-        onClick={() => setShowPreview(!showPreview)}
-      >
-        <span className="flex-shrink-0">{t('Preview in viewport')}</span>
-        <Switch
-          className="ml-auto flex-shrink-0"
-          checked={showPreview}
-          onCheckedChange={checked => {
-            setShowPreview(checked);
-
-            if (!checked && currentColormapRef.current) {
-              handleSetColorLUT(currentColormapRef.current);
-            }
-          }}
-        />
-      </div>
-
-      <AllInOneMenu.DividerItem />
-
       <div className="h-[300px] flex-grow">
         <ScrollArea className="h-full w-full">
           <div className="p-1">
@@ -100,24 +61,7 @@ export function Colormap({ viewportId }: { viewportId?: string } = {}): ReactEle
                 key={index}
                 label={t(`Colormaps:${colormap.Name}`, { defaultValue: colormap.Name })}
                 useIconSpace={false}
-                onClick={() => {
-                  setCurrentColormap(colormap);
-                  handleSetColorLUT(colormap);
-                  setPrePreviewColormap(null);
-                }}
-                onMouseEnter={() => {
-                  if (showPreviewRef.current) {
-                    if (!prePreviewColormapRef.current) {
-                      setPrePreviewColormap(colormap);
-                    }
-                    handleSetColorLUT(colormap);
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (showPreviewRef.current && prePreviewColormapRef.current) {
-                    handleSetColorLUT(prePreviewColormapRef.current);
-                  }
-                }}
+                onClick={() => handleSetColorLUT(colormap)}
               />
             ))}
           </div>

@@ -1,5 +1,9 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import './DentalToolsToolbar.css';
+import { ORBITAL_MAGNIFICATIONS, normalizeMagnification } from '@ohif/core/src/constants/orbitalTheme';
+import useAxesVisibility from '@ohif/core/src/hooks/useAxesVisibility';
+import useImageFilter from '@ohif/core/src/hooks/useImageFilter';
+import { IMAGE_FILTER_OPTIONS, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 
 const groups = [
   {
@@ -53,7 +57,11 @@ const implant = {
   title: 'Имплант',
   help: 'Щёлкните на MPR-срезе для установки выбранного импланта. Средняя кнопка — перемещение, правая — масштаб.',
 };
-const options = [...groups.flatMap(group => group.options), canal, implant];
+const pan = {
+  id: 'pan', title: 'Перемещение',
+  help: 'Тяните изображение в MPR или 3D левой кнопкой мыши. Срезы и масштаб сохраняются. Esc — навигация.',
+};
+const options = [...groups.flatMap(group => group.options), canal, implant, pan];
 
 function ToolIcon({ name, spatial = false }: { name: string; spatial?: boolean }) {
   const gradient = useId().replace(/:/g, '');
@@ -199,6 +207,32 @@ function ToolIcon({ name, spatial = false }: { name: string; spatial?: boolean }
           />
         </>
       )}
+      {name === 'magnify' && (
+        <>
+          <circle cx="13" cy="13" r="9" />
+          <path d="m20 20 9 9 M9 13h8 M13 9v8" />
+        </>
+      )}
+      {name === 'pan' && (
+        <path
+          d="M10 16V7a2 2 0 0 1 4 0v7-10a2 2 0 0 1 4 0v10-8a2 2 0 0 1 4 0v9-5a2 2 0 0 1 4 0v10c0 6-3 10-9 10-4 0-6-2-8-5l-5-8a2 2 0 0 1 3-2l3 3"
+          fill={`url(#${gradient})`}
+          stroke="#6c7888"
+        />
+      )}
+      {name === 'axes' && (
+        <>
+          <path d="M16 3v10m0 6v10M3 16h10m6 0h10 M13 6l3-3 3 3 M26 13l3 3-3 3" />
+          <circle cx="16" cy="16" r="2" />
+        </>
+      )}
+      {name === 'filter' && (
+        <>
+          <rect x="4" y="4" width="24" height="24" rx="2" />
+          <path d="M4 12h24 M4 20h24 M12 4v24 M20 4v24" strokeWidth="1" />
+          <path d="M4 4h8v8H4z M20 4h8v8h-8z M12 12h8v8h-8z M4 20h8v8H4z M20 20h8v8h-8z" fill="currentColor" stroke="none" />
+        </>
+      )}
       {name === 'delete' && (
         <>
           <path d="M7 9h18 M12 9V5h8v4 M9 9l1 19h12l1-19 M14 13v11 M18 13v11" />
@@ -209,11 +243,15 @@ function ToolIcon({ name, spatial = false }: { name: string; spatial?: boolean }
 }
 
 export default function DentalToolsToolbar({ commandsManager }) {
+  const axesVisible = useAxesVisibility();
+  const imageFilter = useImageFilter();
   const [active, setActive] = useState('navigate');
   const [implantPlaced, setImplantPlaced] = useState(false);
   const [deleteReady, setDeleteReady] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
+  const [magnification, setMagnification] = useState(3);
   const ref = useRef<HTMLDivElement>(null);
+  const viewerKeyboardTarget = useRef(false);
   const choose = (tool: string) => {
     commandsManager.run('activateDentalTool', { tool });
     setMenu(null);
@@ -221,6 +259,7 @@ export default function DentalToolsToolbar({ commandsManager }) {
   useEffect(() => {
     const changed = (event: CustomEvent) => {
       setActive(event.detail.tool);
+      if (event.detail.tool === 'magnify') setMagnification(normalizeMagnification(event.detail.magnification));
       if (event.detail.tool !== 'navigate') setImplantPlaced(false);
     };
     const placed = () => setImplantPlaced(true);
@@ -229,9 +268,23 @@ export default function DentalToolsToolbar({ commandsManager }) {
       setImplantPlaced(!event.detail.deleted);
     };
     const outside = (event: PointerEvent) => {
+      viewerKeyboardTarget.current = !!(event.target as HTMLElement)?.closest?.(
+        '[data-viewportid],.automatic-panorama-pane,.manual-raster-frame'
+      );
       if (!ref.current?.contains(event.target as Node)) setMenu(null);
     };
     const key = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        const target = event.target as HTMLElement;
+        if (event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey ||
+          target?.closest?.('input,textarea,select,button,a,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=alertdialog],[role=menu]')) return;
+        if (!viewerKeyboardTarget.current && !target?.closest?.('[data-viewportid],.automatic-panorama-pane,.manual-raster-frame')) return;
+        if (commandsManager.run('toggleDentalAxes', { fromKeyboard: true }) === true) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
       if ((event.target as HTMLElement)?.closest?.('input,textarea,select,[contenteditable=true]'))
         return;
       if (event.key === 'Escape') {
@@ -245,19 +298,26 @@ export default function DentalToolsToolbar({ commandsManager }) {
     window.addEventListener('orbital:implant-placed', placed);
     window.addEventListener('orbital:implant-drag', drag);
     document.addEventListener('pointerdown', outside);
-    window.addEventListener('keydown', key);
+    // OHIF's document hotkeys stop bubbling; Escape must also reach the dental toolbar.
+    window.addEventListener('keydown', key, true);
     return () => {
       window.removeEventListener('orbital:dental-tool-changed', changed);
       window.removeEventListener('orbital:implant-placed', placed);
       window.removeEventListener('orbital:implant-drag', drag);
       document.removeEventListener('pointerdown', outside);
-      window.removeEventListener('keydown', key);
+      window.removeEventListener('keydown', key, true);
     };
   }, [commandsManager]);
   useEffect(() => {
-    if (menu) ref.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus();
+    if (menu) ref.current?.querySelector<HTMLButtonElement>('[role=menuitem], [role=menuitemradio]')?.focus();
   }, [menu]);
-  const current = options.find(option => option.id === active);
+  useEffect(() => {
+    document.body.classList.toggle('dental-pan-active', active === 'pan');
+    return () => document.body.classList.remove('dental-pan-active');
+  }, [active]);
+  const current = active === 'magnify'
+    ? { title: `Лупа ${magnification}×`, help: 'Водите курсором по снимку. Кратность — в меню лупы. Esc — навигация.' }
+    : options.find(option => option.id === active);
   return (
     <>
       <div
@@ -276,6 +336,114 @@ export default function DentalToolsToolbar({ commandsManager }) {
         >
           <ToolIcon name="navigate" />
         </button>
+        <button
+          type="button"
+          className="dental-header-tool"
+          aria-label={pan.title}
+          title="Перемещение изображения: тяните левой кнопкой мыши (Esc — навигация)"
+          aria-pressed={active === 'pan'}
+          onClick={() => choose('pan')}
+        >
+          <ToolIcon name="pan" />
+        </button>
+        <button
+          type="button"
+          className="dental-header-tool"
+          aria-label={axesVisible ? 'Скрыть оси координат' : 'Показать оси координат'}
+          title={`${axesVisible ? 'Скрыть' : 'Показать'} оси координат (Enter в окне просмотра)`}
+          aria-pressed={axesVisible}
+          onClick={() => commandsManager.run('toggleDentalAxes')}
+        >
+          <ToolIcon name="axes" />
+        </button>
+        <div className="dental-tool-group">
+          <button
+            type="button"
+            className="dental-header-tool"
+            aria-label="Фильтры 2D"
+            title={`Фильтр всех 2D-окон: ${IMAGE_FILTER_OPTIONS.find(option => option.id === imageFilter).title}`}
+            data-active={imageFilter !== 'none'}
+            aria-haspopup="menu"
+            aria-expanded={menu === 'filter'}
+            onClick={() => setMenu(menu === 'filter' ? null : 'filter')}
+          >
+            <ToolIcon name="filter" />
+            <span className="dental-tool-chevron">▾</span>
+          </button>
+          {menu === 'filter' && (
+            <div
+              className="dental-tool-menu"
+              role="menu"
+              aria-label="Обработка всех 2D-окон"
+              onKeyDown={event => {
+                const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+                const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  buttons[(index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();
+                }
+              }}
+            >
+              {IMAGE_FILTER_OPTIONS.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={imageFilter === option.id}
+                  onClick={() => { setImageFilter(option.id); setMenu(null); }}
+                >
+                  <span>{option.title}</span>
+                  <small>{option.help}</small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="dental-tool-group">
+          <button
+            type="button"
+            className="dental-header-tool"
+            aria-label="Лупа"
+            title={`Лупа ${magnification}×: выбрать увеличение`}
+            aria-pressed={active === 'magnify'}
+            aria-haspopup="menu"
+            aria-expanded={menu === 'magnify'}
+            onClick={() => setMenu(menu === 'magnify' ? null : 'magnify')}
+          >
+            <ToolIcon name="magnify" />
+            <span className="dental-tool-badge">{magnification}×</span>
+            <span className="dental-tool-chevron">▾</span>
+          </button>
+          {menu === 'magnify' && (
+            <div
+              className="dental-tool-menu"
+              role="menu"
+              aria-label="Увеличение лупы"
+              onKeyDown={event => {
+                const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+                const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  buttons[(index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();
+                }
+              }}
+            >
+              {ORBITAL_MAGNIFICATIONS.map(zoom => (
+                <button
+                  key={zoom}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active === 'magnify' && magnification === zoom}
+                  onClick={() => {
+                    setMagnification(zoom);
+                    setMenu(null);
+                    commandsManager.run('activateDentalTool', { tool: 'magnify', magnification: zoom });
+                  }}
+                >Лупа {zoom}×</button>
+              ))}
+            </div>
+          )}
+        </div>
         {groups
           .filter(group => group.id !== 'angle')
           .map(group => {

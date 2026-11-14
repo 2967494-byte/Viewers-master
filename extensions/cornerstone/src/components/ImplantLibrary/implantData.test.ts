@@ -22,6 +22,7 @@ describe('Sourced implant dimension library', () => {
       'Straumann',
       'Nobel Biocare',
       'Osstem',
+      'Dentium',
     ]);
   });
   it('contains only positive dimensions with manufacturer sources and explicit schematic geometry', () => {

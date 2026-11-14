@@ -15,6 +15,7 @@ import AutomaticPanoramaPane from '../components/ManualPanorama/AutomaticPanoram
 import MprFocusButton from './MprFocusButton';
 import ImplantEditor from '../components/ImplantLibrary/ImplantEditor';
 import { MPR_VIEWPORT_IDS } from '../utils/mprFocusLayout';
+import MprZoomButtons from './MprZoomButtons';
 import CinePlayer from '../components/CinePlayer';
 import type { Types } from '@ohif/core';
 
@@ -344,6 +345,7 @@ const OHIFCornerstoneViewport = React.memo(
             <ManualPanorama element={elementRef.current} getElement={() => elementRef.current} externalLauncher viewportGridService={viewportGridService} />
           )}
           <MprFocusButton viewportId={viewportId} viewportGridService={viewportGridService} />
+          <MprZoomButtons viewportId={viewportId} element={enabledVPElement} viewportGridService={viewportGridService} />
           {MPR_VIEWPORT_IDS.includes(viewportId) && <ImplantEditor element={enabledVPElement} />}
           {viewportId === 'mpr-3d' && <AutomaticPanoramaPane element={enabledVPElement} />}
           <CinePlayer

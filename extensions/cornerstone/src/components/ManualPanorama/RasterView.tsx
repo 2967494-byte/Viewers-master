@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { Raster } from './reconstruction';
 import { applySharpness, createSharpeningDetail } from './sharpening';
+import { ORBITAL_MPR_COLORS, ORBITAL_OVERLAY_COLOR } from '@ohif/core/src/constants/orbitalTheme';
+import { panoramaRasterPosition } from './panoramaNavigation';
+import useAxesVisibility from '@ohif/core/src/hooks/useAxesVisibility';
+import useImageFilter from '@ohif/core/src/hooks/useImageFilter';
+import { filterImagePixels } from '@ohif/core/src/constants/orbitalImageFilters';
 
 export default function RasterView({
   raster,
@@ -10,7 +15,9 @@ export default function RasterView({
   slicePosition,
   orientation,
   onPosition,
+  dragToPosition = false,
   label,
+  overlay,
 }: {
   raster: Raster;
   range: { lower: number; upper: number };
@@ -19,9 +26,35 @@ export default function RasterView({
   slicePosition?: number;
   orientation?: [string, string];
   onPosition?: (fraction: number, vertical: number) => void;
+  dragToPosition?: boolean;
   label?: string;
+  overlay?: React.ReactNode;
 }) {
+  const axesVisible = useAxesVisibility();
+  const imageFilter = useImageFilter();
   const ref = useRef<HTMLCanvasElement>(null);
+  const drag = useRef<number>(null);
+  const frame = useRef(0);
+  const pending = useRef<[number, number]>(null);
+  const positionCallback = useRef(onPosition);
+  positionCallback.current = onPosition;
+  const cancelDrag = () => {
+    drag.current = null;
+    pending.current = null;
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+  };
+  useEffect(() => {
+    cancelDrag();
+    return cancelDrag;
+  }, [raster, dragToPosition, !!onPosition]);
+  const flushPosition = () => {
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    const point = pending.current;
+    pending.current = null;
+    if (point) positionCallback.current?.(...point);
+  };
   const startLabel = orientation?.[0],
     endLabel = orientation?.[1];
   const grayscale = useMemo(() => {
@@ -42,8 +75,11 @@ export default function RasterView({
     [grayscale, raster, sharpeningEnabled]
   );
   const displayPixels = useMemo(
-    () => (detail ? applySharpness(grayscale, detail, sharpness) : grayscale),
-    [grayscale, detail, sharpness]
+    () => {
+      const pixels = detail ? applySharpness(grayscale, detail, sharpness) : grayscale;
+      return pixels ? filterImagePixels(pixels, raster.width, raster.height, imageFilter) : null;
+    },
+    [grayscale, detail, sharpness, raster, imageFilter]
   );
   useEffect(() => {
     if (!raster || !ref.current) return;
@@ -59,8 +95,8 @@ export default function RasterView({
       image.data[i * 4 + 3] = 255;
     }
     ctx.putImageData(image, 0, 0);
-    ctx.strokeStyle = '#fbbf24';
-    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = ORBITAL_OVERLAY_COLOR;
+    ctx.fillStyle = ORBITAL_OVERLAY_COLOR;
     ctx.lineWidth = 1;
     ctx.font = '11px sans-serif';
     if (startLabel && endLabel) {
@@ -85,16 +121,84 @@ export default function RasterView({
         aria-label={
           label || (onPosition ? 'Панорама: нажмите для выбора сечения' : 'Поперечное сечение')
         }
+        title={
+          dragToPosition && onPosition
+            ? 'Щёлкните или ведите с нажатой левой кнопкой — область появится на трёх срезах'
+            : undefined
+        }
+        style={
+          dragToPosition && onPosition ? { touchAction: 'none', cursor: 'crosshair' } : undefined
+        }
+        onPointerDown={event => {
+          if (
+            !dragToPosition ||
+            !onPosition ||
+            event.button !== 0 ||
+            !event.isPrimary ||
+            event.ctrlKey ||
+            event.altKey ||
+            event.metaKey ||
+            event.shiftKey
+          )
+            return;
+          const point = panoramaRasterPosition(
+            event.currentTarget.getBoundingClientRect(),
+            raster,
+            event.clientX,
+            event.clientY
+          );
+          if (!point) return;
+          event.preventDefault();
+          event.stopPropagation();
+          drag.current = event.pointerId;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          positionCallback.current?.(...point);
+        }}
+        onPointerMove={event => {
+          if (drag.current !== event.pointerId) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (!(event.buttons & 1)) return cancelDrag();
+          pending.current = panoramaRasterPosition(
+            event.currentTarget.getBoundingClientRect(),
+            raster,
+            event.clientX,
+            event.clientY,
+            true
+          );
+          if (!frame.current) frame.current = requestAnimationFrame(flushPosition);
+        }}
+        onPointerUp={event => {
+          if (drag.current !== event.pointerId) return;
+          event.preventDefault();
+          event.stopPropagation();
+          pending.current = panoramaRasterPosition(
+            event.currentTarget.getBoundingClientRect(),
+            raster,
+            event.clientX,
+            event.clientY,
+            true
+          );
+          flushPosition();
+          cancelDrag();
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={cancelDrag}
+        onLostPointerCapture={cancelDrag}
         onClick={event => {
           if (!onPosition || !raster) return;
-          const rect = event.currentTarget.getBoundingClientRect();
-          const scale = Math.min(rect.width / raster.width, rect.height / raster.height);
-          const left = (rect.width - raster.width * scale) / 2;
-          const top = (rect.height - raster.height * scale) / 2;
-          const x = (event.clientX - rect.left - left) / scale;
-          const y = (event.clientY - rect.top - top) / scale;
-          if (x >= 0 && x < raster.width && y >= 0 && y < raster.height)
-            onPosition(x / (raster.width - 1), y / (raster.height - 1));
+          if (dragToPosition) {
+            event.stopPropagation();
+            return;
+          }
+          const point = panoramaRasterPosition(
+            event.currentTarget.getBoundingClientRect(),
+            raster,
+            event.clientX,
+            event.clientY
+          );
+          if (point) onPosition(...point);
         }}
       />
       {raster && (
@@ -104,26 +208,27 @@ export default function RasterView({
           preserveAspectRatio="xMidYMid meet"
           aria-hidden="true"
         >
-          {Number.isFinite(position) && position >= 0 && position <= 1 && (
+          {overlay}
+          {axesVisible && Number.isFinite(position) && position >= 0 && position <= 1 && (
             <line
               data-panorama-marker="vertical"
               x1={position * (raster.width - 1)}
               x2={position * (raster.width - 1)}
               y1="0"
               y2={raster.height}
-              stroke="#fbbf24"
+              stroke={ORBITAL_MPR_COLORS.sagittal}
               strokeWidth="1.25"
               vectorEffect="non-scaling-stroke"
             />
           )}
-          {Number.isFinite(slicePosition) && slicePosition >= 0 && slicePosition <= 1 && (
+          {axesVisible && Number.isFinite(slicePosition) && slicePosition >= 0 && slicePosition <= 1 && (
             <line
               data-panorama-marker="horizontal"
               x1="0"
               x2={raster.width}
               y1={slicePosition * (raster.height - 1)}
               y2={slicePosition * (raster.height - 1)}
-              stroke="#22c55e"
+              stroke={ORBITAL_MPR_COLORS.axial}
               strokeWidth="1.25"
               vectorEffect="non-scaling-stroke"
             />

@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useS3Loader } from '../utils/useS3Loader';
 import { s3FileService } from '../utils/S3FileService';
 import { validateViewerLaunch } from '../utils/viewerLaunch';
+import StudyLoadingScreen from '../components/StudyLoadingScreen/StudyLoadingScreen';
+import { getViewerOpenTracker } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 
 const TokenViewer: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const { loadFromS3, error, progress } = useS3Loader('segmentation/dicomlocal');
   const navigate = useNavigate();
   const [accessError, setAccessError] = useState<string | null>(null);
+  const [accessGranted, setAccessGranted] = useState(false);
   const config = (window as any).config || {};
   const disabled = Boolean(config.disableTokenViewer);
   const resolveUrl = config.viewerIntegration?.resolveUrl || '';
@@ -16,6 +19,8 @@ const TokenViewer: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
+    setAccessError(null);
+    setAccessGranted(false);
     const resolve = async () => {
       try {
         if (disabled || !resolveUrl) throw new Error('Открытие из личного кабинета пока не подключено.');
@@ -31,8 +36,10 @@ const TokenViewer: React.FC = () => {
         const launch = validateViewerLaunch(await response.json());
         if (!active) return;
         s3FileService.setStudyAccess(launch.s3Prefix, launch.access.resources, launch.access.expiresAt);
+        setAccessGranted(true);
         await loadFromS3(launch.s3Prefix, { sourceVersion: launch.sourceVersion });
       } catch (failure: any) {
+        if (active && failure.name !== 'AbortError') getViewerOpenTracker()?.fail('access-or-index-error');
         if (active && failure.name !== 'AbortError') setAccessError(failure.message || 'Ошибка доступа к исследованию');
       }
     };
@@ -42,14 +49,7 @@ const TokenViewer: React.FC = () => {
 
   const message = accessError || error;
   return (
-    <div className="flex flex-col h-screen w-screen items-center justify-center gap-6 p-8 bg-black text-white">
-      <h1 className="text-2xl font-bold">{message ? 'Просмотр пока недоступен' : 'Загрузка исследования'}</h1>
-      <p className="max-w-lg text-center text-gray-300" role={message ? 'alert' : 'status'}>
-        {message || progress.text}
-      </p>
-      {!message && <progress className="w-64" max={100} value={progress.percent} />}
-      {message && <button onClick={() => navigate('/')} className="px-6 py-2 bg-purple-600 rounded-lg">Вернуться в меню</button>}
-    </div>
+    <StudyLoadingScreen accessGranted={accessGranted} progress={progress} error={message} onBack={() => navigate('/')} />
   );
 };
 export default TokenViewer;

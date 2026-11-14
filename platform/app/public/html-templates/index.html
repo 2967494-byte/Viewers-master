@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -188,6 +188,7 @@
       as="script"
       type="text/javascript"
       src="<%= PUBLIC_URL %>app-config.js"
+      defer
     ></script>
     <script
       rel="preload"
@@ -197,6 +198,10 @@
     ></script>
 
     <title>Orbital3D Viewer</title>
+    <!-- Critical loading styles must work before the app bundles arrive. -->
+    <style>
+      html, body { margin: 0; background: #101319; }
+    </style>
 
     <script>
       function browserImportFunction(moduleId) {
@@ -225,6 +230,8 @@
   <body>
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <div id="react-portal"></div>
+    <div id="orbital-study-loader"><template><style><%= STUDY_LOADING_CSS %></style><%= STUDY_LOADING_HTML %></template></div>
+    <script><%= STUDY_LOADING_BOOTSTRAP %></script>
     <div id="root"></div>
   </body>
 </html>

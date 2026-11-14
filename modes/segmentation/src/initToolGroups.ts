@@ -1,16 +1,13 @@
 import { MIN_SEGMENTATION_DRAWING_RADIUS, MAX_SEGMENTATION_DRAWING_RADIUS } from './constants';
+import { ORBITAL_MPR_COLORS } from '@ohif/core/src/constants/orbitalTheme';
 
 const colours = {
-  'viewport-0': 'rgb(200, 0, 0)',
-  'viewport-1': 'rgb(200, 200, 0)',
-  'viewport-2': 'rgb(0, 200, 0)',
+  'viewport-0': ORBITAL_MPR_COLORS.axial,
+  'viewport-1': ORBITAL_MPR_COLORS.sagittal,
+  'viewport-2': ORBITAL_MPR_COLORS.coronal,
 };
 
-const colorsByOrientation = {
-  axial: 'rgb(0, 200, 0)',      // Green - horizontal line on coronal/sagittal views
-  sagittal: 'rgb(255, 165, 0)', // Orange - vertical line on coronal view
-  coronal: 'rgb(0, 200, 0)',    // Green - matches axial for horizontal
-};
+const colorsByOrientation = ORBITAL_MPR_COLORS;
 
 function createTools({ utilityModule, commandsManager }) {
   const { Enums } = utilityModule.exports;
@@ -153,6 +150,7 @@ function createTools({ utilityModule, commandsManager }) {
       */
       { toolName: 'StackScroll' },
       { toolName: 'Magnify' },
+      { toolName: 'DentalMagnify' },
       { toolName: 'WindowLevelRegion' },
 
       /*
@@ -266,7 +264,7 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
           yOffset: 0.05,
         },
         autoPan: {
-          enabled: true,
+          enabled: false,
           panSize: 5,
         },
         getReferenceLineColor: viewportId => {
@@ -276,11 +274,11 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
             return (
               colours[viewportOptions.id] ||
               colorsByOrientation[viewportOptions.orientation] ||
-              '#0c0'
+              ORBITAL_MPR_COLORS.axial
             );
           } else {
             console.warn('missing viewport?', viewportId);
-            return '#0c0';
+            return ORBITAL_MPR_COLORS.axial;
           }
         },
       },
@@ -340,16 +338,15 @@ function initVolume3DToolGroup(extensionManager, toolGroupService) {
             enabled: false,
           },
           getReferenceLineColor: (viewportId) => {
-             // Simple color mapping based on ID or orientation
-             if (viewportId.includes('axial')) return '#4ADE80'; // Green
-             if (viewportId.includes('sagittal')) return '#F59E0B'; // Orange
-             if (viewportId.includes('coronal')) return '#FFD700'; // Gold
-             return '#00ff00';
+             return Object.entries(ORBITAL_MPR_COLORS)
+               .find(([orientation]) => viewportId.includes(orientation))?.[1]
+               || ORBITAL_MPR_COLORS.axial;
           },
         },
       },
     ],
     passive: [
+      { toolName: 'DentalMagnify' },
       ...['DentalLength2D', 'DentalLength3D', 'DentalAngle3D', 'DentalTapeLine', 'DentalTapeCurve', 'DentalCanal']
         .map(toolName => ({ toolName })),
       {

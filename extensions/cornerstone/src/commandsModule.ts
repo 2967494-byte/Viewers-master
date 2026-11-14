@@ -61,8 +61,10 @@ const { add, intersect, subtract, copy } = cstUtils.contourSegmentation;
 import ImplantLibraryModal from './components/ImplantLibrary/ImplantLibraryModal';
 import { START_MANUAL_PANORAMA, START_AUTOMATIC_PANORAMA } from './components/ManualPanorama/ManualPanorama';
 import { activateDentalTool, DENTAL_TOOL_NAMES } from './utils/dentalToolControls';
-import { cancelDentalDraft, renderDentalAnnotations } from './tools/DentalMeasurementTools';
+import { cancelDentalDraft, hasDentalDraft, renderDentalAnnotations } from './tools/DentalMeasurementTools';
 import React from 'react';
+import { normalizeMagnification } from '@ohif/core/src/constants/orbitalTheme';
+import { getAxesVisible, setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
 
 const { DefaultHistoryMemo } = csUtils.HistoryMemo;
 const toggleSyncFunctions = {
@@ -211,12 +213,20 @@ function commandsModule({
   };
 
   const actions = {
-    activateDentalTool: ({ tool, implant }) => {
+    toggleDentalAxes: ({ fromKeyboard = false } = {}) => {
+      if (fromKeyboard && (hasDentalDraft() || cornerstoneTools.state.isInteractingWithTool)) return false;
+      setAxesVisible(!getAxesVisible());
+      renderDentalAnnotations();
+      return true;
+    },
+    activateDentalTool: ({ tool, implant, magnification = 3 }) => {
       const changed = activateDentalTool(ToolGroupManager.getAllToolGroups(), tool, implant, () => {
         const mpr = ToolGroupManager.getAllToolGroups().find(group => group.id === 'mpr');
         if (mpr?.getActivePrimaryMouseButtonTool() === 'DentalImplant') actions.activateDentalTool({ tool: 'navigate' });
       });
-      if (changed) window.dispatchEvent(new CustomEvent('orbital:dental-tool-changed', { detail: { tool } }));
+      if (changed) window.dispatchEvent(new CustomEvent('orbital:dental-tool-changed', {
+        detail: { tool, magnification: normalizeMagnification(magnification) },
+      }));
       return changed;
     },
     deleteDentalAnnotation: () => {
@@ -2493,6 +2503,7 @@ function commandsModule({
   };
 
   const definitions = {
+    toggleDentalAxes: { commandFn: actions.toggleDentalAxes },
     activateDentalTool: { commandFn: actions.activateDentalTool },
     deleteDentalAnnotation: { commandFn: actions.deleteDentalAnnotation },
     generateDentalPanorama: {

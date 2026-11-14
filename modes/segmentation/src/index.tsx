@@ -1,4 +1,5 @@
 import React from 'react';
+import { ORBITAL_MPR_COLORS } from '@ohif/core/src/constants/orbitalTheme';
 import { id } from './id';
 import toolbarButtons from './toolbarButtons';
 import initToolGroups from './initToolGroups';
@@ -54,15 +55,11 @@ function modeFactory({ modeConfiguration }) {
               const options = cornerstoneViewportService.getViewportInfo(viewportId)?.viewportOptions;
               if (options?.orientation) {
                 const orientation = options.orientation.toLowerCase();
-                let colorClass = 'text-[#FFD700]'; // Default Coronal/Gold
-                if (orientation === 'axial') {
-                  colorClass = 'text-[#4ADE80]'; // Green
-                } else if (orientation === 'sagittal') {
-                  colorClass = 'text-[#F59E0B]'; // Orange
-                }
-
                 return (
-                  <div className={`overlay-item flex flex-row text-[14px] leading-none font-normal ${colorClass} mb-2`}>
+                  <div
+                    className="orbital-plane-label overlay-item mb-2 flex flex-row text-[14px] font-medium leading-none"
+                    style={{ color: ORBITAL_MPR_COLORS[orientation] || '#d5dbe3' }}
+                  >
                     {options.orientation.charAt(0).toUpperCase() + options.orientation.slice(1)}
                   </div>
                 );
@@ -262,7 +259,7 @@ function modeFactory({ modeConfiguration }) {
                 ticks.push(
                   <div
                     key={i}
-                    className="absolute right-0 bg-[#FFD700]"
+                    className="absolute right-0 bg-[#b4beca]"
                     style={{
                       top: `${(i / 10) * 100}%`,
                       width: i % 2 === 0 ? '8px' : '4px',
@@ -280,10 +277,10 @@ function modeFactory({ modeConfiguration }) {
                     transform: 'translateY(50%)'
                   }}
                 >
-                  <div className="relative border-r border-[#FFD700] w-4 mr-2" style={{ height: `${height5cm}px` }}>
+                  <div className="relative border-r border-[#b4beca] w-4 mr-2" style={{ height: `${height5cm}px` }}>
                     {ticks}
                   </div>
-                  <div className="text-[10px] leading-3 text-[#FFD700] mt-1 mr-2 text-center w-full">
+                  <div className="text-[10px] leading-3 text-[#b4beca] mt-1 mr-2 text-center w-full">
                     5 cm
                   </div>
                 </div>

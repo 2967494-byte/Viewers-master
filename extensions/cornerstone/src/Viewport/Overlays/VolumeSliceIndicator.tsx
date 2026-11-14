@@ -2,9 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { Enums, getEnabledElement } from '@cornerstonejs/core';
 import type { VolumeViewport, BaseVolumeViewport, Types } from '@cornerstonejs/core';
 import intersectVolumePlane from '../../utils/intersectVolumePlane';
+import { ORBITAL_MPR_COLORS } from '@ohif/core/src/constants/orbitalTheme';
+import useAxesVisibility from '@ohif/core/src/hooks/useAxesVisibility';
 
 /** Project the axial MPR plane independently of 3D material/VOI. */
 export default function VolumeSliceIndicator({ element, sourceViewportId }) {
+  const axesVisible = useAxesVisibility();
   const pathRef = useRef<SVGPathElement>(null);
   useEffect(() => {
     if (!element || !sourceViewportId) return;
@@ -71,12 +74,13 @@ export default function VolumeSliceIndicator({ element, sourceViewportId }) {
         height: '100%',
         pointerEvents: 'none',
         overflow: 'hidden',
+        visibility: axesVisible ? 'visible' : 'hidden',
       }}
     >
       <path
         ref={pathRef}
         fill="none"
-        stroke="#00c800"
+        stroke={ORBITAL_MPR_COLORS.axial}
         strokeWidth="2"
         style={{ filter: 'drop-shadow(0 0 1px #000)' }}
       />

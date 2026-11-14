@@ -12,6 +12,7 @@ import { Types } from '@ohif/core';
 import LoadingProgressBar from './LoadingProgressBar';
 import DentalPanoramaButton from './DentalPanoramaButton';
 import DentalToolsToolbar from './DentalToolsToolbar';
+import RenderingModeControl from './RenderingModeControl';
 
 function ViewerHeader({
   appConfig,
@@ -112,6 +113,7 @@ function ViewerHeader({
   return (
     <>
       <Header
+        className="orbital-viewer-header"
         menuOptions={menuOptions}
         isReturnEnabled={!!appConfig.showStudyList}
         onClickReturnButton={onClickReturnButton}
@@ -119,6 +121,7 @@ function ViewerHeader({
         FullHeightTools={
           <div className="flex h-full items-center">
             {hasAxialViewport && <DentalToolsToolbar commandsManager={commandsManager} />}
+            {hasAxialViewport && <RenderingModeControl />}
             <div
               id="orbital-panorama-header-slot"
               className="flex h-full"

@@ -1,0 +1,28 @@
+<main class="study-loading-screen">
+  <div class="study-loading-brand">
+    <img src="__PUBLIC_URL__assets/orbital-loading-logo.png" width="255" height="29" alt="ORBITAL 3D" />
+    <span>Просмотр исследований</span>
+  </div>
+  <section class="study-loading-card" aria-labelledby="study-loading-title" aria-busy="true">
+    <div class="study-loading-symbol" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><path d="m16 3 11 6v14l-11 6-11-6V9z M5 9l11 6 11-6 M16 15v14" /><path class="study-loading-scan" d="m5 16 11 6 11-6" /></svg>
+    </div>
+    <p class="study-loading-eyebrow">ORBITAL 3D VIEWER</p>
+    <h1 id="study-loading-title">Загрузка исследования</h1>
+    <p class="study-loading-intro">Готовим снимки для вашей работы</p>
+    <div class="study-loading-processing">
+    <div class="study-loading-progress-heading"><p role="status">Подключаем просмотрщик…</p><span>Подключение</span></div>
+    <div class="study-loading-track is-indeterminate" role="progressbar" aria-label="Подготовка исследования"><div class="study-loading-fill"></div></div>
+    <ol class="study-loading-steps" aria-label="Этапы подготовки">
+      <li data-state="current" aria-current="step"><span class="study-loading-step-number" aria-hidden="true">01</span><span>Доступ</span></li>
+      <li data-state="pending"><span class="study-loading-step-number" aria-hidden="true">02</span><span>Данные</span></li>
+      <li data-state="pending"><span class="study-loading-step-number" aria-hidden="true">03</span><span>Открытие</span></li>
+    </ol>
+    </div>
+    <div class="study-loading-problem" hidden>
+      <p class="study-loading-error" role="alert"></p>
+      <button class="study-loading-back" type="button">Вернуться в меню <span aria-hidden="true">↗</span></button>
+    </div>
+  </section>
+  <p class="study-loading-footnote">Исследование откроется автоматически</p>
+</main>

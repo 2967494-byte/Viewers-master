@@ -1,6 +1,7 @@
 // https://developers.google.com/web/tools/workbox/guides/codelabs/webpack
 // ~~ WebPack
 const path = require('path');
+const fs = require('fs');
 const { merge } = require('webpack-merge');
 const webpack = require('webpack');
 const webpackBase = require('./../../../.webpack/webpack.base.js');
@@ -128,6 +129,9 @@ module.exports = (env, argv) => {
         filename: 'index.html',
         templateParameters: {
           PUBLIC_URL: PUBLIC_URL,
+          STUDY_LOADING_CSS: fs.readFileSync(path.join(SRC_DIR, 'components/StudyLoadingScreen/StudyLoadingScreen.css'), 'utf8'),
+          STUDY_LOADING_HTML: fs.readFileSync(path.join(PUBLIC_DIR, 'html-templates/study-loading.html'), 'utf8').replaceAll('__PUBLIC_URL__', PUBLIC_URL),
+          STUDY_LOADING_BOOTSTRAP: fs.readFileSync(path.join(SRC_DIR, 'components/StudyLoadingScreen/bootstrap.js'), 'utf8'),
         },
       }),
       // Generate a service worker for fast local loads
@@ -211,8 +215,8 @@ module.exports = (env, argv) => {
   if (isProdBuild) {
     mergedConfig.plugins.push(
       new MiniCssExtractPlugin({
-        filename: '[name].bundle.css',
-        chunkFilename: '[id].css',
+        filename: '[name].bundle.[contenthash].css',
+        chunkFilename: '[id].[contenthash].css',
       })
     );
   }

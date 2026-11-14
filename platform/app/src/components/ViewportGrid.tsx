@@ -215,7 +215,9 @@ function ViewerViewportGrid(props: withAppTypes) {
           return;
         }
 
-        if (event && (appConfig?.activateViewportBeforeInteraction ?? true)) {
+        // By default the first gesture both activates the pane and operates its tool.
+        // Cancelling pointerdown also cancels the mouse events used by Cornerstone.
+        if (event && (appConfig?.activateViewportBeforeInteraction ?? false)) {
           event.preventDefault();
           event.stopPropagation();
         }
@@ -295,7 +297,7 @@ function ViewerViewportGrid(props: withAppTypes) {
     }
 
     return viewportPanes;
-  }, [viewports, activeViewportId, viewportComponents, dataSource]);
+  }, [viewports, activeViewportId, viewportComponents, dataSource, appConfig]);
 
   /**
    * Loading indicator until numCols and numRows are gotten from the HangingProtocolService

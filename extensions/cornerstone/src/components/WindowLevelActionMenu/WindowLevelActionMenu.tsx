@@ -2,8 +2,6 @@ import React, { ReactElement, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AllInOneMenu } from '@ohif/ui-next';
 import { Colormap } from './Colormap';
-import { Colorbar } from './Colorbar';
-import { WindowLevel } from './WindowLevel';
 import { VolumeRenderingPresets } from './VolumeRenderingPresets';
 import { VolumeRenderingOptions } from './VolumeRenderingOptions';
 import { useViewportRendering } from '../../hooks/useViewportRendering';
@@ -14,6 +12,7 @@ export type WindowLevelActionMenuProps = {
   element?: HTMLElement;
   align?: 'start' | 'end' | 'center';
   side?: 'top' | 'bottom' | 'left' | 'right';
+  onClose?: () => void;
 };
 
 export function WindowLevelActionMenu({
@@ -21,12 +20,14 @@ export function WindowLevelActionMenu({
   element,
   align,
   side,
+  onClose,
 }: WindowLevelActionMenuProps): ReactElement {
   return (
     <WindowLevelActionMenuContent
       viewportId={viewportId}
       align={align}
       side={side}
+      onClose={onClose}
     />
   );
 }
@@ -35,10 +36,12 @@ export function WindowLevelActionMenuContent({
   viewportId,
   align,
   side,
+  onClose,
 }: {
   viewportId: string;
   align?: string;
   side?: string;
+  onClose?: () => void;
 }): ReactElement {
   const { t } = useTranslation('WindowLevelActionMenu');
   // Use a stable key for the menu to avoid infinite re-renders
@@ -47,7 +50,6 @@ export function WindowLevelActionMenuContent({
   const {
     is3DVolume,
     colorbarProperties,
-    windowLevelPresets,
     volumeRenderingPresets,
     volumeRenderingQualityRange,
   } = useViewportRendering(viewportId);
@@ -60,39 +62,25 @@ export function WindowLevelActionMenuContent({
       align={align}
       side={side}
       backLabel={i18n.t('WindowLevelActionMenu:Back to Display Options')}
+      onVisibilityChange={visible => {
+        if (!visible) {
+          onClose?.();
+        }
+      }}
     >
-      <AllInOneMenu.ItemPanel>
-        {!is3DVolume && <Colorbar viewportId={viewportId} />}
+      {!is3DVolume ? (
+        colorbarProperties?.colormaps && <Colormap viewportId={viewportId} />
+      ) : (
+        <AllInOneMenu.ItemPanel>
+          {volumeRenderingPresets && <VolumeRenderingPresets viewportId={viewportId} />}
 
-        {colorbarProperties?.colormaps && !is3DVolume && (
-          <AllInOneMenu.SubMenu
-            key="colorLUTPresets"
-            itemLabel={t('Color LUT')}
-            itemIcon="icon-color-lut"
-            className="flex h-[calc(100%-32px)] flex-col"
-          >
-            <Colormap viewportId={viewportId} />
-          </AllInOneMenu.SubMenu>
-        )}
-
-        {windowLevelPresets?.length > 0 && !is3DVolume && (
-          <AllInOneMenu.SubMenu
-            key="windowLevelPresets"
-            itemLabel={t('Modality Window Presets')}
-            itemIcon="viewport-window-level"
-          >
-            <WindowLevel viewportId={viewportId} />
-          </AllInOneMenu.SubMenu>
-        )}
-
-        {volumeRenderingPresets && is3DVolume && <VolumeRenderingPresets viewportId={viewportId} />}
-
-        {volumeRenderingQualityRange && is3DVolume && (
-          <AllInOneMenu.SubMenu itemLabel={t('Rendering Options')}>
-            <VolumeRenderingOptions viewportId={viewportId} />
-          </AllInOneMenu.SubMenu>
-        )}
-      </AllInOneMenu.ItemPanel>
+          {volumeRenderingQualityRange && (
+            <AllInOneMenu.SubMenu itemLabel={t('Rendering Options')}>
+              <VolumeRenderingOptions viewportId={viewportId} />
+            </AllInOneMenu.SubMenu>
+          )}
+        </AllInOneMenu.ItemPanel>
+      )}
     </AllInOneMenu.Menu>
   );
 }

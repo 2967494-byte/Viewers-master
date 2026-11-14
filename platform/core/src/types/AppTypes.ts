@@ -124,6 +124,7 @@ declare global {
       showLoadingIndicator?: boolean;
       supportsWildcard?: boolean;
       allowMultiSelectExport?: boolean;
+      /** Consume the first gesture to select a viewport. Default: false. */
       activateViewportBeforeInteraction?: boolean;
       autoPlayCine?: boolean;
       showStudyList?: boolean;

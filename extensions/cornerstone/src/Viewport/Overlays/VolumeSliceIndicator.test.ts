@@ -1,4 +1,5 @@
 import React from 'react';
+import { setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
 import { render, act } from '@testing-library/react';
 import { getEnabledElement } from '@cornerstonejs/core';
 import VolumeSliceIndicator from './VolumeSliceIndicator';
@@ -67,11 +68,26 @@ describe('VolumeSliceIndicator synchronization and lifecycle', () => {
   });
 
   afterEach(() => {
+    act(() => setAxesVisible(true));
     source.element.remove();
     target.element.remove();
     global.ResizeObserver = originalResizeObserver;
     global.requestAnimationFrame = originalRAF;
     global.cancelAnimationFrame = originalCancel;
+  });
+
+  it('hides and restores the projected plane without discarding its position', () => {
+    const view = render(React.createElement(VolumeSliceIndicator, { element: target.element, sourceViewportId: 'mpr-axial' }));
+    flush();
+    const path = view.container.querySelector('path');
+    const position = path.getAttribute('d');
+    act(() => setAxesVisible(false));
+    expect(view.container.querySelector('svg').style.visibility).toBe('hidden');
+    expect(path.getAttribute('d')).toBe(position);
+    act(() => setAxesVisible(true));
+    expect(view.container.querySelector('svg').style.visibility).toBe('visible');
+    expect(path.getAttribute('d')).toBe(position);
+    view.unmount();
   });
 
   it('follows non-bubbling MPR events and 3D projection changes, coalescing redraws', () => {

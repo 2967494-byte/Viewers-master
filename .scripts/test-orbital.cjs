@@ -24,20 +24,21 @@ const addDirectory = relative => {
 
 addDirectory('extensions/cornerstone/src/components/ManualPanorama');
 addDirectory('extensions/cornerstone/src/components/ImplantLibrary');
-for (const name of ['DentalCrosshairsTool', 'DentalImplantTool', 'DentalMeasurementTools', 'dentalGeometry', 'implantGeometry']) {
+for (const name of ['DentalCrosshairsTool', 'dentalCrosshairHandles', 'DentalImplantTool', 'DentalMeasurementTools', 'dentalGeometry', 'implantGeometry']) {
   add(`extensions/cornerstone/src/tools/${name}.test.ts`);
 }
-for (const name of ['dentalToolControls', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout']) {
+for (const name of ['dentalToolControls', 'crosshairSlabControls', 'viewportImageFilter', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout', 'largeVolumeTexture', 'adaptiveVolumeTexture', 'automaticGpuProfile', 'gpuStartupProfile', 'gpuDiagnosticProfile', 'gpuEngineDiagnostics', 'hiddenPanoramaRenderGuard', 'viewerOpenTelemetry', 'zoomMprViewport', 'preserveMprResize']) {
   add(`extensions/cornerstone/src/utils/${name}.test.ts`);
 }
 add('extensions/cornerstone/src/Viewport/Overlays/VolumeSliceIndicator.test.ts');
-for (const name of ['DentalToolsToolbar', 'LoadingProgressBar']) {
+for (const name of ['DentalToolsToolbar', 'RenderingModeControl', 'LoadingProgressBar', 'magnifierGeometry']) {
   add(`extensions/default/src/ViewerLayout/${name}.test.ts`);
 }
-for (const name of ['S3FileService', 'orbitalS3ImageLoader', 's3CompressedStudy', 's3MetadataIndex', 'useS3Loader', 'viewerLaunch']) {
+for (const name of ['S3FileService', 'orbitalS3ImageLoader', 's3CompressedStudy', 's3MetadataIndex', 'useS3Loader', 'viewerLaunch', 'volumeRenderingSupport']) {
   add(`platform/app/src/utils/${name}.test.ts`);
 }
 add('platform/app/src/routes/Local/__tests__/readDicomMetadataFast.test.js');
+add('platform/app/src/components/ViewportGrid.test.ts');
 
 console.log(`ORBITAL: running ${tests.size} regression suites.`);
 const result = spawnSync(process.execPath, [

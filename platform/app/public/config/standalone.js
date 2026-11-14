@@ -9,6 +9,8 @@ window.config = {
   routerBasename: '/3dviewer/',
   // Stage-1 flags consumed by Local / TokenViewer
   standaloneMode: true,
+  // Move the crosshair on the first gesture, even in an inactive pane.
+  activateViewportBeforeInteraction: false,
   hideCloudStorage: false,
   disableTokenViewer: false,
   viewerIntegration: {

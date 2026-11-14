@@ -12,6 +12,32 @@ const makeGroup = (id, primary) => ({
 });
 
 describe('Dental toolbar tool bindings', () => {
+  it('activates primary Pan in MPR and 3D and protects panning from passive annotation selection', () => {
+    const pan = {} as any;
+    const groups = [makeGroup('mpr', 'Crosshairs'), makeGroup('mpr-3d', 'TrackballRotate')];
+    groups.forEach(group => { group['getToolInstance'] = () => pan; });
+    expect(activateDentalTool(groups, 'pan')).toBe(true);
+    for (const group of groups) {
+      expect(group.setToolActive).toHaveBeenCalledWith('Pan', { bindings: [{ mouseButton: 1 }] });
+      expect(group.setToolPassive).not.toHaveBeenCalledWith('Zoom');
+      expect(group.setToolDisabled).not.toHaveBeenCalled();
+    }
+    const event = { preventDefault: jest.fn() };
+    expect(pan.preMouseDownCallback(event)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalled();
+  });
+  it('activates the read-only loupe in both panes and preserves pan and zoom', () => {
+    const groups = [makeGroup('mpr', 'Crosshairs'), makeGroup('mpr-3d', 'TrackballRotate')];
+    activateDentalTool(groups, 'magnify');
+    for (const group of groups) {
+      expect(group.setToolActive).toHaveBeenCalledWith('DentalMagnify', { bindings: [{ mouseButton: 1 }] });
+      expect(group.setToolPassive).not.toHaveBeenCalledWith('Pan');
+      expect(group.setToolPassive).not.toHaveBeenCalledWith('Zoom');
+    }
+    activateDentalTool(groups, 'navigate');
+    expect(groups[0].setToolActive).toHaveBeenLastCalledWith('Crosshairs', expect.anything());
+    expect(groups[1].setToolActive).toHaveBeenLastCalledWith('TrackballRotate', expect.anything());
+  });
   it('activates spatial tools in both MPR and 3D, preserving auxiliary bindings', () => {
     const mpr = makeGroup('mpr', 'Crosshairs'),
       vr = makeGroup('mpr-3d', 'TrackballRotate');

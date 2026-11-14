@@ -1,5 +1,7 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
+import { setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
+import { setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 import RasterView from './RasterView';
 
 describe('Panorama markers independent from the grayscale raster', () => {
@@ -24,7 +26,38 @@ describe('Panorama markers independent from the grayscale raster', () => {
     };
     spy = jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx);
   });
-  afterEach(() => spy.mockRestore());
+  afterEach(() => { spy.mockRestore(); act(() => { setAxesVisible(true); setImageFilter('none'); }); });
+  it('filters panorama pixels and restores them without altering the source raster or overlay', () => {
+    const pixels = new Float32Array(200).fill(100);
+    pixels[85] = 200;
+    const source = pixels.slice();
+    const view = render(React.createElement(RasterView, { raster: { ...raster, pixels },
+      range: { lower: 0, upper: 255 }, position: .5, slicePosition: .5 }));
+    const first = ctx.putImageData.mock.calls[0][0].data.slice();
+    act(() => setImageFilter('smooth'));
+    expect(ctx.putImageData.mock.calls[1][0].data).not.toEqual(first);
+    expect(view.container.querySelectorAll('line')).toHaveLength(2);
+    expect(pixels).toEqual(source);
+    act(() => setImageFilter('none'));
+    expect(ctx.putImageData.mock.calls[2][0].data).toEqual(first);
+    view.unmount();
+  });
+  it('hides only coordinate lines, preserving implants, pixels and panorama navigation', () => {
+    const onPosition = jest.fn();
+    const view = render(React.createElement(RasterView, { raster, range, position: .25, slicePosition: .5,
+      onPosition, overlay: React.createElement('polygon', { points: '1,1 5,1 5,5' }) }));
+    const canvas = view.container.querySelector('canvas');
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100 }) as DOMRect;
+    act(() => setAxesVisible(false));
+    expect(view.container.querySelectorAll('line')).toHaveLength(0);
+    expect(view.container.querySelector('polygon')).toBeTruthy();
+    fireEvent.click(canvas, { clientX: 50, clientY: 50 });
+    expect(onPosition).toHaveBeenCalled();
+    act(() => setAxesVisible(true));
+    expect(view.container.querySelectorAll('line')).toHaveLength(2);
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
   it('shows both lines immediately and moves them without copying image pixels again', () => {
     const view = render(
       React.createElement(RasterView, {
@@ -68,6 +101,26 @@ describe('Panorama markers independent from the grayscale raster', () => {
     );
     expect(view.container.querySelector('[data-panorama-marker="vertical"]')).toBeTruthy();
     expect(view.container.querySelector('[data-panorama-marker="horizontal"]')).toBe(null);
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
+  it('updates implant overlays without repainting or resampling the grayscale image', () => {
+    const view = render(
+      React.createElement(RasterView, {
+        raster,
+        range,
+        overlay: React.createElement('polygon', { points: '1,1 5,1 5,5' }),
+      })
+    );
+    expect(view.container.querySelector('svg polygon').getAttribute('points')).toBe('1,1 5,1 5,5');
+    view.rerender(
+      React.createElement(RasterView, {
+        raster,
+        range,
+        overlay: React.createElement('polygon', { points: '2,2 8,2 8,8' }),
+      })
+    );
+    expect(view.container.querySelector('svg polygon').getAttribute('points')).toBe('2,2 8,2 8,8');
     expect(ctx.putImageData).toHaveBeenCalledTimes(1);
     view.unmount();
   });

@@ -10,6 +10,7 @@ import S3ProgressModal from '../components/S3ProgressModal/S3ProgressModal';
 import { imageLoader } from '@cornerstonejs/core';
 import { prepareS3Instances } from './s3MetadataIndex';
 import { loadCompressedStudy } from './s3CompressedStudy';
+import { getViewerOpenTracker } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 
 export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   };
 
   const fail = useCallback((message: string) => {
+    getViewerOpenTracker()?.fail('index-load-error');
     console.error('S3 Loader error:', message);
     setInitProgress(message, 0);
     setError(message);

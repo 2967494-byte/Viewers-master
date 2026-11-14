@@ -1,5 +1,6 @@
 import { AnnotationDisplayTool, utilities, annotation as annotationModule } from '@cornerstonejs/tools';
 import { eventTarget, Enums, getEnabledElement } from '@cornerstonejs/core';
+import { getAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
 
 // Get utilities
 const { triggerAnnotationRender } = utilities;
@@ -59,6 +60,10 @@ class VerticalScaleOverlayTool extends AnnotationDisplayTool {
   }
 
   renderAnnotation(enabledElement, svgDrawingHelper) {
+    // The focal dot belongs to the crosshair overlay, even though a separate
+    // tool draws it. Leave it untouched so SVG cleanup removes it with the axes.
+    if (!getAxesVisible()) return false;
+
     const { viewport } = enabledElement;
     const { element } = viewport;
 
@@ -168,7 +173,7 @@ class VerticalScaleOverlayTool extends AnnotationDisplayTool {
             cx: canvasPos[0],
             cy: canvasPos[1],
             r: 1,
-            fill: 'rgb(0, 255, 255)',
+            fill: '#d5dbe3',
           });
         }
       } catch (e) {

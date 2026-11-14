@@ -1,0 +1,23 @@
+/* Neutral chrome keeps the study as the brightest part of the workspace. */
+.orbital-viewer {
+  --highlight: 275 100% 62%;
+  --primary: 275 100% 72%;
+  --input: 215 13% 22%;
+  color: #d5dbe3;
+  background: #111418;
+}
+.orbital-viewer .orbital-viewer-header {
+  background: #14181e !important;
+  border-bottom: 1px solid #30363e;
+}
+.orbital-viewer-header [data-cy='return-to-work-list'] img {
+  max-width: 265px;
+  height: 27px !important;
+  object-fit: contain;
+}
+.orbital-viewer-header [data-cy='return-to-work-list'] > svg {
+  color: #a9b4c2;
+}
+.orbital-plane-label {
+  letter-spacing: 0.02em;
+}

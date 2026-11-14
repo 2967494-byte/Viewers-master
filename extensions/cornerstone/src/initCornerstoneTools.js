@@ -57,6 +57,7 @@ import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 import VolumeRotateMouseWheelTool from './tools/VolumeRotateMouseWheelTool';
 import DentalImplantTool from './tools/DentalImplantTool';
 import CrosshairsTool from './tools/DentalCrosshairsTool';
+import DentalMagnifyTool from './tools/DentalMagnifyTool';
 import { dentalMeasurementTools } from './tools/DentalMeasurementTools';
 
 export default function initCornerstoneTools(configuration = {}) {
@@ -97,6 +98,7 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(CobbAngleTool);
   addTool(MagnifyTool);
   addTool(CrosshairsTool);
+  addTool(DentalMagnifyTool);
   addTool(RectangleScissorsTool);
   addTool(SphereScissorsTool);
   addTool(CircleScissorsTool);
@@ -206,6 +208,7 @@ const toolNames = {
   FocalPointCross: FocalPointCrossTool.toolName,
   VolumeRotateMouseWheel: VolumeRotateMouseWheelTool.toolName,
   DentalImplant: DentalImplantTool.toolName,
+  DentalMagnify: DentalMagnifyTool.toolName,
 };
 
 export { toolNames };

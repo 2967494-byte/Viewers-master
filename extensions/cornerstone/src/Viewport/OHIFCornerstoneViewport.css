@@ -52,12 +52,24 @@
 .mpr-focus-button {
   position: absolute; top: 6px; right: 7px; z-index: 15;
   display: grid; place-items: center; width: 28px; height: 28px;
-  color: #cbd5e1; background: #07101dd9; border: 1px solid #344b61; border-radius: 5px;
+  color: #b4beca; background: #181e26e6; border: 1px solid #3c444f; border-radius: 5px;
   cursor: pointer;
 }
-.mpr-focus-button:hover, .mpr-focus-button:focus-visible { color: #67e8f9; border-color: #38bdf8; outline: 2px solid #38bdf855; }
-.mpr-focus-button[aria-pressed="true"] { color: #67e8f9; background: #123249; }
-.mpr-focus-enabled [data-cy="viewport-overlay-top-right"] { right: 52px; }
+.mpr-focus-button:hover, .mpr-focus-button:focus-visible { color: #eedbff; border-color: #ac3dff; outline: 2px solid #ac3dff44; }
+.mpr-focus-button[aria-pressed="true"] { color: #e6ccff; background: #34204a; border-color: #ac3dff; }
+.mpr-focus-enabled [data-cy="viewport-overlay-top-right"] { right: 118px; }
 body.manual-panorama-active .mpr-focus-button { display: none; }
 .mpr-panorama-toggle { right: 41px; }
 .mpr-panorama-edit { right: 75px; }
+.mpr-zoom-in { right: 75px; font-size: 22px; line-height: 1; }
+.mpr-zoom-out { right: 41px; font-size: 22px; line-height: 1; }
+.mpr-focus-button:disabled { opacity: 0.4; cursor: default; }
+
+body.dental-pan-active .cornerstone-viewport-element,
+body.dental-pan-active .cornerstone-viewport-element canvas {
+  cursor: grab !important;
+}
+body.dental-pan-active .cornerstone-viewport-element:active,
+body.dental-pan-active .cornerstone-viewport-element:active canvas {
+  cursor: grabbing !important;
+}

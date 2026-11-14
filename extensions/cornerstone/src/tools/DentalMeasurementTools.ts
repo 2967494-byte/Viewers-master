@@ -28,6 +28,8 @@ import {
 type Draft = { annotation: any; element: HTMLDivElement; preview?: Point3; cleanup: () => void };
 const drafts = new Map<string, Draft>();
 
+export const hasDentalDraft = () => drafts.size > 0;
+
 export function cancelDentalDraft(uid: string) {
   for (const [name, draft] of drafts) {
     if (draft.annotation.annotationUID !== uid) continue;
@@ -205,11 +207,12 @@ class DentalMeasurementTool extends AnnotationTool {
           renderDentalAnnotations();
         }
       };
-      window.addEventListener('keydown', keydown);
+      // OHIF's document hotkeys stop bubbling; finish drafts before that handler.
+      window.addEventListener('keydown', keydown, true);
       draft = {
         annotation: item,
         element,
-        cleanup: () => window.removeEventListener('keydown', keydown),
+        cleanup: () => window.removeEventListener('keydown', keydown, true),
       };
       drafts.set(name, draft);
     } else {

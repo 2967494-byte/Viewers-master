@@ -1,6 +1,6 @@
 // External
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import PropTypes from 'prop-types';
 import i18n from '@ohif/i18n';
 import { I18nextProvider } from 'react-i18next';
@@ -36,6 +36,18 @@ import appInit from './appInit.js';
 import OpenIdConnectRoutes from './utils/OpenIdConnectRoutes';
 import { ShepherdJourneyProvider } from 'react-shepherd';
 import './App.css';
+import StudyLoadingScreen from './components/StudyLoadingScreen/StudyLoadingScreen';
+import {
+  checkVolumeRenderingSupport,
+  WEBGL2_HELP,
+  WEBGL2_UNAVAILABLE,
+} from './utils/volumeRenderingSupport';
+import {
+  getGraphicsError,
+  subscribeGraphicsError,
+} from '@ohif/core/src/constants/orbitalRendering';
+import { initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { startViewerOpenTelemetry, getViewerOpenTracker, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 
 let commandsManager: CommandsManager,
   extensionManager: ExtensionManager,
@@ -70,16 +82,76 @@ function App({
   defaultModes = [],
 }) {
   const [init, setInit] = useState(null);
+  const [startupError, setStartupError] = useState<string | null>(null);
+  const graphicsError = useSyncExternalStore(
+    subscribeGraphicsError,
+    getGraphicsError,
+    getGraphicsError
+  );
   useEffect(() => {
+    try {
+      const match = window.location.pathname.match(/\/v\/([^/]+)\/?$/);
+      if (match) startViewerOpenTelemetry(decodeURIComponent(match[1]));
+    } catch { /* Optional statistics must never stop study access. */ }
+    const unsubscribe = subscribeGraphicsError(() => {
+      if (getGraphicsError() && getViewerOpenTracker()?.state.status !== 'error') getViewerOpenTracker()?.fail('graphics-error');
+    });
     const run = async () => {
-      appInit(config, defaultExtensions, defaultModes).then(setInit).catch(console.error);
+      const support = checkVolumeRenderingSupport();
+      if (!support.supported) {
+        getViewerOpenTracker()?.fail(support.reason);
+        setStartupError(
+          support.reason === 'webgl2-unavailable'
+            ? WEBGL2_UNAVAILABLE
+            : 'Браузер предоставляет WebGL 2, но не смог создать графический ресурс для отображения исследования.'
+        );
+        return;
+      }
+      try {
+        initializeAutomaticGpuProfile(support.gpuDevice);
+        reportViewerProfile(support.gpuDevice);
+        const initialized = await appInit(config, defaultExtensions, defaultModes);
+        initialized.appConfig.max3DTextureSize = support.max3DTextureSize;
+        setInit(initialized);
+      } catch (error) {
+        getViewerOpenTracker()?.fail('startup-error');
+        console.error(error);
+        setStartupError(
+          'Не удалось запустить просмотрщик. Откройте исследование заново из личного кабинета.'
+        );
+      }
     };
 
     run();
+    return unsubscribe;
   }, []);
 
+  if (startupError || graphicsError) {
+    return (
+      <StudyLoadingScreen
+        accessGranted={false}
+        progress={{ text: '', percent: 0 }}
+        error={startupError || graphicsError}
+        errorTitle="Не удалось открыть исследование"
+        errorIntro={
+          graphicsError
+            ? 'Во время отображения произошёл сбой графики. Подробности приведены ниже.'
+            : WEBGL2_HELP
+        }
+        backLabel={startupError ? 'Проверить снова' : 'Вернуться в личный кабинет'}
+        onBack={() => (startupError ? window.location.reload() : window.location.assign('/'))}
+      />
+    );
+  }
+
   if (!init) {
-    return null;
+    return (
+      <StudyLoadingScreen
+        accessGranted={false}
+        progress={{ text: '', percent: 0 }}
+        onBack={() => {}}
+      />
+    );
   }
 
   // Set above for named export
@@ -92,15 +164,6 @@ function App({
   // Set appConfig
   const appConfigState = init.appConfig;
   const { routerBasename, modes, dataSources, oidc, showStudyList } = appConfigState;
-
-  // get the maximum 3D texture size
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2');
-
-  if (gl) {
-    const max3DTextureSize = gl.getParameter(gl.MAX_3D_TEXTURE_SIZE);
-    appConfigState.max3DTextureSize = max3DTextureSize;
-  }
 
   const {
     uiDialogService,

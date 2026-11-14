@@ -125,7 +125,17 @@
   overflow: auto;
   padding: 0 7px 8px;
 }
-.implant-model-list button {
+.implant-model-list ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.implant-model-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.implant-model-list .implant-model-select {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -137,13 +147,60 @@
   background: transparent;
   color: #e2e8f0;
   cursor: pointer;
+  flex: 1;
+  min-width: 0;
 }
-.implant-model-list button:hover {
+.implant-model-list .implant-model-select:hover {
   background: #17273b;
 }
-.implant-model-list button[aria-selected='true'] {
+.implant-model-list .implant-model-select[aria-pressed='true'] {
   background: #153348;
   border-color: #22d3ee;
+}
+.implant-favorite-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.implant-favorite-button svg {
+  width: 20px;
+  height: 20px;
+}
+.implant-favorite-button:hover {
+  color: #fcd34d;
+  background: #283044;
+}
+.implant-favorite-button[aria-pressed='true'] {
+  color: #fbbf24;
+}
+.implant-favorite-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.implant-favorites-notice {
+  padding: 8px 13px;
+  margin: 0;
+  color: #fcd34d;
+  font-size: 11px;
+}
+.implant-favorites-notice button {
+  color: #c4b5fd;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.implant-platform-details {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.6;
 }
 .implant-model-list small {
   font-size: 10px;

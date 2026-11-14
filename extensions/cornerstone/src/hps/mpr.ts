@@ -84,6 +84,11 @@ export const mpr: Types.HangingProtocol.Protocol = {
         {
           viewportOptions: {
             viewportId: 'mpr-axial',
+            displayArea: {
+              imageArea: [1.18, 1.18],
+              imageCanvasPoint: { imagePoint: [0.5, 0.5], canvasPoint: [0.5, 0.53] },
+              storeAsInitialCamera: true,
+            },
             toolGroupId: 'mpr',
             viewportType: 'volume',
             orientation: 'axial',

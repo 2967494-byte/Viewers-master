@@ -11,7 +11,6 @@ import {
 } from '@ohif/ui-next';
 import { WindowLevelActionMenu } from './WindowLevelActionMenu';
 import { useViewportDisplaySets } from '../../hooks/useViewportDisplaySets';
-import { useViewportRendering } from '../../hooks';
 
 export function WindowLevelActionMenuWrapper(
   props: withAppTypes<{
@@ -47,22 +46,7 @@ export function WindowLevelActionMenuWrapper(
   const { servicesManager } = useSystem();
   const { toolbarService } = servicesManager.services;
   const { IconContainer, className: iconClassName, containerProps } = useIconPresentation();
-  const { hasColorbar, toggleColorbar } = useViewportRendering(viewportId);
-
   const handleOpenChange = (openState: boolean) => {
-    const shouldToggleColorbar = hasColorbar && !isEmbedded;
-
-    if (isOpen && shouldToggleColorbar && openState) {
-      toggleColorbar();
-      onClose?.();
-      return;
-    }
-
-    if (!isOpen && openState && shouldToggleColorbar) {
-      toggleColorbar();
-      return;
-    }
-
     if (openState) {
       onOpen?.();
     } else {
@@ -78,12 +62,7 @@ export function WindowLevelActionMenuWrapper(
     return null;
   }
 
-  const Icon =
-    hasColorbar && !isEmbedded && hasEmbeddedVariantToUse ? (
-      <Icons.Close className={iconClassName} />
-    ) : (
-      <Icons.ViewportWindowLevel className={iconClassName} />
-    );
+  const Icon = <Icons.ByName name="icon-color-lut" className={iconClassName} />;
 
   return (
     <Popover
@@ -126,6 +105,7 @@ export function WindowLevelActionMenuWrapper(
           element={element}
           align={align}
           side={side}
+          onClose={onClose}
         />
       </PopoverContent>
     </Popover>

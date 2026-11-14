@@ -28,8 +28,9 @@ export default function MprFocusButton({ viewportId, viewportGridService }) {
         setMprFocus(viewportGridService, null);
       }
     };
-    window.addEventListener('keydown', escape);
-    return () => window.removeEventListener('keydown', escape);
+    // OHIF hotkeys stop bubbling at document; window capture must see Escape first.
+    window.addEventListener('keydown', escape, true);
+    return () => window.removeEventListener('keydown', escape, true);
   }, [expanded, viewportGridService]);
   if (!MPR_VIEWPORT_IDS.includes(viewportId)) return null;
   const title = expanded ? 'Вернуть четыре окна' : `Развернуть ${labels[viewportId]}`;

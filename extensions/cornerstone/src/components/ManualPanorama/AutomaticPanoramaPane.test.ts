@@ -32,11 +32,13 @@ jest.mock('@cornerstonejs/tools', () => ({
 }));
 jest.mock('./RasterView', () => ({
   __esModule: true,
-  default: ({ label, position, slicePosition }) =>
+  default: ({ label, position, slicePosition, onPosition }) =>
     require('react').createElement('div', {
       'aria-label': label,
       'data-position': position,
       'data-slice-position': slicePosition,
+      'data-navigable': !!onPosition,
+      onClick: () => onPosition?.(0.75, 0.4),
     }),
 }));
 jest.mock('./automaticArch', () => ({
@@ -185,6 +187,17 @@ describe('Default panorama in the existing lower-right viewport', () => {
       fireEvent.click(view.getByRole('button', { name: 'Вернуть четыре окна' }));
     });
     expect(state.viewports.get('mpr-3d').width).toBe(0.5);
+    await act(async () => {
+      fireEvent.click(view.getByRole('button', { name: 'Развернуть 3D-окно' }));
+    });
+    const stopHotkey = (event: KeyboardEvent) => event.stopPropagation();
+    document.addEventListener('keydown', stopHotkey);
+    try {
+      await act(async () => { fireEvent.keyDown(document, {key:'Escape'}); });
+      expect(state.viewports.get('mpr-3d').width).toBe(0.5);
+    } finally {
+      document.removeEventListener('keydown', stopHotkey);
+    }
     expect(reconstructPanorama).toHaveBeenCalledTimes(1);
     view.unmount();
   });
@@ -234,6 +247,7 @@ describe('Default panorama in the existing lower-right viewport', () => {
     // leaves the three camera planes intersecting somewhere else: (10,20,9).
     const crosshairs = { toolCenter: [30, 20, 9] };
     (ToolGroupManager.getToolGroupForViewport as jest.Mock).mockReturnValue({
+      getActivePrimaryMouseButtonTool: () => 'Crosshairs',
       getToolInstance: name => (name === 'Crosshairs' ? crosshairs : undefined),
     });
     (annotation.state.getAnnotations as jest.Mock).mockReturnValue([
@@ -333,6 +347,7 @@ describe('Default panorama in the existing lower-right viewport', () => {
       'mpr-axial': { focalPoint: [99, 99, 9], viewPlaneNormal: [0, 0, 1] },
     };
     (ToolGroupManager.getToolGroupForViewport as jest.Mock).mockReturnValue({
+      getActivePrimaryMouseButtonTool: () => 'Crosshairs',
       getToolInstance: () => ({ toolCenter: [0, 0, 0] }),
     });
     (annotation.state.getAnnotations as jest.Mock).mockReturnValue(annotations);
@@ -350,6 +365,75 @@ describe('Default panorama in the existing lower-right viewport', () => {
     expect(
       Number(view.getByLabelText('Автопанорама исследования').getAttribute('data-position'))
     ).toBeCloseTo(1);
+    view.unmount();
+  });
+
+  it('navigates the current edited arch only in navigation mode and within the same study', async () => {
+    let active = 'Crosshairs',
+      differentStudy = false;
+    const crosshairs = { toolCenter: [0, 0, 0], setToolCenter: jest.fn() };
+    (ToolGroupManager.getToolGroupForViewport as jest.Mock).mockReturnValue({
+      getActivePrimaryMouseButtonTool: () => active,
+      getToolInstance: () => crosshairs,
+    });
+    source.getImageData = () => ({
+      dimensions: [101, 101, 101],
+      imageData: {
+        getWorldToIndex: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        worldToIndex: p => p,
+        indexToWorld: p => p,
+      },
+    });
+    volume.imageIds = Array.from({ length: 101 }, (_, i) => `slice-${i}`);
+    source.getFrameOfReferenceUID = () => 'same';
+    (getEnabledElement as jest.Mock).mockReturnValue({
+      viewport: target,
+      renderingEngine: {
+        id: 'engine-a',
+        getViewport: id => ({
+          ...source,
+          getFrameOfReferenceUID: () =>
+            differentStudy && id === 'mpr-sagittal' ? 'other' : 'same',
+        }),
+      },
+    });
+    const view = render(React.createElement(AutomaticPanoramaPane, { element: target.element }));
+    await flush();
+    await waitFor(() => expect(view.getByLabelText('Автопанорама исследования')).toBeTruthy());
+    await flush();
+    const session = getPanoramaSession(volume);
+    const editedPoints: [number, number, number][] = [
+      [10, 20, 7],
+      [30, 20, 7],
+      [50, 20, 7],
+    ];
+    act(() =>
+      session.publish({
+        ...session.state.snapshot,
+        points: editedPoints,
+        curve: buildCurve(editedPoints),
+      })
+    );
+    await flush();
+    fireEvent.click(view.getByLabelText('Автопанорама исследования'));
+    expect(crosshairs.setToolCenter).toHaveBeenLastCalledWith([40, 20, 9]);
+    expect(Number(view.getByLabelText('Автопанорама исследования').getAttribute('data-position'))).toBeCloseTo(.75);
+    expect(Number(view.getByLabelText('Автопанорама исследования').getAttribute('data-slice-position'))).toBeCloseTo(.4);
+    active = 'DentalMagnify';
+    act(() => window.dispatchEvent(new Event('orbital:dental-tool-changed')));
+    await flush();
+    expect(view.getByLabelText('Автопанорама исследования').getAttribute('data-navigable')).toBe(
+      'false'
+    );
+    fireEvent.click(view.getByLabelText('Автопанорама исследования'));
+    expect(crosshairs.setToolCenter).toHaveBeenCalledTimes(1);
+    active = 'Crosshairs';
+    act(() => window.dispatchEvent(new Event('orbital:dental-tool-changed')));
+    await flush();
+    differentStudy = true;
+    fireEvent.click(view.getByLabelText('Автопанорама исследования'));
+    expect(crosshairs.setToolCenter).toHaveBeenCalledTimes(1);
+    expect(reconstructPanorama).toHaveBeenCalledTimes(1);
     view.unmount();
   });
 });

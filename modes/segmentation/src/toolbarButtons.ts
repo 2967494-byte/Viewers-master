@@ -99,8 +99,8 @@ export const toolbarButtons: Button[] = [
     uiType: 'ohif.windowLevelMenuEmbedded',
     props: {
       icon: 'WindowLevel',
-      label: i18n.t('Buttons:Window Level'),
-      tooltip: i18n.t('Buttons:Adjust window/level presets and customize image contrast settings'),
+      label: i18n.t('WindowLevelActionMenu:Color LUT'),
+      tooltip: i18n.t('WindowLevelActionMenu:Color LUT'),
       evaluate: {
         name: 'evaluate.windowLevelMenuEmbedded',
         hideWhenDisabled: true,
@@ -112,8 +112,8 @@ export const toolbarButtons: Button[] = [
     uiType: 'ohif.windowLevelMenu',
     props: {
       icon: 'WindowLevel',
-      label: i18n.t('Buttons:Window Level'),
-      tooltip: i18n.t('Buttons:Adjust window/level presets and customize image contrast settings'),
+      label: i18n.t('WindowLevelActionMenu:Color LUT'),
+      tooltip: i18n.t('WindowLevelActionMenu:Color LUT'),
       evaluate: 'evaluate.windowLevelMenu',
     },
   },

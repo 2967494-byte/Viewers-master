@@ -110,6 +110,11 @@ export const mpr2x2: Types.HangingProtocol.Protocol = {
         {
           viewportOptions: {
             viewportId: 'mpr-axial',
+            displayArea: {
+              imageArea: [1.18, 1.18],
+              imageCanvasPoint: { imagePoint: [0.5, 0.5], canvasPoint: [0.5, 0.53] },
+              storeAsInitialCamera: true,
+            },
             customViewportProps: { manualPanorama: true },
             toolGroupId: 'mpr',
             viewportType: 'volume',

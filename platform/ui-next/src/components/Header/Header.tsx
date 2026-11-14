@@ -16,6 +16,7 @@ import NavBar from '../NavBar';
 // Todo: we should move this component to composition and remove props base
 
 interface HeaderProps {
+  className?: string;
   children?: ReactNode;
   menuOptions?: Array<{
     title: string;

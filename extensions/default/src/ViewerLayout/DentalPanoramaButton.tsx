@@ -11,7 +11,7 @@ export default function DentalPanoramaButton({
   return (
     <button
       type="button"
-      className="manual-panorama-launcher"
+      className="manual-panorama-launcher dental-header-tool"
       aria-label={automatic ? 'Автоматическая панорама' : 'Панорама'}
       title={
         automatic
@@ -26,11 +26,9 @@ export default function DentalPanoramaButton({
         height: '100%',
         padding: 0,
         border: 0,
-        borderLeft: '1px solid #29384e',
+        borderLeft: '1px solid #30363e',
         borderRadius: 0,
         cursor: 'pointer',
-        color: automatic ? '#67e8f9' : '#c4b5fd',
-        background: 'linear-gradient(180deg, #162137, #0b1220)',
       }}
     >
       <svg
@@ -69,7 +67,7 @@ export default function DentalPanoramaButton({
         {automatic && (
           <path
             d="M25 2v8 M21 6h8 M19 1v4 M17 3h4"
-            stroke="#67e8f9"
+            stroke="currentColor"
             strokeWidth="1.5"
           />
         )}

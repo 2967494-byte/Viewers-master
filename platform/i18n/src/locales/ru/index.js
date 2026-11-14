@@ -23,6 +23,7 @@ import UserPreferencesModal from './UserPreferencesModal.json';
 import ViewportDownloadForm from './ViewportDownloadForm.json';
 import Messages from './Messages.json';
 import WindowLevelActionMenu from './WindowLevelActionMenu.json';
+import Colormaps from './Colormaps.json';
 
 export default {
   ru: {
@@ -51,5 +52,6 @@ export default {
     ViewportDownloadForm,
     Messages,
     WindowLevelActionMenu,
+    Colormaps,
   },
 };

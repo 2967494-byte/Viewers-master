@@ -38,6 +38,10 @@ import { usePositionPresentationStore } from '../../stores/usePositionPresentati
 import { useSynchronizersStore } from '../../stores/useSynchronizersStore';
 import { useSegmentationPresentationStore } from '../../stores/useSegmentationPresentationStore';
 import getClosestOrientationFromIOP from '../../utils/isReferenceViewable';
+import preserveMprResize from '../../utils/preserveMprResize';
+import { installGpuEngineDiagnostics } from '../../utils/gpuEngineDiagnostics';
+import installHiddenPanoramaRenderGuard from '../../utils/hiddenPanoramaRenderGuard';
+import { installViewerOpenTelemetry } from '../../utils/viewerOpenTelemetry';
 
 const EVENTS = {
   VIEWPORT_DATA_CHANGED: 'event::cornerstoneViewportService:viewportDataChanged',
@@ -124,6 +128,14 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
 
     if (!renderingEngine || renderingEngine.hasBeenDestroyed) {
       this.renderingEngine = new RenderingEngine(RENDERING_ENGINE_ID);
+      // The public wrapper delegates to the implementation registered by the core.
+      const contextPool = (getRenderingEngine(RENDERING_ENGINE_ID) as any)?.contextPool;
+      console.info('[orbital-rendering] GPU context pool created ' + JSON.stringify({
+        contextCount: contextPool?.getContextCount?.(),
+      }));
+      installHiddenPanoramaRenderGuard(getRenderingEngine(RENDERING_ENGINE_ID));
+      installGpuEngineDiagnostics(getRenderingEngine(RENDERING_ENGINE_ID));
+      installViewerOpenTelemetry(getRenderingEngine(RENDERING_ENGINE_ID));
     }
 
     return this.renderingEngine;
@@ -1347,34 +1359,28 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
 
     try {
       const viewports = this.getRenderingEngine().getViewports();
+      preserveMprResize(
+        viewports,
+        viewportId => this.servicesManager.services.toolGroupService?.getToolGroupForViewport(viewportId)
+          ?.getToolInstance('Crosshairs')?.toolCenter,
+        () => {
+          viewports.forEach(({ id: viewportId }) => {
+            const presentation = this._getPositionPresentation(viewportId);
+            // A resize must not select a different slice because of slab thickness.
+            delete presentation.viewReference?.sliceIndex;
+            this.beforeResizePositionPresentations.set(viewportId, presentation);
+          });
 
-      // Store the current position presentations for each viewport.
-      viewports.forEach(({ id: viewportId }) => {
-        const presentation = this._getPositionPresentation(viewportId);
-
-        // During a resize, the slice index should remain unchanged. This is a temporary fix for
-        // a larger issue regarding the definition of slice index with slab thickness.
-        // We need to revisit this to make it more robust and understandable.
-        delete presentation.viewReference?.sliceIndex;
-        this.beforeResizePositionPresentations.set(viewportId, presentation);
-      });
-
-      // Resize the rendering engine and render.
-      const renderingEngine = this.renderingEngine;
-      renderingEngine.resize(isImmediate);
-      renderingEngine.render();
-
-      // Reset the camera for all viewports using position presentation to maintain relative size/position
-      // which means only those viewports that have a zoom level of 1.
-      this.beforeResizePositionPresentations.forEach((positionPresentation, viewportId) => {
-        this.setPresentations(viewportId, {
-          positionPresentation,
-        });
-      });
-
-      // Resize and render the rendering engine again.
-      renderingEngine.resize(isImmediate);
-      renderingEngine.render();
+          const renderingEngine = this.renderingEngine;
+          renderingEngine.resize(isImmediate);
+          renderingEngine.render();
+          this.beforeResizePositionPresentations.forEach((positionPresentation, viewportId) => {
+            this.setPresentations(viewportId, { positionPresentation });
+          });
+          renderingEngine.resize(isImmediate);
+        }
+      );
+      this.renderingEngine.render();
     } catch (e) {
       // This can happen if the resize is too close to navigation or shutdown
       console.warn('Caught resize exception', e);

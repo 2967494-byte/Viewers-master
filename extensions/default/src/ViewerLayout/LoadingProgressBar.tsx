@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { cache, eventTarget, EVENTS as csEvents, Enums } from '@cornerstonejs/core';
+import { cache, eventTarget, EVENTS as csEvents, Enums, getRenderingEngines } from '@cornerstonejs/core';
+import { getViewerOpenTracker, MPR_TELEMETRY_IDS } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 import { useSystem } from '@ohif/core';
 import './LoadingProgressBar.css';
 
@@ -24,6 +25,13 @@ export default function LoadingProgressBar() {
       clearTimeout(timer);
       finished = done;
       setState({ percent, done, visible: true, loaded: seen.size, total, failed: failed.size });
+      if (getViewerOpenTracker()?.progress(seen.size, total, failed.size)) {
+        // Confirm new full-volume frames in all three planes, not stale partial draws.
+        getRenderingEngines().forEach(engine => {
+          const ids = engine.getViewports().map(viewport => viewport.id).filter(id => MPR_TELEMETRY_IDS.includes(id));
+          if (ids.length) engine.renderViewports(ids);
+        });
+      }
       if (done) timer = setTimeout(() => setState(s => ({ ...s, visible: false })), 2000);
     };
     const update = () => {
@@ -93,6 +101,7 @@ export default function LoadingProgressBar() {
         }
       });
       if (ids.some(id => expected.has(id))) update();
+      if (event.type === csEvents.IMAGE_VOLUME_LOADING_COMPLETED && failed.size) getViewerOpenTracker()?.fail('slice-load-failed');
     };
     const imageFailed = event => {
       const id = event.detail?.imageId;

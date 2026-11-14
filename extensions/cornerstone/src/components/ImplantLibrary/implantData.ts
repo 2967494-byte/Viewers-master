@@ -1,3 +1,5 @@
+import { DENTIUM_DATA } from './dentiumData';
+
 /** Catalog dimensions only. Geometry is an explicitly schematic cylinder, not manufacturer CAD. */
 export type ImplantModel = {
   id: string;
@@ -8,6 +10,10 @@ export type ImplantModel = {
   family: string;
   sourceUrl: string;
   geometry: 'nominal-cylinder';
+  catalogNumber?: string;
+  platformDiameter?: number;
+  gingivalHeight?: number;
+  variantLabel?: string;
 };
 export type ImplantFamily = { name: string; sourceUrl: string; models: ImplantModel[] };
 export type ImplantManufacturer = { manufacturer: string; lines: ImplantFamily[] };
@@ -390,6 +396,7 @@ export const IMPLANT_DATA: ImplantManufacturer[] = [
       ),
     ],
   },
+  DENTIUM_DATA,
 ];
 
 export const IMPLANT_CATALOG_CHECKED_AT = '2026-10-25';

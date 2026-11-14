@@ -4,9 +4,11 @@ import type { BaseVolumeViewport, VolumeViewport } from '@cornerstonejs/core';
 import { annotation, Enums as ToolEnums, ToolGroupManager } from '@cornerstonejs/tools';
 import type { CrosshairsTool } from '@cornerstonejs/tools';
 import RasterView from './RasterView';
+import PanoramaImplants from './PanoramaImplants';
 import { getPanoramaSession, type PanoramaSession } from './panoramaSession';
 import { START_AUTOMATIC_PANORAMA } from './ManualPanorama';
 import { displayedMprCrosshair, nearestPanoramaPosition } from './panoramaCrosshair';
+import { panoramaNavigationTarget } from './panoramaNavigation';
 import './ManualPanorama.css';
 
 /** Overlay the existing 3D viewport, preserving its renderer, camera and focus controls. */
@@ -15,7 +17,12 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
   const [state, setState] = useState<PanoramaSession['state']>(null);
   const [sliceOffset, setSliceOffset] = useState(0);
   const [position, setPosition] = useState<number>();
+  const [navigationEnabled, setNavigationEnabled] = useState(false);
   const sessionRef = useRef<PanoramaSession>(null);
+  useEffect(() => {
+    // React has removed the covering panorama before requesting the first visible skull frame.
+    if (element && !showPanorama) getEnabledElement(element)?.viewport?.render?.();
+  }, [element, showPanorama]);
   useEffect(() => {
     if (!element) return;
     let currentVolume = null;
@@ -28,6 +35,12 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
       const volumeId = (enabled?.viewport as BaseVolumeViewport)?.getVolumeId?.();
       const volume =
         volumeId && source?.getVolumeId?.() === volumeId ? cache.getVolume(volumeId) : null;
+      setNavigationEnabled(
+        ToolGroupManager.getToolGroupForViewport(
+          sourceViewportId,
+          enabled?.renderingEngine?.id
+        )?.getActivePrimaryMouseButtonTool() === 'Crosshairs'
+      );
       if (volume !== currentVolume) {
         unsubscribe();
         sessionRef.current?.cancel();
@@ -98,6 +111,16 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(check);
     };
+    const toolChanged = () => {
+      const enabled = getEnabledElement(element);
+      setNavigationEnabled(
+        ToolGroupManager.getToolGroupForViewport(
+          sourceViewportId,
+          enabled?.renderingEngine?.id
+        )?.getActivePrimaryMouseButtonTool() === 'Crosshairs'
+      );
+      schedule();
+    };
     const documentEvents = [
       Enums.Events.IMAGE_RENDERED,
       Enums.Events.CAMERA_MODIFIED,
@@ -111,6 +134,7 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
     documentEvents.forEach(name => document.addEventListener(name, schedule, true));
     loadingEvents.forEach(name => eventTarget.addEventListener(name, schedule));
     eventTarget.addEventListener(ToolEnums.Events.CROSSHAIR_TOOL_CENTER_CHANGED, schedule);
+    window.addEventListener('orbital:dental-tool-changed', toolChanged);
     schedule();
     return () => {
       cancelAnimationFrame(frame);
@@ -120,9 +144,50 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
       documentEvents.forEach(name => document.removeEventListener(name, schedule, true));
       loadingEvents.forEach(name => eventTarget.removeEventListener(name, schedule));
       eventTarget.removeEventListener(ToolEnums.Events.CROSSHAIR_TOOL_CENTER_CHANGED, schedule);
+      window.removeEventListener('orbital:dental-tool-changed', toolChanged);
     };
   }, [element, sourceViewportId]);
   const snapshot = state?.snapshot;
+  const navigate = (fraction: number, vertical: number) => {
+    const enabled = getEnabledElement(element);
+    const engine = enabled?.renderingEngine;
+    const source = engine?.getViewport(sourceViewportId) as VolumeViewport;
+    const volumeId = (enabled?.viewport as BaseVolumeViewport)?.getVolumeId?.();
+    const volume = volumeId && cache.getVolume(volumeId);
+    const current = sessionRef.current;
+    const group = engine && ToolGroupManager.getToolGroupForViewport(sourceViewportId, engine.id);
+    if (
+      !snapshot ||
+      current?.state.snapshot !== snapshot ||
+      !volume?.loadStatus.loaded ||
+      getPanoramaSession(volume) !== current ||
+      group?.getActivePrimaryMouseButtonTool() !== 'Crosshairs'
+    )
+      return;
+    const viewports = ['mpr-coronal', 'mpr-sagittal', sourceViewportId].map(
+      id => engine.getViewport(id) as VolumeViewport
+    );
+    if (
+      !source ||
+      !viewports.every(
+        viewport =>
+          viewport?.getVolumeId?.() === volumeId &&
+          viewport.getFrameOfReferenceUID?.() === source.getFrameOfReferenceUID?.()
+      )
+    )
+      return;
+    const tool = group.getToolInstance('Crosshairs') as CrosshairsTool;
+    const target = panoramaNavigationTarget(snapshot, fraction, vertical, source.getImageData());
+    if (target && tool) {
+      tool.setToolCenter(target);
+      // Render our own selection immediately, including while the GPU is still
+      // rendering the three new slices. Other MPR gestures keep the event path above.
+      setPosition(nearestPanoramaPosition(snapshot.curve, snapshot.up, target));
+      setSliceOffset(
+        snapshot.up.reduce((sum, v, i) => sum + v * (target[i] - snapshot.points[0][i]), 0)
+      );
+    }
+  };
   const toggleTitle = showPanorama ? 'Показать череп' : 'Показать автопанораму';
   return (
     <>
@@ -147,6 +212,15 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
                 sharpness={snapshot.sharpness}
                 label="Автопанорама исследования"
                 position={position}
+                onPosition={navigationEnabled ? navigate : undefined}
+                dragToPosition
+                overlay={
+                  <PanoramaImplants
+                    element={element}
+                    sourceViewportId={sourceViewportId}
+                    snapshot={snapshot}
+                  />
+                }
                 orientation={
                   snapshot.points[0][0] < snapshot.points[snapshot.points.length - 1][0]
                     ? ['R', 'L']

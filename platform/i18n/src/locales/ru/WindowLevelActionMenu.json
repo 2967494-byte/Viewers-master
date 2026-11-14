@@ -1,5 +1,18 @@
 {
   "Back to Display Options": "Назад к настройкам отображения",
   "Modality Presets": "{{modality}} предустановок",
-  "Modality Window Presets": "{{modality}} предустановок окна"
+  "Modality Window Presets": "{{modality}} предустановок окна",
+  "Display Color bar": "Цветовая шкала",
+  "Color LUT": "Цветовая схема",
+  "Grayscale": "Оттенки серого",
+  "Rendering Options": "Настройки 3D",
+  "Rendering Presets": "Стили 3D",
+  "Search all": "Поиск",
+  "Quality": "Качество",
+  "Lighting": "Освещение",
+  "Shade": "Затенение",
+  "Ambient": "Фоновое освещение",
+  "Diffuse": "Рассеянное освещение",
+  "Specular": "Блики",
+  "Shift": "Смещение"
 }

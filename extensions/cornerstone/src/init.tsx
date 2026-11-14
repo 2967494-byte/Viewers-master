@@ -29,6 +29,12 @@ import initCineService from './initCineService';
 import initStudyPrefetcherService from './initStudyPrefetcherService';
 import interleaveCenterLoader from './utils/interleaveCenterLoader';
 import nthLoader from './utils/nthLoader';
+import { installLargeVolumeTextureSupport } from './utils/largeVolumeTexture';
+import { gpuStartupProfile } from './utils/gpuStartupProfile';
+import { getRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
+import { getAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
+import { beginGpuDiagnosticSession, getGpuDiagnosticBudget, recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
 import interleaveTopToBottom from './utils/interleaveTopToBottom';
 import initContextMenu from './initContextMenu';
 import initDoubleClick from './initDoubleClick';
@@ -61,9 +67,20 @@ export default async function init({
 
   // Note: this should run first before initializing the cornerstone
   // DO NOT CHANGE THE ORDER
-
+  beginGpuDiagnosticSession();
+  reportViewerProfile();
+  const initialConfig = cornerstone.getConfiguration();
+  const gpuProfile = gpuStartupProfile({
+    preference: getRenderingPreference(),
+    standalone: Boolean(appConfig.standaloneMode),
+    search: window.location.search,
+    defaultContextCount: initialConfig.rendering?.webGlContextCount ?? 7,
+  });
+  recordGpuDiagnostic('core-init-start', { contextCount: gpuProfile.webGlContextCount });
   await cs3DInit({
+    ...initialConfig,
     peerImport: appConfig.peerImport,
+    rendering: { ...initialConfig.rendering, webGlContextCount: gpuProfile.webGlContextCount },
   });
 
   // For debugging e2e tests that are failing on CI
@@ -73,11 +90,19 @@ export default async function init({
     ...cornerstone.getConfiguration(),
     rendering: {
       ...cornerstone.getConfiguration().rendering,
+      webGlContextCount: gpuProfile.webGlContextCount,
       strictZSpacingForVolumeViewport: appConfig.strictZSpacingForVolumeViewport,
     },
   });
+  console.info('[orbital-rendering] GPU startup profile ' + JSON.stringify(gpuProfile));
+  const automatic = getAutomaticGpuProfile();
+  console.info('[orbital-rendering] Automatic graphics profile ' + JSON.stringify({ reason: automatic.reason,
+    textureBudgetMiB: Number.isFinite(automatic.budgetBytes) ? automatic.budgetBytes / 1024 ** 2 : null }));
+  recordGpuDiagnostic('core-init-complete', { contextCount: gpuProfile.webGlContextCount,
+    textureBudgetBytes: Number.isFinite(getGpuDiagnosticBudget()) ? getGpuDiagnosticBudget() : null });
 
   // For debugging large datasets, otherwise prefer the defaults
+  installLargeVolumeTextureSupport();
   const { maxCacheSize } = appConfig;
   if (maxCacheSize) {
     cornerstone.cache.setMaxCacheSize(maxCacheSize);

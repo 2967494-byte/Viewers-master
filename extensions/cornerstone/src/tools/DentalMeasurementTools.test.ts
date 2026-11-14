@@ -5,6 +5,7 @@ import {
   DentalAngle3DTool,
   DentalTapeCurveTool,
   DentalCanalTool,
+  hasDentalDraft,
 } from './DentalMeasurementTools';
 
 jest.mock('@cornerstonejs/tools', () => {
@@ -148,7 +149,15 @@ describe('Dental ruler persistence and spatial drawing', () => {
     click(tools[3], [0, 0, 0]);
     click(tools[3], [5, 5, 2]);
     click(tools[3], [10, 0, 0]);
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(hasDentalDraft()).toBe(true);
+    const hotkeys = (event: KeyboardEvent) => event.stopPropagation();
+    document.addEventListener('keydown', hotkeys);
+    try {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    } finally {
+      document.removeEventListener('keydown', hotkeys);
+    }
+    expect(hasDentalDraft()).toBe(false);
     expect(annotation.state.getAllAnnotations()[1].data.dentalComplete).toBe(true);
   });
   it('cancels an unfinished canal without leaving a phantom annotation', () => {

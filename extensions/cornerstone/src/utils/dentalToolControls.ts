@@ -1,6 +1,7 @@
 import { installImplantDragPriority } from './implantDragPriority';
 
 export const DENTAL_TOOL_NAMES = {
+  pan: 'Pan',
   length2d: 'DentalLength2D',
   length3d: 'DentalLength3D',
   tapeLine: 'DentalTapeLine',
@@ -9,6 +10,7 @@ export const DENTAL_TOOL_NAMES = {
   angle3d: 'DentalAngle3D',
   canal: 'DentalCanal',
   implant: 'DentalImplant',
+  magnify: 'DentalMagnify',
 };
 
 /** Change only the primary mouse binding; preserve wheel, middle-button pan and right-button zoom. */
@@ -35,6 +37,14 @@ export function activateDentalTool(
     if (active && active !== name) group.setToolPassive(active);
     if (tool === 'implant' && implant && group.id === 'mpr')
       group.setToolConfiguration(name, { implant, ...(onPlaced ? { onPlaced } : {}) });
+    if (name === 'Pan') {
+      const pan = group.getToolInstance?.(name);
+      if (pan) {
+        // The hand moves the image even over a passive implant or measurement.
+        // Pan's drag dispatcher still runs; only annotation selection is skipped.
+        pan.preMouseDownCallback = event => { event.preventDefault(); return true; };
+      }
+    }
     group.setToolActive(name, { bindings: [{ mouseButton: 1 }] });
   }
   return true;
