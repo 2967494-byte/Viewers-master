@@ -13,7 +13,7 @@ const env = { ...process.env, GIT_INDEX_FILE: index };
 const git = (args, input, extra = {}) => execFileSync('git', args, { cwd: root, env, input, ...extra }).toString().trim();
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const source = git(['rev-parse', 'HEAD']);
-if (git(['diff', '--name-only', 'HEAD', '--', 'extensions', 'platform', 'modes', '.scripts/test-orbital.cjs'])) {
+if (git(['diff', '--name-only', 'HEAD', '--', 'extensions', 'platform', 'modes', '.scripts/test-orbital.cjs'], undefined, { env: process.env })) {
   throw new Error('Commit the reviewed viewer sources before publishing a build.');
 }
 const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
