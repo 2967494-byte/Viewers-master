@@ -119,7 +119,9 @@ export function startViewerOpenTelemetry(launchToken: string) {
     const sequence = tracker.state.sequence;
     try {
       const response = await send(initialized ? `/api/viewer/telemetry/sessions/${runId}` : '/api/viewer/telemetry/sessions', {
-        method: 'POST', credentials: 'same-origin', keepalive: true, referrerPolicy: 'no-referrer',
+        // HTTPS CSRF validation requires a same-origin Referer. Send only the origin,
+        // never the /v/<launchToken> path, while keeping the server's protection enabled.
+        method: 'POST', credentials: 'same-origin', keepalive: true, referrerPolicy: 'origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
         body: JSON.stringify(initialized ? { snapshot: tracker.state } : { runId, launchToken, snapshot: tracker.state }),
       });

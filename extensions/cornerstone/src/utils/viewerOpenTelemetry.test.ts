@@ -68,7 +68,7 @@ it('boots reporting asynchronously with CSRF, same-origin credentials and no tok
   const fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ csrfToken: 'csrf-test' }) });
   global.fetch = fetch;
   let api;
-  jest.isolateModules(() => { api = require('@ohif/core/src/constants/orbitalOpenTelemetry'); });
+  jest.isolateModules(() => { api = jest.requireActual('@ohif/core/src/constants/orbitalOpenTelemetry'); });
   const stop = api.startViewerOpenTelemetry('test-launch-token-123456');
   for (let i = 0; i < 12; i++) await Promise.resolve();
   jest.advanceTimersByTime(1000);
@@ -77,7 +77,17 @@ it('boots reporting asynchronously with CSRF, same-origin credentials and no tok
   expect(fetch.mock.calls[0][1].referrerPolicy).toBe('no-referrer');
   const post = fetch.mock.calls.find(call => call[1]?.method === 'POST');
   expect(post[0]).toBe('/api/viewer/telemetry/sessions');
-  expect(post[1]).toMatchObject({ credentials: 'same-origin', headers: { 'X-CSRFToken': 'csrf-test' } });
+  expect(post[1]).toMatchObject({ credentials: 'same-origin', referrerPolicy: 'origin', headers: { 'X-CSRFToken': 'csrf-test' } });
   expect(JSON.parse(post[1].body as string)).toMatchObject({ launchToken: 'test-launch-token-123456', snapshot: { status: 'loading' } });
+  api.getViewerOpenTracker().progress(1, 1, 0);
+  ids.forEach(id => api.getViewerOpenTracker().frame(id));
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  jest.advanceTimersByTime(1000);
+  for (let i = 0; i < 12; i++) await Promise.resolve();
+  const update = fetch.mock.calls.find(call => call[1]?.method === 'POST' && call[0].startsWith('/api/viewer/telemetry/sessions/'));
+  expect(update).toBeDefined();
+  expect(update[1]).toMatchObject({ referrerPolicy: 'origin', headers: { 'X-CSRFToken': 'csrf-test' } });
+  expect(JSON.parse(update[1].body as string)).toMatchObject({ snapshot: { status: 'ready' } });
+  expect(update[1].body).not.toContain('test-launch-token-123456');
   stop(); global.fetch = originalFetch; jest.clearAllTimers(); jest.useRealTimers();
 });
