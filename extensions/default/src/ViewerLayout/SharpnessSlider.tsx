@@ -31,7 +31,11 @@ export default function SharpnessSlider() {
       aria-expanded={open} data-active={strength > 0}
       title={disabled ? 'Резкость недоступна в режиме совместимости' : `Резкость трёх 2D-окон: ${strength.toFixed(2)}×`}
       onClick={() => { flush(); setOpen(value => !value); }}>
-      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 20 12 4l8 16H4Z"/><path d="M12 4v16" fill="currentColor"/><path d="M12 4 20 20h-8Z" fill="currentColor" opacity=".5"/></svg>
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="2" fill="currentColor" opacity=".18" />
+        <path d="M3 3h6v6H3zm12 0h6v6h-6zM9 9h6v6H9zM3 15h6v6H3zm12 0h6v6h-6z" fill="currentColor" />
+        <rect x="2" y="2" width="20" height="20" rx="2" stroke="currentColor" strokeWidth="1.3" />
+      </svg>
       <span className="dental-tool-chevron">▾</span>
     </button>
     {open && <div className="dental-tool-menu dental-sharpness-popup" role="dialog" aria-label="Настройка резкости">

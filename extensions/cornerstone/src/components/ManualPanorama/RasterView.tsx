@@ -19,6 +19,7 @@ export default function RasterView({
   dragToPosition = false,
   label,
   overlay,
+  axesVisible: axesOverride,
 }: {
   raster: Raster;
   range: { lower: number; upper: number };
@@ -31,8 +32,10 @@ export default function RasterView({
   dragToPosition?: boolean;
   label?: string;
   overlay?: React.ReactNode;
+  axesVisible?: boolean;
 }) {
-  const axesVisible = useAxesVisibility();
+  const globalAxesVisible = useAxesVisibility();
+  const axesVisible = axesOverride ?? globalAxesVisible;
   const imageFilter = useImageFilter();
   const ref = useRef<HTMLCanvasElement>(null);
   const drag = useRef<number>(null);

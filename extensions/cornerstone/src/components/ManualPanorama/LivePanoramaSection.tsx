@@ -18,7 +18,7 @@ export default function LivePanoramaSection({ seed, curve, up, sample, heightMm,
     return () => cancelAnimationFrame(request);
   }, [curve, up, sample, heightMm, distance, tilt, editing]);
   return <>
-    {frame?.raster && <RasterView raster={frame.raster} range={range} label={label} position={crossVisible ? 0.5 : undefined}
+    {frame?.raster && <RasterView axesVisible={crossVisible} raster={frame.raster} range={range} label={label} position={crossVisible ? 0.5 : undefined}
       slicePosition={crossVisible ? 0.5 - sliceOffset / (frame.raster.heightMm * Math.cos((frame.tilt || 0) * Math.PI / 180)) : undefined}
       onPosition={onPosition} />}
     {error && <div className="manual-section-live-error" role="alert">{error}</div>}

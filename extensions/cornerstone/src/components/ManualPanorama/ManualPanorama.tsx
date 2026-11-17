@@ -1190,6 +1190,7 @@ export default function ManualPanorama({
                 {panorama && curve && (
                   <RasterView
                     raster={panorama}
+                    axesVisible={true}
                     range={range}
                     sharpness={sharpness}
                     position={(expandedSection !== null ? expandedDistance : center) / curve.length}

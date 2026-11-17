@@ -61,6 +61,18 @@ describe('Panorama markers independent from the grayscale raster', () => {
     expect(ctx.putImageData).toHaveBeenCalledTimes(1);
     view.unmount();
   });
+  it('lets editor markers override global MPR visibility without repainting image pixels', () => {
+    act(() => setAxesVisible(false));
+    const props = { raster, range, position:.5, slicePosition:.5, axesVisible:true };
+    const view = render(React.createElement(RasterView,props));
+    expect(view.container.querySelectorAll('[data-panorama-marker]')).toHaveLength(2);
+    view.rerender(React.createElement(RasterView,{...props,axesVisible:false}));
+    expect(view.container.querySelectorAll('[data-panorama-marker]')).toHaveLength(0);
+    act(() => setAxesVisible(true));
+    expect(view.container.querySelectorAll('[data-panorama-marker]')).toHaveLength(0);
+    expect(ctx.putImageData).toHaveBeenCalledTimes(1);
+    view.unmount();
+  });
   it('shows both lines immediately and moves them without copying image pixels again', () => {
     const view = render(
       React.createElement(RasterView, {
