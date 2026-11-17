@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "e9569566a5c13bf956e976dec0274e86731880b8",
-  "createdAt": "2026-11-17T11:06:29.779216+00:00",
-  "mainBundle": "app.bundle.ee87b7cf7aa4b8fc6d72.js",
-  "mainSha256": "249b93c2c9da76d8fbab7274d42565a22e809ad51b7942d0ad79eba124afbe1e",
+  "sourceCommit": "e16bfdbeb56954fe22dd870d3ab70958e1e8ab24",
+  "createdAt": "2026-11-17T12:16:17.217283+00:00",
+  "mainBundle": "app.bundle.c85ce0faa3e9b3e705de.js",
+  "mainSha256": "ae94eac5a9321bed765ae392de73817f667ef8e4913e445aaf6f9349aefb0231",
   "files": [
     {
       "path": "1403.bundle.ec6ddc9a94f366cad9ea.js",
@@ -153,12 +153,12 @@
       "sha256": "96bc3cd8658c833292b308336c9bff23b866a6427ab24105318392d92c3db0f2"
     },
     {
-      "path": "3664.bundle.2c66dbf1d4ee039cb74d.js",
-      "sha256": "25339ad681ed8cef25758f796577f2bcd8c401451ae5109e5102fa769a15bb27"
+      "path": "3664.bundle.3a35bcb35424f113e367.js",
+      "sha256": "e7c4a9097bf15532c9dcaf65d614a4e171572406961716f0b2676f9a861b244e"
     },
     {
-      "path": "3664.bundle.2c66dbf1d4ee039cb74d.js.map",
-      "sha256": "6b861eb62b25ea7c388de095e8e87a5ed8cb2b5b76c605512e3a0531bc9379d3"
+      "path": "3664.bundle.3a35bcb35424f113e367.js.map",
+      "sha256": "86bc6e1a7dbf8e8f3489cb175c40d85903403908a0d6107b97ffbbeadd953516"
     },
     {
       "path": "4202.bundle.8b86bb7de459b90740cc.js",
@@ -353,12 +353,12 @@
       "sha256": "bac6b24b1f84e9f06302b87825be518c095de11ac17f00b16316cdcc4a0d12a7"
     },
     {
-      "path": "6442.bundle.2db2b229b054a52e34c8.js",
-      "sha256": "7b2770f23d6df6240e1c7871f44eb4fe815b4c0f3c157d8943b817472f64c317"
+      "path": "6442.bundle.e5a1607ceaa6190cd9cf.js",
+      "sha256": "c7c73edd3a644a0a0fb6493df9d51ec80969e519d2e10453419c6be46ad5b3a4"
     },
     {
-      "path": "6442.bundle.2db2b229b054a52e34c8.js.map",
-      "sha256": "5b9b80ab303462f52077aa11b470dc27ac5c8b4c491351ed2ff3600149e6f73e"
+      "path": "6442.bundle.e5a1607ceaa6190cd9cf.js.map",
+      "sha256": "394b4e45067da22b78a768bef7d779dced402fc7c2e53c9275ca2a0b8e3b50e2"
     },
     {
       "path": "6563.bundle.1192dce57bfad75fdaea.js",
@@ -601,16 +601,16 @@
       "sha256": "f0dec15ad54b39eede93fbd0db904ad1f0a335599db684a4f2069b2ed7cc190d"
     },
     {
-      "path": "app.bundle.ee87b7cf7aa4b8fc6d72.js",
-      "sha256": "249b93c2c9da76d8fbab7274d42565a22e809ad51b7942d0ad79eba124afbe1e"
+      "path": "app.bundle.c85ce0faa3e9b3e705de.js",
+      "sha256": "ae94eac5a9321bed765ae392de73817f667ef8e4913e445aaf6f9349aefb0231"
     },
     {
-      "path": "app.bundle.ee87b7cf7aa4b8fc6d72.js.LICENSE.txt",
+      "path": "app.bundle.c85ce0faa3e9b3e705de.js.LICENSE.txt",
       "sha256": "a50edb82b22174c00271dcdc6ab5a8697a013a9e29ce08747ee7a93fe0244a89"
     },
     {
-      "path": "app.bundle.ee87b7cf7aa4b8fc6d72.js.map",
-      "sha256": "3111bdc1e23b6e92f11192e5ea31d4d88fa9ee9a59fd4dc1d03e435dfd07287b"
+      "path": "app.bundle.c85ce0faa3e9b3e705de.js.map",
+      "sha256": "dea5283455380521c17e7815095003ada9a7b4350a6c5988163060c8fe0110bc"
     },
     {
       "path": "assets/android-chrome-144x144.png",
@@ -1002,7 +1002,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "6db361a0a47365a99d8c86323c65ee43b952e9b81890354f6f3ecbd8f0f69b83"
+      "sha256": "f2e754ae1ed19a81a78d2ad70e67af048bf49a2d8968bdbb6cc2f4a56e487319"
     },
     {
       "path": "init-service-worker.js",
