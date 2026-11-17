@@ -9,6 +9,7 @@ jest.mock('@cornerstonejs/core', () => ({
 jest.mock('@kitware/vtk.js/Rendering/OpenGL/Convolution2DPass', () => ({
   __esModule: true, default: { newInstance: jest.fn(() => ({
     setKernelDimension: jest.fn(), setDelegates: jest.fn(), setKernel: jest.fn(),
+    traverse: jest.fn(),
     getFramebuffer: jest.fn(), delete: jest.fn(),
   })) },
 }));
@@ -59,6 +60,7 @@ describe('Shared display filters and GPU render pass lifecycle', () => {
     expect(viewport.getRenderPasses()[0]).toBe(pass);
     expect(second.getRenderPasses()[0]).toBe(secondPass);
     expect(pass.setKernel).toHaveBeenLastCalledWith(imageFilterKernel('unsharp', .35));
+    expect(pass.setKernel).toHaveBeenCalledTimes(1);
     setImageFilter('none');
     expect(viewport.getRenderPasses()).toBeNull();
     expect(second.getRenderPasses()).toBeNull();

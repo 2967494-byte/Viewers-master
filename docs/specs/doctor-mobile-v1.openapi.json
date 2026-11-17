@@ -1,0 +1,2057 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ORBITAL physician mobile API — proposed contract",
+    "version": "1.0.0-draft.2026-11-08",
+    "description": "IMPLEMENTATION CONTRACT ONLY. These physician endpoints do not exist in inspected CRM code yet. Existing web /api/viewer and manager /mobile/api are different contracts. No real credentials in examples. See doctor-mobile-integration-v1-2026-11-08.md."
+  },
+  "servers": [
+    {
+      "url": "https://admin.orbital3d.ru/api/doctor-mobile/v1",
+      "description": "Target production origin; routes pending backend implementation"
+    }
+  ],
+  "security": [
+    {
+      "doctorAccess": []
+    }
+  ],
+  "paths": {
+    "/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "summary": "Discover deployed mobile capabilities",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Capabilities"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. No PHI or secrets. A web HTML response / 404 means mobile API is unavailable, never use a silent demo fallback.",
+        "security": []
+      }
+    },
+    "/pairings": {
+      "post": {
+        "operationId": "createPairing",
+        "summary": "Create QR in physician web cabinet",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingCreateResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Server selects the logged-in physician. No arbitrary doctorId. Ticket lives 120 seconds; body and QR must not be logged.",
+        "security": [
+          {
+            "crmWebSession": [],
+            "csrfHeader": []
+          }
+        ]
+      }
+    },
+    "/pairings/exchange": {
+      "post": {
+        "operationId": "exchangePairing",
+        "summary": "Exchange one-time ticket for device session",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Atomically one session per ticket. Same clientRequestId/device retry can replay short-lived protected response; different request/device gets pairing_used. Rate-limit.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairingExchangeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/refresh": {
+      "post": {
+        "operationId": "refreshSession",
+        "summary": "Rotate refresh token",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Atomic rotation and reuse detection; same requestId retry is briefly idempotent. Absolute session lifetime is not extended by refresh.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/current": {
+      "delete": {
+        "operationId": "revokeCurrentSession",
+        "summary": "Revoke this device session",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "204": {
+            "description": "Success"
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Cancel local downloads. Revocation affects future grants; offline access lasts at most until signed grant expiry without connectivity."
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Read authenticated physician and permissions",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. "
+      }
+    },
+    "/patients": {
+      "get": {
+        "operationId": "listPatients",
+        "summary": "List permitted patients",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientPage"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Apply shared explicit-principal ACL in DB query before pagination. Cursor opaque; no full list with client-side filtering.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        ]
+      }
+    },
+    "/studies": {
+      "get": {
+        "operationId": "listStudies",
+        "summary": "List permitted studies and mobile readiness",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudyPage"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. ",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "patientId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/studies/{studyId}": {
+      "get": {
+        "operationId": "getStudy",
+        "summary": "Read study and readiness",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Study"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. ",
+        "parameters": [
+          {
+            "name": "studyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/studies/{studyId}/downloads": {
+      "post": {
+        "operationId": "createDownload",
+        "summary": "Pin bundle and issue exact GET URLs",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadGrant"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Validate explicit user ACL, feature/permission, current source/profile/generation, live publication and HOT expiry. Idempotent same requestId/payload after rechecking current access. 409 download_not_ready/source_changed; 404 hidden unauthorized object.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "studyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/downloads/{downloadId}/urls": {
+      "post": {
+        "operationId": "refreshDownloadUrls",
+        "summary": "Refresh URLs for at most 128 known file IDs",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UrlRefreshResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Recheck session, ACL, bundle ownership and source/generation. No caller bucket/key/URL. Same inventory; refreshed URLs may differ. source_changed stops incomplete old download; never merge versions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UrlRefreshRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "downloadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/studies/{studyId}/offline-access": {
+      "post": {
+        "operationId": "renewOfflineAccess",
+        "summary": "Renew signed access to known downloaded bundle",
+        "responses": {
+          "400": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "401": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "404": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "410": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "429": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "503": {
+            "$ref": "#/components/responses/ApiError"
+          },
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfflineAccessResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "PROPOSED endpoint; not deployed at time of contract preparation. Bundle must be known from prior grant and remain authorized/renewable. Never trust arbitrary client hash as proof of ownership. 410 bundle_expired when not renewable.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineAccessRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "studyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "doctorAccess": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque device access token"
+      },
+      "crmWebSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session",
+        "description": "Physician web only; use actual configured Flask session cookie name on deployment, not iOS auth"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRFToken",
+        "description": "Valid CRM CSRF token for QR creation"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "retryAfterSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "additionalProperties": false
+          },
+          "requestId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "required": [
+          "error",
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "1.0"
+            ]
+          },
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serverOrigin": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "minimumAppVersion": {
+            "type": "string"
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "qrPairing": {
+                "type": "boolean"
+              },
+              "studyCatalog": {
+                "type": "boolean"
+              },
+              "studyDownload": {
+                "type": "boolean"
+              },
+              "offlineViewer": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "qrPairing",
+              "studyCatalog",
+              "studyDownload",
+              "offlineViewer"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxPageSize": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "maxUrlRefreshFileIds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 128
+              }
+            },
+            "required": [
+              "maxPageSize",
+              "maxUrlRefreshFileIds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "serverId",
+          "serverOrigin",
+          "serverTime",
+          "minimumAppVersion",
+          "features",
+          "limits"
+        ],
+        "additionalProperties": false
+      },
+      "PairingQr": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "orbital.doctor.pairing"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "server": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+          },
+          "doctor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "pairing_ticket": {
+            "type": "string",
+            "minLength": 24
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "type",
+          "version",
+          "server",
+          "pairing_ticket",
+          "expires_at"
+        ],
+        "additionalProperties": false,
+        "description": "QR is untrusted input until HTTPS exchange with an explicitly trusted server. No permanent password."
+      },
+      "PairingCreateResponse": {
+        "type": "object",
+        "properties": {
+          "qr": {
+            "$ref": "#/components/schemas/PairingQr"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "qr",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "PairingExchangeRequest": {
+        "type": "object",
+        "properties": {
+          "pairingTicket": {
+            "type": "string",
+            "minLength": 24
+          },
+          "clientRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ios"
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "pairingTicket",
+          "clientRequestId",
+          "deviceId",
+          "deviceName",
+          "platform",
+          "appVersion"
+        ],
+        "additionalProperties": false
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 24
+          },
+          "clientRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "refreshToken",
+          "clientRequestId",
+          "deviceId"
+        ],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serverOrigin": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+          },
+          "userId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "doctorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "permissions": {
+            "type": "object",
+            "properties": {
+              "canUseOnlineViewer": {
+                "type": "boolean"
+              },
+              "canDownloadStudies": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "canUseOnlineViewer",
+              "canDownloadStudies"
+            ],
+            "additionalProperties": false
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "serverId",
+          "serverOrigin",
+          "userId",
+          "doctorId",
+          "displayName",
+          "permissions",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tokenType": {
+            "type": "string",
+            "enum": [
+              "Bearer"
+            ]
+          },
+          "accessToken": {
+            "type": "string",
+            "minLength": 24
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string",
+            "minLength": 24
+          },
+          "sessionExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "me": {
+            "$ref": "#/components/schemas/Me"
+          }
+        },
+        "required": [
+          "sessionId",
+          "deviceId",
+          "tokenType",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "sessionExpiresAt",
+          "me"
+        ],
+        "additionalProperties": false
+      },
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "birthDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "availableStudyCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "availableStudyCount"
+        ],
+        "additionalProperties": false
+      },
+      "BundleIdentity": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "doctorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "patientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "appointmentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "studyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "representationId": {
+            "type": "string",
+            "enum": [
+              "jpeg2000-20x"
+            ]
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "generationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "required": [
+          "serverId",
+          "userId",
+          "doctorId",
+          "patientId",
+          "appointmentId",
+          "studyId",
+          "sourceVersion",
+          "representationId",
+          "profileVersion",
+          "generationId",
+          "bundleId"
+        ],
+        "additionalProperties": false
+      },
+      "Study": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "patientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "appointmentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "acquiredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "centerName": {
+            "type": "string"
+          },
+          "centerTimeZone": {
+            "type": "string"
+          },
+          "viewerStatus": {
+            "type": "string",
+            "enum": [
+              "not_available",
+              "preparing",
+              "ready",
+              "expired",
+              "failed",
+              "forbidden",
+              "unsupported"
+            ]
+          },
+          "downloadStatus": {
+            "type": "string",
+            "enum": [
+              "not_available",
+              "preparing",
+              "ready",
+              "expired",
+              "failed",
+              "forbidden",
+              "unsupported"
+            ]
+          },
+          "canDownload": {
+            "type": "boolean"
+          },
+          "bundle": {
+            "$ref": "#/components/schemas/BundleIdentity"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hotExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reasonCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patientId",
+          "appointmentId",
+          "description",
+          "viewerStatus",
+          "downloadStatus",
+          "canDownload"
+        ],
+        "additionalProperties": false,
+        "description": "Lists are ACL-filtered. bundle/totalBytes/hotExpiresAt are present when a mobile publication is ready. canDownload requires permission, scope and current publication."
+      },
+      "PatientPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Patient"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "items",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "StudyPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Study"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "items",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "InventoryFile": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^(?!/)(?!.*(?:\\\\|%|:))(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "manifest",
+              "index",
+              "dicom"
+            ]
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "seriesId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "required": [
+          "fileId",
+          "path",
+          "kind",
+          "bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "InventorySeries": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "seriesInstanceUid": {
+            "type": "string",
+            "pattern": "^[0-9]+(?:\\.[0-9]+)+$"
+          },
+          "indexPath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^(?!/)(?!.*(?:\\\\|%|:))(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+          },
+          "instanceCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "frameCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "modality": {
+            "type": "string",
+            "enum": [
+              "CT"
+            ]
+          },
+          "transferSyntaxUid": {
+            "type": "string",
+            "enum": [
+              "1.2.840.10008.1.2.4.91"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "seriesInstanceUid",
+          "indexPath",
+          "instanceCount",
+          "frameCount",
+          "modality",
+          "transferSyntaxUid"
+        ],
+        "additionalProperties": false
+      },
+      "DownloadInventory": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "patientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "appointmentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "studyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "representationId": {
+            "type": "string",
+            "enum": [
+              "jpeg2000-20x"
+            ]
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "generationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "codec": {
+            "type": "string",
+            "enum": [
+              "jpeg2000"
+            ]
+          },
+          "targetRatio": {
+            "type": "integer",
+            "enum": [
+              20
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryFile"
+            },
+            "minItems": 3
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventorySeries"
+            },
+            "minItems": 1
+          },
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fileCount": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "serverId",
+          "patientId",
+          "appointmentId",
+          "studyId",
+          "sourceVersion",
+          "representationId",
+          "profileVersion",
+          "generationId",
+          "bundleId",
+          "codec",
+          "targetRatio",
+          "files",
+          "series",
+          "totalBytes",
+          "fileCount"
+        ],
+        "additionalProperties": false,
+        "description": "Immutable generation inventory, shared across authorized doctors. Hash exact UTF-8 bytes before parsing. No URLs, keys, original DICOM, mutable pointer or inventory self-entry. Enforce uniqueness, file membership and byte sum in addition to schema."
+      },
+      "FileUrl": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          }
+        },
+        "required": [
+          "fileId",
+          "downloadUrl"
+        ],
+        "additionalProperties": false
+      },
+      "DownloadRequest": {
+        "type": "object",
+        "properties": {
+          "clientRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedSourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "expectedGenerationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          }
+        },
+        "required": [
+          "clientRequestId",
+          "expectedSourceVersion",
+          "expectedGenerationId"
+        ],
+        "additionalProperties": false
+      },
+      "DownloadGrant": {
+        "type": "object",
+        "properties": {
+          "downloadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "downloadExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bundle": {
+            "$ref": "#/components/schemas/BundleIdentity"
+          },
+          "inventory": {
+            "type": "object",
+            "properties": {
+              "downloadUrl": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "downloadUrl",
+              "bytes",
+              "sha256"
+            ],
+            "additionalProperties": false
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileUrl"
+            },
+            "minItems": 3
+          },
+          "urlsExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hotExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "offlineGrant": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "description": "JWS Compact ES256. Signature is raw 64-byte R||S; verify with a trusted key, never decode-only."
+          },
+          "offlineAccessUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "downloadId",
+          "downloadExpiresAt",
+          "bundle",
+          "inventory",
+          "resources",
+          "urlsExpiresAt",
+          "hotExpiresAt",
+          "offlineGrant",
+          "offlineAccessUntil",
+          "serverTime"
+        ],
+        "additionalProperties": false,
+        "description": "Grant pins exactly one immutable bundle. Resource membership must match inventory, exact HTTPS storage origins are allowlisted. CRM Bearer must never be sent to storage."
+      },
+      "UrlRefreshRequest": {
+        "type": "object",
+        "properties": {
+          "clientRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "fileIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "minItems": 1,
+            "maxItems": 128,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "clientRequestId",
+          "bundleId",
+          "fileIds"
+        ],
+        "additionalProperties": false
+      },
+      "UrlRefreshResponse": {
+        "type": "object",
+        "properties": {
+          "downloadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "inventorySha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileUrl"
+            },
+            "minItems": 1,
+            "maxItems": 128
+          },
+          "urlsExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "downloadId",
+          "bundleId",
+          "inventorySha256",
+          "resources",
+          "urlsExpiresAt",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "OfflineAccessRequest": {
+        "type": "object",
+        "properties": {
+          "clientRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "inventorySha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "clientRequestId",
+          "bundleId",
+          "inventorySha256"
+        ],
+        "additionalProperties": false
+      },
+      "OfflineAccessResponse": {
+        "type": "object",
+        "properties": {
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "inventorySha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "offlineGrant": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+            "description": "JWS Compact ES256. Signature is raw 64-byte R||S; verify with a trusted key, never decode-only."
+          },
+          "offlineAccessUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "bundleId",
+          "inventorySha256",
+          "offlineGrant",
+          "offlineAccessUntil",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "OfflineGrantClaims": {
+        "type": "object",
+        "properties": {
+          "iss": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[A-Za-z0-9.-]+(?::[0-9]+)?$"
+          },
+          "aud": {
+            "type": "string",
+            "enum": [
+              "orbital.doctor.ios.offline"
+            ]
+          },
+          "iat": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nbf": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "exp": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "jti": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serverId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "doctorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "patientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "appointmentId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "studyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "representationId": {
+            "type": "string",
+            "enum": [
+              "jpeg2000-20x"
+            ]
+          },
+          "profileVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "generationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "bundleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inventorySha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "openLocalViewer",
+                "saveLocalProject"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "iss",
+          "aud",
+          "iat",
+          "nbf",
+          "exp",
+          "jti",
+          "serverId",
+          "userId",
+          "doctorId",
+          "patientId",
+          "appointmentId",
+          "studyId",
+          "sourceVersion",
+          "representationId",
+          "profileVersion",
+          "generationId",
+          "bundleId",
+          "deviceId",
+          "inventorySha256",
+          "allowedActions"
+        ],
+        "additionalProperties": false,
+        "description": "Decoded payload for implementation and fixtures only; never trust unsigned JSON. Verify ES256, kid, time, bindings and inventory hash. Test key is forbidden in production."
+      },
+      "LocalStudyDescriptor": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "bundle": {
+            "$ref": "#/components/schemas/BundleIdentity"
+          },
+          "inventorySha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bundleRelativePath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^(?!/)(?!.*(?:\\\\|%|:))(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventorySeries"
+            },
+            "minItems": 1
+          },
+          "offlineAccessUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "bundle",
+          "inventorySha256",
+          "bundleRelativePath",
+          "series",
+          "offlineAccessUntil"
+        ],
+        "additionalProperties": false,
+        "description": "Native-only private-library descriptor. Storage root is private; viewer gets only restricted local prefix/series, never authorization tokens. Descriptor is not itself authorization."
+      }
+    },
+    "responses": {
+      "ApiError": {
+        "description": "JSON error, no HTML/redirect. 401 invalid session; 403 permission globally disabled; 404 absent or unauthorized object; 409 not-ready/source-changed; 410 expired; 429 rate limit; 503 temporary failure. No tokens or PHI in error text.",
+        "headers": {
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "no-store"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-contract-status": "proposed-not-implemented",
+  "x-cache-policy": "All PHI, auth, grants: Cache-Control no-store. Redact Authorization, QR ticket, refresh, signed URLs and offline grant from logs."
+}

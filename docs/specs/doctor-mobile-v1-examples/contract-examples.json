@@ -1,0 +1,1480 @@
+{
+  "syntheticOnly": true,
+  "fixedTestTime": "2026-11-08T10:00:00Z",
+  "fixtureRoot": "tmp/doctor-mobile-integration-20261108",
+  "testPublicKey": {
+    "kty": "EC",
+    "crv": "P-256",
+    "alg": "ES256",
+    "use": "sig",
+    "kid": "EXAMPLE-ONLY-NOT-PRODUCTION-P256-001",
+    "x": "axfR8uEsQkf4vOblY6RA8ncDfYEt6zOg9KE5RdiYwpY",
+    "y": "T-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU"
+  },
+  "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002",
+  "examples": [
+    {
+      "schema": "DownloadInventory",
+      "name": "a-inventory",
+      "value": {
+        "schemaVersion": 1,
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "patientId": "910001",
+        "appointmentId": "920001",
+        "studyId": "930001",
+        "sourceVersion": "demo-source-a-1",
+        "representationId": "jpeg2000-20x",
+        "profileVersion": 1,
+        "generationId": "demo-generation-a-1",
+        "bundleId": "demo-bundle-a-1",
+        "codec": "jpeg2000",
+        "targetRatio": 20,
+        "files": [
+          {
+            "fileId": "a-file-0001",
+            "path": "manifest.json",
+            "kind": "manifest",
+            "bytes": 429,
+            "sha256": "49d471a5ca9c6d27f701955860f4b99fd5e4dd0bab127cb270883817f43bbf1a"
+          },
+          {
+            "fileId": "a-file-0002",
+            "path": "series-a/ohif_metadata.json",
+            "kind": "index",
+            "bytes": 148834,
+            "sha256": "96147cb41558a70d2667e82fed2c26ae72e05d361c22f459a9edc5bae0588ee1",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0003",
+            "path": "series-a/instances/000001.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "31ebeb71bebf4ea1f784fd7709cade97c0ad610e0044806ddce0c184f5fa30d1",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0004",
+            "path": "series-a/instances/000002.dcm",
+            "kind": "dicom",
+            "bytes": 3146,
+            "sha256": "7db5bc591cf39624042c9dd0a69f1fa938477601b628d6b5d82dfe7a32375a25",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0005",
+            "path": "series-a/instances/000003.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "a1231d0cfac965ed7767921771cc9259419b7dcfa4c257336a481afe0d1cd192",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0006",
+            "path": "series-a/instances/000004.dcm",
+            "kind": "dicom",
+            "bytes": 3174,
+            "sha256": "bfdaafc7cf0d291128aef3fa4498541cd629e3ac960105ac88f7239360a66ebb",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0007",
+            "path": "series-a/instances/000005.dcm",
+            "kind": "dicom",
+            "bytes": 3154,
+            "sha256": "c5441c9cadb6f182cd8f2b6518f01ccb78e4748b096235faea97aa1be14c59a7",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0008",
+            "path": "series-a/instances/000006.dcm",
+            "kind": "dicom",
+            "bytes": 3148,
+            "sha256": "f7e59401715e01ab8123a66489c6457c48c00281df6d2c509590814fe181ec27",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0009",
+            "path": "series-a/instances/000007.dcm",
+            "kind": "dicom",
+            "bytes": 3172,
+            "sha256": "339d3f780ca41dc226356799b4ded46e2b1e69d0addac3012f3363174cd70385",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0010",
+            "path": "series-a/instances/000008.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "2f9666aee626efd96ccf5f8338f30681495cfe37f3db6f79d0f238a4b6c3a066",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0011",
+            "path": "series-a/instances/000009.dcm",
+            "kind": "dicom",
+            "bytes": 3156,
+            "sha256": "01544581c9e707cce8386d0e9afaee9454b915f549e6c9eab79069ddb04f152c",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0012",
+            "path": "series-a/instances/000010.dcm",
+            "kind": "dicom",
+            "bytes": 3170,
+            "sha256": "abad01c161a147c0d1f6f3aa6f61d71bf3cd0e696036803debdbfdee4057aff7",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0013",
+            "path": "series-a/instances/000011.dcm",
+            "kind": "dicom",
+            "bytes": 3148,
+            "sha256": "57eff905dbdb7708587544ae6b497fae836590eb78d607ebefe71060f48f3c1b",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0014",
+            "path": "series-a/instances/000012.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "a778712501e633935b454f107b869420f83908b9b3e2d65b29b1e22abf769df0",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0015",
+            "path": "series-a/instances/000013.dcm",
+            "kind": "dicom",
+            "bytes": 3144,
+            "sha256": "f74d5e9633dc70445f375b5a7263133ca0581128e7618b703ed6a8faf9349e0c",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0016",
+            "path": "series-a/instances/000014.dcm",
+            "kind": "dicom",
+            "bytes": 3132,
+            "sha256": "554c24298ff5ff702c0c1018ba2e28757d5e0038919fbecf0e006fa2fa85a61c",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0017",
+            "path": "series-a/instances/000015.dcm",
+            "kind": "dicom",
+            "bytes": 3138,
+            "sha256": "1c7d1fc2303d4b0c3ef753f6343331d0ce4985aecefe3603053aa4032c6dc2ae",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0018",
+            "path": "series-a/instances/000016.dcm",
+            "kind": "dicom",
+            "bytes": 3158,
+            "sha256": "8857c50e8ed2597072cdd399dcd6cca1a7db21b186e15ad66fb826343b6028a7",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0019",
+            "path": "series-a/instances/000017.dcm",
+            "kind": "dicom",
+            "bytes": 3134,
+            "sha256": "db838e4f5c65f93a81d1b7fa467a1c0fb6615c6e58258b9d6b3059b616667a9f",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0020",
+            "path": "series-a/instances/000018.dcm",
+            "kind": "dicom",
+            "bytes": 3134,
+            "sha256": "3427092bfc9241dbe9992138aaba42c397be39238851839b3911a781186713be",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0021",
+            "path": "series-a/instances/000019.dcm",
+            "kind": "dicom",
+            "bytes": 3148,
+            "sha256": "42004776d07cec9206975c93d153bd6b37ec97cf756a77ea71ddd926f254be3c",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0022",
+            "path": "series-a/instances/000020.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "ba4e68977563a768a64577891bdd81c83827659f4e9d7884ec20ed93318c7380",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0023",
+            "path": "series-a/instances/000021.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "e1b457a80ab518d1912b090f52e7f20e4e105b74c1d6e2b19cda3f0b504eb0bf",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0024",
+            "path": "series-a/instances/000022.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "a57fb9a25e1ef4373cc49ef3c495fca672c568becc0fac882cc09c2c4b673ce9",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0025",
+            "path": "series-a/instances/000023.dcm",
+            "kind": "dicom",
+            "bytes": 3154,
+            "sha256": "2f838841a3ac46427353c5e5334002a83d8bebd90bee7a2f425f2040c2ce89b0",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0026",
+            "path": "series-a/instances/000024.dcm",
+            "kind": "dicom",
+            "bytes": 3164,
+            "sha256": "c4052bce7df166587c2c9339ce968f1fe6e3b1c146a4fdc30a8d1da5ed881afb",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0027",
+            "path": "series-a/instances/000025.dcm",
+            "kind": "dicom",
+            "bytes": 3168,
+            "sha256": "374ebdacaa35d532f9dc3dd423d243c9f7fff6110be033503c2b7c2cc4143a0d",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0028",
+            "path": "series-a/instances/000026.dcm",
+            "kind": "dicom",
+            "bytes": 3158,
+            "sha256": "467c7cb7c7dcb00c302a15c6e2e448b9e5bf074423cd5cee79f1039d25e4a964",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0029",
+            "path": "series-a/instances/000027.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "de53522f60bde0b558d145ed55b5e0232f32e6ed66a4bb3e5ae62c7713f7cbd3",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0030",
+            "path": "series-a/instances/000028.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "95e70a3ccb2c0b1f7d0354c25a5967f1c82c35435eb0b2ef85610f983acf36aa",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0031",
+            "path": "series-a/instances/000029.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "8bd8f016c586cdb026908342113aa75072a958ea74dd2f041abf8fe174cf92f9",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0032",
+            "path": "series-a/instances/000030.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "b01bb3500bc4683d8cf1725efb793a4c33e99707c9f7215ec98ac51f62f7db9a",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0033",
+            "path": "series-a/instances/000031.dcm",
+            "kind": "dicom",
+            "bytes": 3158,
+            "sha256": "fd7447da6adfd8d423ae64185822a426e8fe6e819756cd04b6c75a3e02f008e3",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0034",
+            "path": "series-a/instances/000032.dcm",
+            "kind": "dicom",
+            "bytes": 3156,
+            "sha256": "e606940e40b2fdd2623235e856feb9a0cf53e158d2693cebd6e08d0cc7340eac",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0035",
+            "path": "series-a/instances/000033.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "f3091bfd1511659197d85c9098abec796c72e3e40daab41d17ea9af9ce7c60c0",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0036",
+            "path": "series-a/instances/000034.dcm",
+            "kind": "dicom",
+            "bytes": 3136,
+            "sha256": "5d47568a9b0c34b64cd49bc512a991d3b54e6cca5ddb047a5e97e644e3302ac5",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0037",
+            "path": "series-a/instances/000035.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "1dcc7a13b9b6234fb0d92b269342b2bce269e76ad6825c9f40a9d5ad04ff9825",
+            "seriesId": "series-a"
+          },
+          {
+            "fileId": "a-file-0038",
+            "path": "series-a/instances/000036.dcm",
+            "kind": "dicom",
+            "bytes": 3156,
+            "sha256": "28127c6bf6cfc2523ee20290a0583f84a3bd40c56ce90d95b94683f2a0ed421d",
+            "seriesId": "series-a"
+          }
+        ],
+        "series": [
+          {
+            "id": "series-a",
+            "seriesInstanceUid": "2.25.239697998515239257897201398336361023513",
+            "indexPath": "series-a/ohif_metadata.json",
+            "instanceCount": 36,
+            "frameCount": 36,
+            "modality": "CT",
+            "transferSyntaxUid": "1.2.840.10008.1.2.4.91"
+          }
+        ],
+        "totalBytes": 262829,
+        "fileCount": 38
+      }
+    },
+    {
+      "schema": "DownloadGrant",
+      "name": "a-grant",
+      "value": {
+        "downloadId": "7864ca6f-b7d1-56cd-8d1b-c89528867f18",
+        "downloadExpiresAt": "2026-11-08T11:00:00Z",
+        "bundle": {
+          "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+          "userId": "900010",
+          "doctorId": "900001",
+          "patientId": "910001",
+          "appointmentId": "920001",
+          "studyId": "930001",
+          "sourceVersion": "demo-source-a-1",
+          "representationId": "jpeg2000-20x",
+          "profileVersion": 1,
+          "generationId": "demo-generation-a-1",
+          "bundleId": "demo-bundle-a-1"
+        },
+        "inventory": {
+          "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/download-inventory.json?example=not-a-signature",
+          "bytes": 10452,
+          "sha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274"
+        },
+        "resources": [
+          {
+            "fileId": "a-file-0001",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/manifest.json?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0002",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/ohif_metadata.json?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0003",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000001.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0004",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000002.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0005",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000003.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0006",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000004.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0007",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000005.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0008",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000006.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0009",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000007.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0010",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000008.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0011",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000009.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0012",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000010.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0013",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000011.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0014",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000012.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0015",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000013.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0016",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000014.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0017",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000015.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0018",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000016.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0019",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000017.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0020",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000018.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0021",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000019.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0022",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000020.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0023",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000021.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0024",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000022.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0025",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000023.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0026",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000024.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0027",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000025.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0028",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000026.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0029",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000027.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0030",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000028.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0031",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000029.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0032",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000030.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0033",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000031.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0034",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000032.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0035",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000033.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0036",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000034.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0037",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000035.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "a-file-0038",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/series-a/instances/000036.dcm?example=not-a-signature"
+          }
+        ],
+        "urlsExpiresAt": "2026-11-08T10:15:00Z",
+        "hotExpiresAt": "2030-01-01T00:00:00Z",
+        "offlineGrant": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkVYQU1QTEUtT05MWS1OT1QtUFJPRFVDVElPTi1QMjU2LTAwMSJ9.eyJpc3MiOiJodHRwczovL2FwaS5leGFtcGxlLmludmFsaWQiLCJhdWQiOiJvcmJpdGFsLmRvY3Rvci5pb3Mub2ZmbGluZSIsImlhdCI6MTc5NDEzMjAwMCwibmJmIjoxNzk0MTMyMDAwLCJleHAiOjE3OTQ3MzY4MDAsImp0aSI6Ijg4YzIxY2RlLWZiYzAtNTc5NC04ZWM2LTNjNGZiMDAyZmU0OSIsInNlcnZlcklkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAxIiwidXNlcklkIjoiOTAwMDEwIiwiZG9jdG9ySWQiOiI5MDAwMDEiLCJwYXRpZW50SWQiOiI5MTAwMDEiLCJhcHBvaW50bWVudElkIjoiOTIwMDAxIiwic3R1ZHlJZCI6IjkzMDAwMSIsInNvdXJjZVZlcnNpb24iOiJkZW1vLXNvdXJjZS1hLTEiLCJyZXByZXNlbnRhdGlvbklkIjoianBlZzIwMDAtMjB4IiwicHJvZmlsZVZlcnNpb24iOjEsImdlbmVyYXRpb25JZCI6ImRlbW8tZ2VuZXJhdGlvbi1hLTEiLCJidW5kbGVJZCI6ImRlbW8tYnVuZGxlLWEtMSIsImRldmljZUlkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAyIiwiaW52ZW50b3J5U2hhMjU2IjoiNWUzOGFmNGQ0ZWE2ODg1ZDIwNjhkYzY4NTAyYTU5MjI3Zjc1Y2NlNjFkYzg1ZjM2MmIzNmYyN2EwNmMwYzI3NCIsImFsbG93ZWRBY3Rpb25zIjpbIm9wZW5Mb2NhbFZpZXdlciIsInNhdmVMb2NhbFByb2plY3QiXX0.szf_QRdjy6uad4M_TUrH2teKvV2HqrRQtMJ19_vqxcP4UQBkZTtF-1r5_z_Bxu-lbYokdgXj60tFjTRHcf8q5w",
+        "offlineAccessUntil": "2026-11-15T10:00:00Z",
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "OfflineGrantClaims",
+      "name": "a-claims",
+      "value": {
+        "iss": "https://api.example.invalid",
+        "aud": "orbital.doctor.ios.offline",
+        "iat": 1794132000,
+        "nbf": 1794132000,
+        "exp": 1794736800,
+        "jti": "88c21cde-fbc0-5794-8ec6-3c4fb002fe49",
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "userId": "900010",
+        "doctorId": "900001",
+        "patientId": "910001",
+        "appointmentId": "920001",
+        "studyId": "930001",
+        "sourceVersion": "demo-source-a-1",
+        "representationId": "jpeg2000-20x",
+        "profileVersion": 1,
+        "generationId": "demo-generation-a-1",
+        "bundleId": "demo-bundle-a-1",
+        "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002",
+        "inventorySha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274",
+        "allowedActions": [
+          "openLocalViewer",
+          "saveLocalProject"
+        ]
+      }
+    },
+    {
+      "schema": "LocalStudyDescriptor",
+      "name": "a-descriptor",
+      "value": {
+        "schemaVersion": 1,
+        "bundle": {
+          "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+          "userId": "900010",
+          "doctorId": "900001",
+          "patientId": "910001",
+          "appointmentId": "920001",
+          "studyId": "930001",
+          "sourceVersion": "demo-source-a-1",
+          "representationId": "jpeg2000-20x",
+          "profileVersion": 1,
+          "generationId": "demo-generation-a-1",
+          "bundleId": "demo-bundle-a-1"
+        },
+        "inventorySha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274",
+        "bundleRelativePath": "d7ff07cb-af9f-4b59-8ba3-000000000001/900010/930001/demo-bundle-a-1/bundle",
+        "series": [
+          {
+            "id": "series-a",
+            "seriesInstanceUid": "2.25.239697998515239257897201398336361023513",
+            "indexPath": "series-a/ohif_metadata.json",
+            "instanceCount": 36,
+            "frameCount": 36,
+            "modality": "CT",
+            "transferSyntaxUid": "1.2.840.10008.1.2.4.91"
+          }
+        ],
+        "offlineAccessUntil": "2026-11-15T10:00:00Z"
+      }
+    },
+    {
+      "schema": "DownloadInventory",
+      "name": "b-inventory",
+      "value": {
+        "schemaVersion": 1,
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "patientId": "910002",
+        "appointmentId": "920002",
+        "studyId": "930002",
+        "sourceVersion": "demo-source-b-1",
+        "representationId": "jpeg2000-20x",
+        "profileVersion": 1,
+        "generationId": "demo-generation-b-1",
+        "bundleId": "demo-bundle-b-1",
+        "codec": "jpeg2000",
+        "targetRatio": 20,
+        "files": [
+          {
+            "fileId": "b-file-0001",
+            "path": "manifest.json",
+            "kind": "manifest",
+            "bytes": 429,
+            "sha256": "2792698ccd936c6f9c5ff2d2835faf937bb67136364d2e20133ad5a4b8290f9f"
+          },
+          {
+            "fileId": "b-file-0002",
+            "path": "series-b/ohif_metadata.json",
+            "kind": "index",
+            "bytes": 165456,
+            "sha256": "637020054c0ca574457ff962332a8d5e465b094c976ea622f85d91a33bc895af",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0003",
+            "path": "series-b/instances/000001.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "2ca6b2837968357e284ef8e66bccd065db1468e059c339cc64b6f323bae8e8fb",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0004",
+            "path": "series-b/instances/000002.dcm",
+            "kind": "dicom",
+            "bytes": 3152,
+            "sha256": "80ab2489adfa7528e45359a7585b04968500d780a04dfa62423aa2a9a7e9c6f7",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0005",
+            "path": "series-b/instances/000003.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "bb8452aff1e03e0ea21567006ddfe923272f2c6d69b03703dfb6950750e4d18d",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0006",
+            "path": "series-b/instances/000004.dcm",
+            "kind": "dicom",
+            "bytes": 3166,
+            "sha256": "a96d0b8791dea651e20fc1184b5e618921e5dcb3c308cf144401a6d07d456998",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0007",
+            "path": "series-b/instances/000005.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "2fdf07e284d5cafbc275c6a6785164c2d038bbcfd601802102e7d05568d4d2f7",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0008",
+            "path": "series-b/instances/000006.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "b6056edfeb6d5571c8c0e09e5f367b30fd2d11f9ff907788ec171d8231839c68",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0009",
+            "path": "series-b/instances/000007.dcm",
+            "kind": "dicom",
+            "bytes": 3174,
+            "sha256": "6aecaa163f16939c4f93cf5446cb0d8d63a067d04a6d6d66a325a9cb742576bc",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0010",
+            "path": "series-b/instances/000008.dcm",
+            "kind": "dicom",
+            "bytes": 3172,
+            "sha256": "dff228aa358084a585f10bc2fcda678c51d28008efd74e8ed5939dd72a5ccd73",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0011",
+            "path": "series-b/instances/000009.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "c2f97f45eaa6c71a7127d55572e2751bd69b92c0c0e24b5071671f259e43e9ba",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0012",
+            "path": "series-b/instances/000010.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "03201a797765ad940b00d4950e57faa495bb498db4668760681cc7a5830ef399",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0013",
+            "path": "series-b/instances/000011.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "5fea55363a7676058c764357913904b1ef6250fa95f0104496f6d427c5fe3761",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0014",
+            "path": "series-b/instances/000012.dcm",
+            "kind": "dicom",
+            "bytes": 3140,
+            "sha256": "51d6c1b599c9e06a806d753d7f0b5c0e2cb94ce7ac9cc2d733bc45c10582271d",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0015",
+            "path": "series-b/instances/000013.dcm",
+            "kind": "dicom",
+            "bytes": 3170,
+            "sha256": "f6b055bf713c24281daa214f84a9ead9adf115d3b8ac8a251ccd34f7e1616628",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0016",
+            "path": "series-b/instances/000014.dcm",
+            "kind": "dicom",
+            "bytes": 3120,
+            "sha256": "765322ba83f6972b8129838c8e17b36a74dfbf74e59ae64355ca08669d35983f",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0017",
+            "path": "series-b/instances/000015.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "dfab260c1b5299d2d4d87774c16c871969dfc528e212b5b07c17b202dc5c818c",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0018",
+            "path": "series-b/instances/000016.dcm",
+            "kind": "dicom",
+            "bytes": 3146,
+            "sha256": "bcf4e2949d4ca1c328f954590ec7f75505c06a16d16d3c5aaacfbc1e075932b3",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0019",
+            "path": "series-b/instances/000017.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "05cae24f36d54f40638ff29f63e461a54731b5699ddbe98416d6eb1554e40fbc",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0020",
+            "path": "series-b/instances/000018.dcm",
+            "kind": "dicom",
+            "bytes": 3168,
+            "sha256": "0da8ddc009687c3552a4b4481a1f570c13496dbc3eae936023f91711680f8c5c",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0021",
+            "path": "series-b/instances/000019.dcm",
+            "kind": "dicom",
+            "bytes": 3158,
+            "sha256": "1832eaf7b15897cb80a17e511a5a125ee03459658f3de7a414795c4622bcc5ac",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0022",
+            "path": "series-b/instances/000020.dcm",
+            "kind": "dicom",
+            "bytes": 3166,
+            "sha256": "e49caeaf22258de75656fe0a8f09c55360507093299b8c19d220845d40601002",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0023",
+            "path": "series-b/instances/000021.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "a3bf1f1991610e84c3b5e632330a2efa7380afdc665b38cbb98cbec922c9769a",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0024",
+            "path": "series-b/instances/000022.dcm",
+            "kind": "dicom",
+            "bytes": 3158,
+            "sha256": "c0dfb4ab742f57833d6a1cfaf78d706f3259296f1848475f4a4c639f23ee8936",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0025",
+            "path": "series-b/instances/000023.dcm",
+            "kind": "dicom",
+            "bytes": 3156,
+            "sha256": "a002b4fa879c5c2642cf044dbac02030c3447de349c1fe047125cb0a80e71c91",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0026",
+            "path": "series-b/instances/000024.dcm",
+            "kind": "dicom",
+            "bytes": 3170,
+            "sha256": "25afe61aad5dcd3659967088c1e9ce5177adbb831efb3d95c9437197a2b2d3a8",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0027",
+            "path": "series-b/instances/000025.dcm",
+            "kind": "dicom",
+            "bytes": 3174,
+            "sha256": "4bd7f0bd49be18b6c4502109944e05e478f91786fe550f053b877995d78de728",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0028",
+            "path": "series-b/instances/000026.dcm",
+            "kind": "dicom",
+            "bytes": 3162,
+            "sha256": "0a805a201520df47039abce26659a095a945d3f6f7bdf7750c7739e00050ab2c",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0029",
+            "path": "series-b/instances/000027.dcm",
+            "kind": "dicom",
+            "bytes": 3156,
+            "sha256": "0312cde8d6f933e7946ee569abd3d82413b6d42b294c8e334d40f3b7be847329",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0030",
+            "path": "series-b/instances/000028.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "fea0ff13d183a55dfbab04cfd22ae6771001e290e2c19b98d7835a596f5ec73f",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0031",
+            "path": "series-b/instances/000029.dcm",
+            "kind": "dicom",
+            "bytes": 3164,
+            "sha256": "efd3ee22d89acbb5a9d861b05cb40ebc253eb77cc3d001e1d2ef82cd603dc1a9",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0032",
+            "path": "series-b/instances/000030.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "ed0e0d0547068dcbae003b03a7c4d309cdacc9bca55e09a1d9e1f431a350c450",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0033",
+            "path": "series-b/instances/000031.dcm",
+            "kind": "dicom",
+            "bytes": 3154,
+            "sha256": "b22cfab079a1336c63115571b3fa6caab4d7668d709b760e3b8eb31264bcc124",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0034",
+            "path": "series-b/instances/000032.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "1f1dd360c107e51e990fe6b3cc81614be057c88d04a98ddb2b123bf7d3b0f1e7",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0035",
+            "path": "series-b/instances/000033.dcm",
+            "kind": "dicom",
+            "bytes": 3160,
+            "sha256": "1f17dd44e3f6baef9a278d75d09019c912f043a858b39b1aa7056709fc8bd3c1",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0036",
+            "path": "series-b/instances/000034.dcm",
+            "kind": "dicom",
+            "bytes": 3168,
+            "sha256": "4f0dfae772c6c334910bf9bd1dc1edb978211332f2e022ed362ae91bcf2ea13d",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0037",
+            "path": "series-b/instances/000035.dcm",
+            "kind": "dicom",
+            "bytes": 3170,
+            "sha256": "10721b9f6a8b19d1e5122118ba9ce49f6a18bafd5e03f8c44943ff66b325b262",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0038",
+            "path": "series-b/instances/000036.dcm",
+            "kind": "dicom",
+            "bytes": 3150,
+            "sha256": "e399fd21bd16a7c0a27ad890d83f7a2df7354082dd25110c83fef8c9635e0798",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0039",
+            "path": "series-b/instances/000037.dcm",
+            "kind": "dicom",
+            "bytes": 3152,
+            "sha256": "d901f3a577a3b97a240eac217245f0adf13007f513ef042384887e7a561a4dc6",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0040",
+            "path": "series-b/instances/000038.dcm",
+            "kind": "dicom",
+            "bytes": 3144,
+            "sha256": "438a1e6967c8133e1ea3b14e44400925d80c78d9584085065cf041742b77c6b7",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0041",
+            "path": "series-b/instances/000039.dcm",
+            "kind": "dicom",
+            "bytes": 3170,
+            "sha256": "46addcb7bed58e8099ea1a7f939f69a2939d11db8a013022e4f20299b12a09ba",
+            "seriesId": "series-b"
+          },
+          {
+            "fileId": "b-file-0042",
+            "path": "series-b/instances/000040.dcm",
+            "kind": "dicom",
+            "bytes": 3166,
+            "sha256": "81e0e618aca9894d79698632a92744e227e0caa0a6da8f5e822dfc5305707147",
+            "seriesId": "series-b"
+          }
+        ],
+        "series": [
+          {
+            "id": "series-b",
+            "seriesInstanceUid": "2.25.248816374321943143816118181522597901605",
+            "indexPath": "series-b/ohif_metadata.json",
+            "instanceCount": 40,
+            "frameCount": 40,
+            "modality": "CT",
+            "transferSyntaxUid": "1.2.840.10008.1.2.4.91"
+          }
+        ],
+        "totalBytes": 292227,
+        "fileCount": 42
+      }
+    },
+    {
+      "schema": "DownloadGrant",
+      "name": "b-grant",
+      "value": {
+        "downloadId": "99b654ca-5f29-5327-ac21-bc4d313c5b6f",
+        "downloadExpiresAt": "2026-11-08T11:00:00Z",
+        "bundle": {
+          "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+          "userId": "900010",
+          "doctorId": "900001",
+          "patientId": "910002",
+          "appointmentId": "920002",
+          "studyId": "930002",
+          "sourceVersion": "demo-source-b-1",
+          "representationId": "jpeg2000-20x",
+          "profileVersion": 1,
+          "generationId": "demo-generation-b-1",
+          "bundleId": "demo-bundle-b-1"
+        },
+        "inventory": {
+          "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/download-inventory.json?example=not-a-signature",
+          "bytes": 11476,
+          "sha256": "b5f2235b75e537b1f40a4b67a63327549251a8c58a346ef34430bf443aa3af17"
+        },
+        "resources": [
+          {
+            "fileId": "b-file-0001",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/manifest.json?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0002",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/ohif_metadata.json?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0003",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000001.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0004",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000002.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0005",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000003.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0006",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000004.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0007",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000005.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0008",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000006.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0009",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000007.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0010",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000008.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0011",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000009.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0012",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000010.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0013",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000011.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0014",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000012.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0015",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000013.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0016",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000014.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0017",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000015.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0018",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000016.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0019",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000017.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0020",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000018.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0021",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000019.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0022",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000020.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0023",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000021.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0024",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000022.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0025",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000023.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0026",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000024.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0027",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000025.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0028",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000026.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0029",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000027.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0030",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000028.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0031",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000029.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0032",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000030.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0033",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000031.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0034",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000032.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0035",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000033.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0036",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000034.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0037",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000035.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0038",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000036.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0039",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000037.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0040",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000038.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0041",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000039.dcm?example=not-a-signature"
+          },
+          {
+            "fileId": "b-file-0042",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-b/series-b/instances/000040.dcm?example=not-a-signature"
+          }
+        ],
+        "urlsExpiresAt": "2026-11-08T10:15:00Z",
+        "hotExpiresAt": "2030-01-01T00:00:00Z",
+        "offlineGrant": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkVYQU1QTEUtT05MWS1OT1QtUFJPRFVDVElPTi1QMjU2LTAwMSJ9.eyJpc3MiOiJodHRwczovL2FwaS5leGFtcGxlLmludmFsaWQiLCJhdWQiOiJvcmJpdGFsLmRvY3Rvci5pb3Mub2ZmbGluZSIsImlhdCI6MTc5NDEzMjAwMCwibmJmIjoxNzk0MTMyMDAwLCJleHAiOjE3OTQ3MzY4MDAsImp0aSI6IjMyNWVjMWM1LTU0MjctNTM2My1hYzY1LWYyNmNlYmJhMGI3MyIsInNlcnZlcklkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAxIiwidXNlcklkIjoiOTAwMDEwIiwiZG9jdG9ySWQiOiI5MDAwMDEiLCJwYXRpZW50SWQiOiI5MTAwMDIiLCJhcHBvaW50bWVudElkIjoiOTIwMDAyIiwic3R1ZHlJZCI6IjkzMDAwMiIsInNvdXJjZVZlcnNpb24iOiJkZW1vLXNvdXJjZS1iLTEiLCJyZXByZXNlbnRhdGlvbklkIjoianBlZzIwMDAtMjB4IiwicHJvZmlsZVZlcnNpb24iOjEsImdlbmVyYXRpb25JZCI6ImRlbW8tZ2VuZXJhdGlvbi1iLTEiLCJidW5kbGVJZCI6ImRlbW8tYnVuZGxlLWItMSIsImRldmljZUlkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAyIiwiaW52ZW50b3J5U2hhMjU2IjoiYjVmMjIzNWI3NWU1MzdiMWY0MGE0YjY3YTYzMzI3NTQ5MjUxYThjNThhMzQ2ZWYzNDQzMGJmNDQzYWEzYWYxNyIsImFsbG93ZWRBY3Rpb25zIjpbIm9wZW5Mb2NhbFZpZXdlciIsInNhdmVMb2NhbFByb2plY3QiXX0.MD0x8KBh3J91GqjdoxKFd6qIv4JbifQq45GHgy6hkBJfSYLi-TJiwBShU_iHD_WMW0_sM4jLBcBqxOWZZEv0xA",
+        "offlineAccessUntil": "2026-11-15T10:00:00Z",
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "OfflineGrantClaims",
+      "name": "b-claims",
+      "value": {
+        "iss": "https://api.example.invalid",
+        "aud": "orbital.doctor.ios.offline",
+        "iat": 1794132000,
+        "nbf": 1794132000,
+        "exp": 1794736800,
+        "jti": "325ec1c5-5427-5363-ac65-f26cebba0b73",
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "userId": "900010",
+        "doctorId": "900001",
+        "patientId": "910002",
+        "appointmentId": "920002",
+        "studyId": "930002",
+        "sourceVersion": "demo-source-b-1",
+        "representationId": "jpeg2000-20x",
+        "profileVersion": 1,
+        "generationId": "demo-generation-b-1",
+        "bundleId": "demo-bundle-b-1",
+        "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002",
+        "inventorySha256": "b5f2235b75e537b1f40a4b67a63327549251a8c58a346ef34430bf443aa3af17",
+        "allowedActions": [
+          "openLocalViewer",
+          "saveLocalProject"
+        ]
+      }
+    },
+    {
+      "schema": "LocalStudyDescriptor",
+      "name": "b-descriptor",
+      "value": {
+        "schemaVersion": 1,
+        "bundle": {
+          "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+          "userId": "900010",
+          "doctorId": "900001",
+          "patientId": "910002",
+          "appointmentId": "920002",
+          "studyId": "930002",
+          "sourceVersion": "demo-source-b-1",
+          "representationId": "jpeg2000-20x",
+          "profileVersion": 1,
+          "generationId": "demo-generation-b-1",
+          "bundleId": "demo-bundle-b-1"
+        },
+        "inventorySha256": "b5f2235b75e537b1f40a4b67a63327549251a8c58a346ef34430bf443aa3af17",
+        "bundleRelativePath": "d7ff07cb-af9f-4b59-8ba3-000000000001/900010/930002/demo-bundle-b-1/bundle",
+        "series": [
+          {
+            "id": "series-b",
+            "seriesInstanceUid": "2.25.248816374321943143816118181522597901605",
+            "indexPath": "series-b/ohif_metadata.json",
+            "instanceCount": 40,
+            "frameCount": 40,
+            "modality": "CT",
+            "transferSyntaxUid": "1.2.840.10008.1.2.4.91"
+          }
+        ],
+        "offlineAccessUntil": "2026-11-15T10:00:00Z"
+      }
+    },
+    {
+      "schema": "Me",
+      "name": "me",
+      "value": {
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "serverOrigin": "https://api.example.invalid",
+        "userId": "900010",
+        "doctorId": "900001",
+        "displayName": "SYNTHETIC DEMO DOCTOR",
+        "permissions": {
+          "canUseOnlineViewer": true,
+          "canDownloadStudies": true
+        },
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "PatientPage",
+      "name": "patients",
+      "value": {
+        "items": [
+          {
+            "id": "910001",
+            "displayName": "SYNTHETIC PHANTOM A",
+            "availableStudyCount": 1
+          },
+          {
+            "id": "910002",
+            "displayName": "SYNTHETIC PHANTOM B",
+            "availableStudyCount": 1
+          }
+        ],
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "StudyPage",
+      "name": "studies",
+      "value": {
+        "items": [
+          {
+            "id": "930001",
+            "patientId": "910001",
+            "appointmentId": "920001",
+            "description": "SYNTHETIC PHANTOM A",
+            "acquiredAt": "2026-11-08T10:00:00Z",
+            "centerName": "SYNTHETIC TEST CENTER",
+            "centerTimeZone": "Europe/Moscow",
+            "viewerStatus": "ready",
+            "downloadStatus": "ready",
+            "canDownload": true,
+            "bundle": {
+              "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+              "userId": "900010",
+              "doctorId": "900001",
+              "patientId": "910001",
+              "appointmentId": "920001",
+              "studyId": "930001",
+              "sourceVersion": "demo-source-a-1",
+              "representationId": "jpeg2000-20x",
+              "profileVersion": 1,
+              "generationId": "demo-generation-a-1",
+              "bundleId": "demo-bundle-a-1"
+            },
+            "totalBytes": 262829,
+            "hotExpiresAt": "2030-01-01T00:00:00Z"
+          },
+          {
+            "id": "930002",
+            "patientId": "910002",
+            "appointmentId": "920002",
+            "description": "SYNTHETIC PHANTOM B",
+            "acquiredAt": "2026-11-08T10:00:00Z",
+            "centerName": "SYNTHETIC TEST CENTER",
+            "centerTimeZone": "Europe/Moscow",
+            "viewerStatus": "ready",
+            "downloadStatus": "ready",
+            "canDownload": true,
+            "bundle": {
+              "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+              "userId": "900010",
+              "doctorId": "900001",
+              "patientId": "910002",
+              "appointmentId": "920002",
+              "studyId": "930002",
+              "sourceVersion": "demo-source-b-1",
+              "representationId": "jpeg2000-20x",
+              "profileVersion": 1,
+              "generationId": "demo-generation-b-1",
+              "bundleId": "demo-bundle-b-1"
+            },
+            "totalBytes": 292227,
+            "hotExpiresAt": "2030-01-01T00:00:00Z"
+          }
+        ],
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "PairingQr",
+      "name": "qr",
+      "value": {
+        "type": "orbital.doctor.pairing",
+        "version": 1,
+        "server": "https://api.example.invalid",
+        "doctor_id": "900001",
+        "pairing_ticket": "EXAMPLE_ONLY_NOT_A_WORKING_PAIRING_TICKET",
+        "expires_at": "2026-11-08T10:02:00Z"
+      }
+    },
+    {
+      "schema": "Capabilities",
+      "name": "capabilities",
+      "value": {
+        "contractVersion": "1.0",
+        "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+        "serverOrigin": "https://api.example.invalid",
+        "serverTime": "2026-11-08T10:00:00Z",
+        "minimumAppVersion": "0.3.0",
+        "features": {
+          "qrPairing": true,
+          "studyCatalog": true,
+          "studyDownload": true,
+          "offlineViewer": true
+        },
+        "limits": {
+          "maxPageSize": 100,
+          "maxUrlRefreshFileIds": 128
+        }
+      }
+    },
+    {
+      "schema": "SessionResponse",
+      "name": "session",
+      "value": {
+        "sessionId": "d7ff07cb-af9f-4b59-8ba3-000000000004",
+        "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002",
+        "tokenType": "Bearer",
+        "accessToken": "EXAMPLE_ONLY_NOT_A_WORKING_ACCESS_TOKEN",
+        "accessTokenExpiresAt": "2026-11-08T10:15:00Z",
+        "refreshToken": "EXAMPLE_ONLY_NOT_A_WORKING_REFRESH_TOKEN",
+        "sessionExpiresAt": "2026-12-08T10:00:00Z",
+        "me": {
+          "serverId": "d7ff07cb-af9f-4b59-8ba3-000000000001",
+          "serverOrigin": "https://api.example.invalid",
+          "userId": "900010",
+          "doctorId": "900001",
+          "displayName": "SYNTHETIC DEMO DOCTOR",
+          "permissions": {
+            "canUseOnlineViewer": true,
+            "canDownloadStudies": true
+          },
+          "serverTime": "2026-11-08T10:00:00Z"
+        }
+      }
+    },
+    {
+      "schema": "PairingExchangeRequest",
+      "name": "exchange-request",
+      "value": {
+        "pairingTicket": "EXAMPLE_ONLY_NOT_A_WORKING_PAIRING_TICKET",
+        "clientRequestId": "d7ff07cb-af9f-4b59-8ba3-000000000003",
+        "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002",
+        "deviceName": "SYNTHETIC DEMO IPHONE",
+        "platform": "ios",
+        "appVersion": "0.3.0"
+      }
+    },
+    {
+      "schema": "RefreshRequest",
+      "name": "refresh-request",
+      "value": {
+        "refreshToken": "EXAMPLE_ONLY_NOT_A_WORKING_REFRESH_TOKEN",
+        "clientRequestId": "d7ff07cb-af9f-4b59-8ba3-000000000003",
+        "deviceId": "d7ff07cb-af9f-4b59-8ba3-000000000002"
+      }
+    },
+    {
+      "schema": "DownloadRequest",
+      "name": "download-request",
+      "value": {
+        "clientRequestId": "d7ff07cb-af9f-4b59-8ba3-000000000003",
+        "expectedSourceVersion": "demo-source-a-1",
+        "expectedGenerationId": "demo-generation-a-1"
+      }
+    },
+    {
+      "schema": "UrlRefreshRequest",
+      "name": "urls-request",
+      "value": {
+        "clientRequestId": "d7ff07cb-af9f-4b59-8ba3-000000000003",
+        "bundleId": "demo-bundle-a-1",
+        "fileIds": [
+          "a-file-0001"
+        ]
+      }
+    },
+    {
+      "schema": "UrlRefreshResponse",
+      "name": "urls-response",
+      "value": {
+        "downloadId": "7864ca6f-b7d1-56cd-8d1b-c89528867f18",
+        "bundleId": "demo-bundle-a-1",
+        "inventorySha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274",
+        "resources": [
+          {
+            "fileId": "a-file-0001",
+            "downloadUrl": "https://storage.example.invalid/SYNTHETIC/synthetic-study-a/manifest.json?example=not-a-signature"
+          }
+        ],
+        "urlsExpiresAt": "2026-11-08T10:15:00Z",
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "OfflineAccessRequest",
+      "name": "offline-request",
+      "value": {
+        "clientRequestId": "d7ff07cb-af9f-4b59-8ba3-000000000003",
+        "bundleId": "demo-bundle-a-1",
+        "inventorySha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274"
+      }
+    },
+    {
+      "schema": "OfflineAccessResponse",
+      "name": "offline-response",
+      "value": {
+        "bundleId": "demo-bundle-a-1",
+        "inventorySha256": "5e38af4d4ea6885d2068dc68502a59227f75cce61dc85f362b36f27a06c0c274",
+        "offlineGrant": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkVYQU1QTEUtT05MWS1OT1QtUFJPRFVDVElPTi1QMjU2LTAwMSJ9.eyJpc3MiOiJodHRwczovL2FwaS5leGFtcGxlLmludmFsaWQiLCJhdWQiOiJvcmJpdGFsLmRvY3Rvci5pb3Mub2ZmbGluZSIsImlhdCI6MTc5NDEzMjAwMCwibmJmIjoxNzk0MTMyMDAwLCJleHAiOjE3OTQ3MzY4MDAsImp0aSI6Ijg4YzIxY2RlLWZiYzAtNTc5NC04ZWM2LTNjNGZiMDAyZmU0OSIsInNlcnZlcklkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAxIiwidXNlcklkIjoiOTAwMDEwIiwiZG9jdG9ySWQiOiI5MDAwMDEiLCJwYXRpZW50SWQiOiI5MTAwMDEiLCJhcHBvaW50bWVudElkIjoiOTIwMDAxIiwic3R1ZHlJZCI6IjkzMDAwMSIsInNvdXJjZVZlcnNpb24iOiJkZW1vLXNvdXJjZS1hLTEiLCJyZXByZXNlbnRhdGlvbklkIjoianBlZzIwMDAtMjB4IiwicHJvZmlsZVZlcnNpb24iOjEsImdlbmVyYXRpb25JZCI6ImRlbW8tZ2VuZXJhdGlvbi1hLTEiLCJidW5kbGVJZCI6ImRlbW8tYnVuZGxlLWEtMSIsImRldmljZUlkIjoiZDdmZjA3Y2ItYWY5Zi00YjU5LThiYTMtMDAwMDAwMDAwMDAyIiwiaW52ZW50b3J5U2hhMjU2IjoiNWUzOGFmNGQ0ZWE2ODg1ZDIwNjhkYzY4NTAyYTU5MjI3Zjc1Y2NlNjFkYzg1ZjM2MmIzNmYyN2EwNmMwYzI3NCIsImFsbG93ZWRBY3Rpb25zIjpbIm9wZW5Mb2NhbFZpZXdlciIsInNhdmVMb2NhbFByb2plY3QiXX0.szf_QRdjy6uad4M_TUrH2teKvV2HqrRQtMJ19_vqxcP4UQBkZTtF-1r5_z_Bxu-lbYokdgXj60tFjTRHcf8q5w",
+        "offlineAccessUntil": "2026-11-15T10:00:00Z",
+        "serverTime": "2026-11-08T10:00:00Z"
+      }
+    },
+    {
+      "schema": "ErrorResponse",
+      "name": "not-ready-error",
+      "value": {
+        "error": {
+          "code": "download_not_ready",
+          "message": "Серия ещё готовится",
+          "retryable": true,
+          "retryAfterSeconds": 30
+        },
+        "requestId": "d7ff07cb-af9f-4b59-8ba3-000000000003"
+      }
+    }
+  ]
+}

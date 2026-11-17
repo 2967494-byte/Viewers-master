@@ -24,6 +24,7 @@ const addDirectory = relative => {
 
 addDirectory('extensions/cornerstone/src/components/ManualPanorama');
 addDirectory('extensions/cornerstone/src/components/ImplantLibrary');
+add('extensions/cornerstone/src/utils/guardImageFilterPass.test.ts');
 for (const name of ['DentalCrosshairsTool', 'dentalCrosshairHandles', 'DentalImplantTool', 'DentalMeasurementTools', 'dentalGeometry', 'implantGeometry']) {
   add(`extensions/cornerstone/src/tools/${name}.test.ts`);
 }

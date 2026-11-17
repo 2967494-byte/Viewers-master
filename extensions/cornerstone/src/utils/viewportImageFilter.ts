@@ -1,15 +1,20 @@
 import { Enums, getEnabledElement } from '@cornerstonejs/core';
 import vtkConvolution2DPass from '@kitware/vtk.js/Rendering/OpenGL/Convolution2DPass';
 import vtkForwardPass from '@kitware/vtk.js/Rendering/OpenGL/ForwardPass';
-import { getImageFilter, getImageFilterStrength, imageFilterKernel, subscribeImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
+import { disableImageFilterAfterFailure, getImageFilter, getImageFilterStrength, imageFilterKernel, subscribeImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 import { getRenderingPreference, subscribeRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
+import guardImageFilterPass from './guardImageFilterPass';
 
 /** Filter the rendered slice on the GPU, before DOM annotations and without touching the volume. */
 export default function installViewportImageFilter(element: HTMLElement) {
   const viewport = getEnabledElement(element)?.viewport;
   if (!viewport || (viewport.type !== Enums.ViewportType.ORTHOGRAPHIC && viewport.type !== Enums.ViewportType.STACK)) return;
   const previous = viewport.getRenderPasses;
+  let disposed = false;
   let pass, forward;
+  let guardedPass;
+  let activeKernel: number[];
+  let validatePass: (() => void) | undefined;
   const update = () => {
     const kernel = getRenderingPreference() === 'compatibility' ? null : imageFilterKernel(getImageFilter(), getImageFilterStrength());
     if (kernel) {
@@ -17,18 +22,29 @@ export default function installViewportImageFilter(element: HTMLElement) {
         forward = vtkForwardPass.newInstance();
         pass = vtkConvolution2DPass.newInstance();
         pass.setKernelDimension(5);
-        pass.setDelegates([forward]);
+        activeKernel = kernel;
+        pass.setKernel(activeKernel);
+        const guard = guardImageFilterPass(pass, forward, () => {
+          // Do not change render passes or recursively render during a traversal.
+          queueMicrotask(() => { if (!disposed) disableImageFilterAfterFailure(); });
+        });
+        guardedPass = guard.pass;
+        validatePass = guard.validate;
       }
-      pass.setKernel(kernel);
+      // VTK rebuilds its screen quad when setKernel modifies the pass. Only the
+      // uniform coefficients change here; keep the quad/shader and array alive.
+      kernel.forEach((weight, index) => { activeKernel[index] = weight; });
+      validatePass();
     }
     viewport.render();
   };
-  const renderPasses = () => getRenderingPreference() === 'compatibility' || getImageFilter() === 'none' ? previous.call(viewport) : [pass];
+  const renderPasses = () => getRenderingPreference() === 'compatibility' || getImageFilter() === 'none' ? previous.call(viewport) : [guardedPass];
   viewport.getRenderPasses = renderPasses;
   const unsubscribe = subscribeImageFilter(update);
   const unsubscribePreference = subscribeRenderingPreference(update);
   update();
   return () => {
+    disposed = true;
     unsubscribe();
     unsubscribePreference();
     if (viewport.getRenderPasses === renderPasses) viewport.getRenderPasses = previous;

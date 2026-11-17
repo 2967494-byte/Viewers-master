@@ -9,11 +9,24 @@ export type ImageFilterMode = typeof IMAGE_FILTER_OPTIONS[number]['id'];
 let mode: ImageFilterMode = 'none';
 let strength = 0;
 let rasterEnabled = true;
+let failure: string | null = null;
+export const getImageFilterFailure = () => failure;
+/** Stop all slice filters together; never keep retrying a failing GPU pass. */
+export function disableImageFilterAfterFailure() {
+  if (failure) return;
+  failure = 'Резкость отключена: браузер не смог применить фильтр. Если изображения не восстановились, обновите страницу.';
+  mode = 'none';
+  strength = 0;
+  rasterEnabled = false;
+  recordViewerEvent('filter', { value: 'disabled-after-render-error' });
+  listeners.forEach(listener => listener());
+}
 export const getRasterImageFilter = () => rasterEnabled ? mode : 'none';
 export const getImageFilterStrength = () => strength;
 const listeners = new Set<() => void>();
 export const getImageFilter = () => mode;
 export function setImageFilter(value: ImageFilterMode) {
+  if (value === 'none') failure = null;
   if ((value === mode && rasterEnabled) || !IMAGE_FILTER_OPTIONS.some(option => option.id === value)) return;
   mode = value;
   rasterEnabled = true;
@@ -22,7 +35,7 @@ export function setImageFilter(value: ImageFilterMode) {
   listeners.forEach(listener => listener());
 }
 export function setImageFilterStrength(value: number) {
-  if (!Number.isFinite(value)) return;
+  if (failure || !Number.isFinite(value)) return;
   const next = Math.max(0, Math.min(3, value));
   const nextMode = next === 0 ? 'none' : 'unsharp';
   if (strength === next && mode === nextMode && !rasterEnabled) return;

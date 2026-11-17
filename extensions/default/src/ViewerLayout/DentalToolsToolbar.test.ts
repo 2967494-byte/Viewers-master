@@ -2,10 +2,25 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import DentalToolsToolbar from './DentalToolsToolbar';
 import { getAxesVisible, setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
-import { getImageFilter, getImageFilterStrength, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
+import { disableImageFilterAfterFailure, getImageFilter, getImageFilterStrength, setImageFilter, setImageFilterStrength } from '@ohif/core/src/constants/orbitalImageFilters';
 
 describe('Russian dental toolbar', () => {
   afterEach(() => act(() => { setAxesVisible(true); setImageFilter('none'); }));
+  it('reports filter failure, cancels queued changes and prevents repeated GPU retries', () => {
+    jest.useFakeTimers();
+    const view = render(React.createElement(DentalToolsToolbar, { commandsManager: { run: jest.fn() } }));
+    try {
+      fireEvent.click(view.getByRole('button', { name: 'Резкость', exact: true }));
+      fireEvent.change(view.getByRole('slider', { name: 'Резкость 2D' }), { target: { value: '3' } });
+      act(() => disableImageFilterAfterFailure());
+      act(() => jest.runOnlyPendingTimers());
+      expect(getImageFilterStrength()).toBe(0);
+      expect(view.getByRole('slider', { name: 'Резкость 2D' }).disabled).toBe(true);
+      expect(view.getByText(/Резкость отключена/)).toBeTruthy();
+      act(() => setImageFilterStrength(3));
+      expect(getImageFilter()).toBe('none');
+    } finally { view.unmount(); jest.useRealTimers(); }
+  });
   it('selects the hand, shows its instructions and returns to slice navigation on Escape', () => {
     const commandsManager = { run: jest.fn() };
     const view = render(React.createElement(DentalToolsToolbar, { commandsManager }));

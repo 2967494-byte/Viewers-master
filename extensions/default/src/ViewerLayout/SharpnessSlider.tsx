@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useImageFilterStrength } from '@ohif/core/src/hooks/useImageFilter';
-import { setImageFilterStrength } from '@ohif/core/src/constants/orbitalImageFilters';
+import { getImageFilterFailure, setImageFilterStrength, subscribeImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 import { getRenderingPreference, subscribeRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 
 export default function SharpnessSlider() {
   const strength = useImageFilterStrength();
+  const failure = useSyncExternalStore(subscribeImageFilter, getImageFilterFailure, getImageFilterFailure);
   const [draft, setDraft] = useState(strength);
   const [open, setOpen] = useState(false);
   const [preference, setPreference] = useState(getRenderingPreference);
@@ -16,6 +17,7 @@ export default function SharpnessSlider() {
     if (pending.current !== null) { setImageFilterStrength(pending.current); pending.current = null; }
   };
   useEffect(() => { setDraft(strength); }, [strength]);
+  useEffect(() => { if (failure) { pending.current = null; clearTimeout(timer.current); timer.current = null; setOpen(true); } }, [failure]);
   useEffect(() => subscribeRenderingPreference(() => setPreference(getRenderingPreference())), []);
   useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => {
@@ -24,12 +26,12 @@ export default function SharpnessSlider() {
     document.addEventListener('pointerdown', outside);
     return () => document.removeEventListener('pointerdown', outside);
   }, [open]);
-  const disabled = preference === 'compatibility';
+  const disabled = preference === 'compatibility' || Boolean(failure);
   return <div ref={root} className="dental-tool-group dental-sharpness-control"
     onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); flush(); setOpen(false); root.current?.querySelector('button')?.focus(); } }}>
     <button type="button" className="dental-header-tool" aria-label="Резкость" aria-haspopup="dialog"
       aria-expanded={open} data-active={strength > 0}
-      title={disabled ? 'Резкость недоступна в режиме совместимости' : `Резкость трёх 2D-окон: ${strength.toFixed(2)}×`}
+      title={failure || (disabled ? 'Резкость недоступна в режиме совместимости' : `Резкость трёх 2D-окон: ${strength.toFixed(2)}×`)}
       onClick={() => { flush(); setOpen(value => !value); }}>
       <svg width="23" height="23" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="2" y="2" width="20" height="20" rx="2" fill="currentColor" opacity=".18" />
@@ -48,7 +50,7 @@ export default function SharpnessSlider() {
           }} onPointerUp={flush} onPointerCancel={flush} onBlur={flush} onKeyUp={flush} />
       </label>
       <div className="dental-sharpness-scale"><span>Без усиления</span><span>3×</span></div>
-      {disabled && <small>Недоступно в режиме совместимости</small>}
+      {failure ? <small role="status">{failure}</small> : disabled && <small>Недоступно в режиме совместимости</small>}
     </div>}
   </div>;
 }
