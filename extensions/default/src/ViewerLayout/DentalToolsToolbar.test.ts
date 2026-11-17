@@ -26,15 +26,17 @@ describe('Russian dental toolbar', () => {
     const commandsManager = { run: jest.fn() };
     const view = render(React.createElement(DentalToolsToolbar, { commandsManager }));
     try {
+      fireEvent.click(view.getByRole('button', { name:'Резкость',exact:true }));
       const slider = view.getByRole('slider', { name:'Резкость 2D' });
-      for (const value of ['20','40','75']) fireEvent.change(slider, { target:{value} });
+      expect(slider.getAttribute('max')).toBe('3');
+      for (const value of ['0.2','0.4','0.75']) fireEvent.change(slider, { target:{value} });
       expect(getImageFilter()).toBe('none');
       act(() => jest.advanceTimersByTime(50));
       expect(getImageFilter()).toBe('unsharp');
       expect(getImageFilterStrength()).toBe(.75);
-      fireEvent.change(slider, { target:{value:'43'} });
+      fireEvent.change(slider, { target:{value:'2.4'} });
       fireEvent.pointerUp(slider);
-      expect(getImageFilterStrength()).toBe(.43);
+      expect(getImageFilterStrength()).toBe(2.4);
       fireEvent.change(slider, { target:{value:'0'} }); fireEvent.blur(slider);
       expect(getImageFilter()).toBe('none');
       expect(commandsManager.run).not.toHaveBeenCalled();

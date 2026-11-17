@@ -84,6 +84,9 @@ describe('Shared display filters and GPU render pass lifecycle', () => {
 it('blends sharpening continuously, preserves a uniform image and bypasses at zero', () => {
   const full = imageFilterKernel('unsharp');
   const half = imageFilterKernel('unsharp', .5);
+  const strong = imageFilterKernel('unsharp',3);
+  expect(strong[12]).toBeCloseTo(1+3*(full[12]-1));
+  expect(strong.reduce((sum,v) => sum+v,0)).toBeCloseTo(1);
   expect(half[12]).toBeCloseTo(1 + (full[12]-1)*.5);
   expect(half[6]).toBeCloseTo(full[6]*.5);
   expect(half.reduce((sum,v) => sum+v,0)).toBeCloseTo(1);

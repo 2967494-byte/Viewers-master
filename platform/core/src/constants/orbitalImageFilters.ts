@@ -23,7 +23,7 @@ export function setImageFilter(value: ImageFilterMode) {
 }
 export function setImageFilterStrength(value: number) {
   if (!Number.isFinite(value)) return;
-  const next = Math.max(0, Math.min(1, value));
+  const next = Math.max(0, Math.min(3, value));
   const nextMode = next === 0 ? 'none' : 'unsharp';
   if (strength === next && mode === nextMode && !rasterEnabled) return;
   if (mode !== nextMode) recordViewerEvent('filter', { value: nextMode });
@@ -54,7 +54,7 @@ export function imageFilterKernel(value: ImageFilterMode, strength = 1): number[
       kernel[y * 5 + x] = -amount * weights[x] * weights[y] / 256;
     kernel[12] += 1 + amount;
   }
-  const amount = Math.max(0, Math.min(1, strength));
+  const amount = Math.max(0, Math.min(3, strength));
   return kernel.map((weight, index) => weight * amount + (index === 12 ? 1 - amount : 0));
 }
 

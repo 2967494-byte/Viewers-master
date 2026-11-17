@@ -153,6 +153,8 @@
   }
 }
 
-.dental-sharpness-slider { display:flex; flex-direction:column; justify-content:center; gap:5px; width:94px; flex-shrink:0; padding:4px 8px; border-left:1px solid #30363e; color:#b4beca; font-size:10px; }
-.dental-sharpness-slider input { width:78px; height:4px; margin:0; accent-color:#a35aed; cursor:ew-resize; }
-.dental-sharpness-slider:has(input:disabled) { opacity:.45; }
+.dental-sharpness-popup { min-width:240px; padding:14px; }
+.dental-sharpness-popup label { display:block; font-size:13px; color:#e4d8f2; }
+.dental-sharpness-popup output { float:right; font-variant-numeric:tabular-nums; }
+.dental-sharpness-popup input { display:block; width:100%; margin:18px 0 12px; height:4px; accent-color:#a35aed; cursor:ew-resize; }
+.dental-sharpness-scale { display:flex; justify-content:space-between; color:#9ca9bb; font-size:11px; }
