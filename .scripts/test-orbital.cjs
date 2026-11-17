@@ -27,7 +27,7 @@ addDirectory('extensions/cornerstone/src/components/ImplantLibrary');
 for (const name of ['DentalCrosshairsTool', 'dentalCrosshairHandles', 'DentalImplantTool', 'DentalMeasurementTools', 'dentalGeometry', 'implantGeometry']) {
   add(`extensions/cornerstone/src/tools/${name}.test.ts`);
 }
-for (const name of ['dentalToolControls', 'crosshairSlabControls', 'viewportImageFilter', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout', 'largeVolumeTexture', 'adaptiveVolumeTexture', 'automaticGpuProfile', 'gpuStartupProfile', 'gpuDiagnosticProfile', 'gpuEngineDiagnostics', 'hiddenPanoramaRenderGuard', 'viewerOpenTelemetry', 'zoomMprViewport', 'preserveMprResize']) {
+for (const name of ['dentalToolControls', 'crosshairSlabControls', 'viewportImageFilter', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout', 'largeVolumeTexture', 'adaptiveVolumeTexture', 'automaticGpuProfile', 'gpuStartupProfile', 'gpuDiagnosticProfile', 'gpuEngineDiagnostics', 'hiddenPanoramaRenderGuard', 'viewerOpenTelemetry', 'viewerDiagnostics', 'zoomMprViewport', 'preserveMprResize']) {
   add(`extensions/cornerstone/src/utils/${name}.test.ts`);
 }
 add('extensions/cornerstone/src/Viewport/Overlays/VolumeSliceIndicator.test.ts');

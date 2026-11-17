@@ -1,3 +1,4 @@
+import { recordViewerEvent } from './orbitalViewerDiagnostics';
 export const IMAGE_FILTER_OPTIONS = [
   { id: 'none', title: 'Без фильтра', help: 'Обычное отображение всех 2D-окон.' },
   { id: 'smooth', title: '2D Smooth — сглаживание', help: 'Смягчает мелкий шум и границы пикселей.' },
@@ -6,11 +7,29 @@ export const IMAGE_FILTER_OPTIONS = [
 ] as const;
 export type ImageFilterMode = typeof IMAGE_FILTER_OPTIONS[number]['id'];
 let mode: ImageFilterMode = 'none';
+let strength = 0;
+let rasterEnabled = true;
+export const getRasterImageFilter = () => rasterEnabled ? mode : 'none';
+export const getImageFilterStrength = () => strength;
 const listeners = new Set<() => void>();
 export const getImageFilter = () => mode;
 export function setImageFilter(value: ImageFilterMode) {
-  if (value === mode || !IMAGE_FILTER_OPTIONS.some(option => option.id === value)) return;
+  if ((value === mode && rasterEnabled) || !IMAGE_FILTER_OPTIONS.some(option => option.id === value)) return;
   mode = value;
+  rasterEnabled = true;
+  strength = value === 'none' ? 0 : 1;
+  recordViewerEvent('filter', { value });
+  listeners.forEach(listener => listener());
+}
+export function setImageFilterStrength(value: number) {
+  if (!Number.isFinite(value)) return;
+  const next = Math.max(0, Math.min(1, value));
+  const nextMode = next === 0 ? 'none' : 'unsharp';
+  if (strength === next && mode === nextMode && !rasterEnabled) return;
+  if (mode !== nextMode) recordViewerEvent('filter', { value: nextMode });
+  strength = next;
+  rasterEnabled = false;
+  mode = nextMode;
   listeners.forEach(listener => listener());
 }
 export function subscribeImageFilter(listener: () => void) {
@@ -19,8 +38,8 @@ export function subscribeImageFilter(listener: () => void) {
 }
 
 /** Display-space kernels. A fixed 5x5 size lets the GPU reuse its shader and framebuffer. */
-export function imageFilterKernel(value: ImageFilterMode): number[] | null {
-  if (value === 'none') return null;
+export function imageFilterKernel(value: ImageFilterMode, strength = 1): number[] | null {
+  if (value === 'none' || strength <= 0) return null;
   const kernel = Array<number>(25).fill(0);
   if (value === 'smooth') {
     const weights = [1, 2, 1];
@@ -35,12 +54,13 @@ export function imageFilterKernel(value: ImageFilterMode): number[] | null {
       kernel[y * 5 + x] = -amount * weights[x] * weights[y] / 256;
     kernel[12] += 1 + amount;
   }
-  return kernel;
+  const amount = Math.max(0, Math.min(1, strength));
+  return kernel.map((weight, index) => weight * amount + (index === 12 ? 1 - amount : 0));
 }
 
 /** Panorama equivalent of the GPU convolution; input pixels and DICOM data stay intact. */
-export function filterImagePixels(pixels: Uint8ClampedArray, width: number, height: number, value: ImageFilterMode) {
-  const kernel = imageFilterKernel(value);
+export function filterImagePixels(pixels: Uint8ClampedArray, width: number, height: number, value: ImageFilterMode, strength = 1) {
+  const kernel = imageFilterKernel(value, strength);
   if (!kernel) return pixels;
   const taps = kernel.map((weight, i) => ({ weight, x: i % 5 - 2, y: Math.floor(i / 5) - 2 }))
     .filter(tap => tap.weight !== 0);

@@ -11,18 +11,18 @@ afterEach(() => { act(() => setRenderingPreference('auto')); localStorage.clear(
 it('shows the automatic low-memory profile and allows explicit quality/automatic choices', () => {
   initializeAutomaticGpuProfile({ renderer: 'Intel HD Graphics (0x0f31)' });
   const view = render(React.createElement(RenderingModeControl));
-  fireEvent.click(view.getByRole('button', { name: /Режим графики: Автоматический режим · 64 МиБ/ }));
-  expect(view.getByRole('menuitemradio', { name: 'Автоматически · 64 МиБ' }).getAttribute('aria-checked')).toBe('true');
+  fireEvent.click(view.getByRole('button', { name: /Режим графики: Автоматический режим · 256 МиБ/ }));
+  expect(view.getByRole('menuitemradio', { name: 'Автоматически · 256 МиБ' }).getAttribute('aria-checked')).toBe('true');
   fireEvent.click(view.getByRole('menuitemradio', { name: 'Максимальная детализация' }));
   expect(getRenderingPreference()).toBe('quality');
   expect(view.queryByRole('menu')).toBeNull();
-  fireEvent.click(view.getByRole('button', { name: /Максимальная доступная детализация/ }));
-  fireEvent.click(view.getByRole('menuitemradio', { name: 'Автоматически · 64 МиБ' }));
+  fireEvent.click(view.getByRole('button', { name: /Максимальная детализация/ }));
+  fireEvent.click(view.getByRole('menuitemradio', { name: 'Автоматически · 256 МиБ' }));
   expect(getRenderingPreference()).toBe('auto');
   view.unmount();
 });
 
-it('closes on Escape/outside and selects economy without turning on diagnostic logging', () => {
+it('closes on Escape/outside and offers only supported profiles, without economy or diagnostic overrides', () => {
   const view = render(React.createElement(RenderingModeControl));
   const trigger = view.getByRole('button');
   fireEvent.click(trigger); fireEvent.keyDown(document.body, { key: 'Escape' });
@@ -30,19 +30,18 @@ it('closes on Escape/outside and selects economy without turning on diagnostic l
   expect(document.activeElement).toBe(trigger);
   fireEvent.click(trigger); fireEvent.pointerDown(document.body);
   expect(view.queryByRole('menu')).toBeNull();
-  fireEvent.click(trigger); fireEvent.click(view.getByRole('menuitemradio', { name: 'Щадящий · 64 МиБ' }));
-  expect(getRenderingPreference()).toBe('economy');
+  fireEvent.click(trigger); expect(view.queryByRole('menuitemradio', { name: /Щадящий/ })).toBeNull(); fireEvent.click(view.getByRole('menuitemradio', { name: 'Облегчённый · 256 МиБ' }));
+  expect(getRenderingPreference()).toBe('compatibility');
   expect(localStorage.getItem(GPU_DIAGNOSTIC_PROFILE_KEY)).toBeNull();
   view.unmount();
 });
 
-it('keeps the explicit diagnostic override visible and linked to its settings', () => {
-  jest.spyOn(console, 'info').mockImplementation(() => {});
-  const open = jest.spyOn(window, 'open').mockImplementation(() => null);
-  localStorage.setItem(GPU_DIAGNOSTIC_PROFILE_KEY, '64'); beginGpuDiagnosticSession();
-  const view = render(React.createElement(RenderingModeControl));
-  fireEvent.click(view.getByRole('button', { name: 'Диагностика GPU: лимит 64 МиБ' }));
-  expect(open).toHaveBeenCalledWith('/3dviewer/gpu-check.html', '_blank', 'noopener');
-  expect(view.queryByRole('menu')).toBeNull();
-  view.unmount();
+it('ignores retired diagnostic flags and still permits an explicit quality selection', () => {
+  jest.spyOn(console,'info').mockImplementation(()=>{});
+  localStorage.setItem(GPU_DIAGNOSTIC_PROFILE_KEY,'64');beginGpuDiagnosticSession();
+  const view=render(React.createElement(RenderingModeControl));
+  fireEvent.click(view.getByRole('button'));
+  expect(view.queryByText(/64 МиБ/)).toBeNull();
+  fireEvent.click(view.getByRole('menuitemradio',{name:'Максимальная детализация'}));
+  expect(getRenderingPreference()).toBe('quality');view.unmount();
 });

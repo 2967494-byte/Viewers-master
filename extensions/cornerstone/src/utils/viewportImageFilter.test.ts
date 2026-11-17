@@ -1,6 +1,6 @@
 import { getEnabledElement } from '@cornerstonejs/core';
 import vtkConvolution2DPass from '@kitware/vtk.js/Rendering/OpenGL/Convolution2DPass';
-import { filterImagePixels, imageFilterKernel, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
+import { filterImagePixels, imageFilterKernel, setImageFilterStrength, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 import installViewportImageFilter from './viewportImageFilter';
 
 jest.mock('@cornerstonejs/core', () => ({
@@ -54,6 +54,11 @@ describe('Shared display filters and GPU render pass lifecycle', () => {
     (getEnabledElement as jest.Mock).mockReturnValue({ viewport: second });
     const cleanupSecond = installViewportImageFilter(document.createElement('div'));
     expect(second.getRenderPasses()[0].setKernel).toHaveBeenLastCalledWith(imageFilterKernel('unsharp'));
+    const secondPass = second.getRenderPasses()[0];
+    setImageFilterStrength(.35);
+    expect(viewport.getRenderPasses()[0]).toBe(pass);
+    expect(second.getRenderPasses()[0]).toBe(secondPass);
+    expect(pass.setKernel).toHaveBeenLastCalledWith(imageFilterKernel('unsharp', .35));
     setImageFilter('none');
     expect(viewport.getRenderPasses()).toBeNull();
     expect(second.getRenderPasses()).toBeNull();
@@ -74,4 +79,15 @@ describe('Shared display filters and GPU render pass lifecycle', () => {
     expect(viewport.render).not.toHaveBeenCalled();
     expect(vtkConvolution2DPass.newInstance).not.toHaveBeenCalled();
   });
+});
+
+it('blends sharpening continuously, preserves a uniform image and bypasses at zero', () => {
+  const full = imageFilterKernel('unsharp');
+  const half = imageFilterKernel('unsharp', .5);
+  expect(half[12]).toBeCloseTo(1 + (full[12]-1)*.5);
+  expect(half[6]).toBeCloseTo(full[6]*.5);
+  expect(half.reduce((sum,v) => sum+v,0)).toBeCloseTo(1);
+  const pixels = new Uint8ClampedArray(49).fill(110);
+  expect([...filterImagePixels(pixels,7,7,'unsharp',.37)]).toEqual([...pixels]);
+  expect(filterImagePixels(pixels,7,7,'unsharp',0)).toBe(pixels);
 });

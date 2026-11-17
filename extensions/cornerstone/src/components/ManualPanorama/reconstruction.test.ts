@@ -2,8 +2,11 @@ import {
   buildCurve,
   createTrilinearSampler,
   curveFrame,
+  sectionFrame,
+  sectionPanoramaPath,
   reconstructPanorama,
   reconstructSections,
+  reconstructSection,
   trimEmptyRasterRows,
 } from './reconstruction';
 
@@ -16,6 +19,14 @@ const straight = () =>
   ]);
 
 describe('Manual dental CPR in physical coordinates', () => {
+  it('renders a live section with exactly the same pixels and geometry as the nine-frame reconstruction', async () => {
+    const parameters = { curve: straight(), up: [0, 0, 1] as [number, number, number],
+      sample: (x, y, z) => x * x + 2 * y - 3 * z, heightMm: 8 };
+    const sections = await reconstructSections({ ...parameters, center: 10, step: 2, signal: new AbortController().signal });
+    for (const section of sections) expect(reconstructSection({ ...parameters, distance: section.distance })).toEqual(section.raster);
+    expect(reconstructSection({ ...parameters, distance: -1 })).toBeNull();
+    expect(reconstructSection({ ...parameters, distance: 21 })).toBeNull();
+  });
   it.each([
     { matrix: identity, direction: [0, 0, 1] },
     { matrix: identity, direction: [0.2, -0.1, 0.9] },
@@ -410,4 +421,24 @@ describe('Manual dental CPR in physical coordinates', () => {
       })
     ).rejects.toMatchObject({ name: 'AbortError' });
   });
+});
+
+it('tilts real samples and the CPR intersection about the fixed anchor, including reversed arches', () => {
+  for (const reverse of [false, true]) {
+    const points = [[0,0,0], [10,0,0], [20,0,0]] as [number,number,number][];
+    const curve = buildCurve(reverse ? points.reverse() : points);
+    const up: [number,number,number] = [0,0,1];
+    const frame = sectionFrame(curve, 10, up, 30);
+    expect(frame.point).toEqual([10,0,0]);
+    expect(frame.vertical[0]).toBeCloseTo(reverse ? -0.5 : 0.5);
+    const raster = reconstructSection({ curve, up, distance:10, heightMm:8, tilt:30,
+      sample:(x,y,z) => x });
+    expect(raster.pixels[(raster.width - 1)/2]).toBeCloseTo(reverse ? 8 : 12);
+    const path = sectionPanoramaPath(curve, up, 10, 30, { ...raster, width:201 });
+    const coordinates = [...path.matchAll(/[ML]([\d.]+),([\d.]+)/g)].map(m => [Number(m[1]),Number(m[2])]);
+    expect(coordinates[0][0]).toBeCloseTo((10+4*Math.tan(Math.PI/6))*10);
+    expect(coordinates).toHaveLength(2);
+    expect((coordinates[0][0] + coordinates[1][0]) / 2).toBeCloseTo(100);
+    expect(coordinates[coordinates.length-1][0]).toBeLessThan(100);
+  }
 });

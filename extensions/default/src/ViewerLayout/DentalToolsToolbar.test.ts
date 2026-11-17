@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import DentalToolsToolbar from './DentalToolsToolbar';
 import { getAxesVisible, setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
-import { getImageFilter, setImageFilter, IMAGE_FILTER_OPTIONS } from '@ohif/core/src/constants/orbitalImageFilters';
+import { getImageFilter, getImageFilterStrength, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 
 describe('Russian dental toolbar', () => {
   afterEach(() => act(() => { setAxesVisible(true); setImageFilter('none'); }));
@@ -21,16 +21,24 @@ describe('Russian dental toolbar', () => {
     expect(document.body.classList.contains('dental-pan-active')).toBe(false);
     view.unmount();
   });
-  it('selects the global 2D filter without changing the active navigation or measurement tool', () => {
+  it('coalesces sharpening input for all 2D windows and flushes the exact final value without changing tools', () => {
+    jest.useFakeTimers();
     const commandsManager = { run: jest.fn() };
     const view = render(React.createElement(DentalToolsToolbar, { commandsManager }));
-    for (const option of [...IMAGE_FILTER_OPTIONS.slice(1), IMAGE_FILTER_OPTIONS[0]]) {
-      fireEvent.click(view.getByRole('button', { name: 'Фильтры 2D' }));
-      fireEvent.click(view.getByRole('menuitemradio', { name: new RegExp(option.title.split(' — ')[0]) }));
-      expect(getImageFilter()).toBe(option.id);
-      expect(view.getByRole('button', { name: 'Фильтры 2D' }).getAttribute('data-active')).toBe(String(option.id !== 'none'));
-    }
-    expect(commandsManager.run).not.toHaveBeenCalled();
+    try {
+      const slider = view.getByRole('slider', { name:'Резкость 2D' });
+      for (const value of ['20','40','75']) fireEvent.change(slider, { target:{value} });
+      expect(getImageFilter()).toBe('none');
+      act(() => jest.advanceTimersByTime(50));
+      expect(getImageFilter()).toBe('unsharp');
+      expect(getImageFilterStrength()).toBe(.75);
+      fireEvent.change(slider, { target:{value:'43'} });
+      fireEvent.pointerUp(slider);
+      expect(getImageFilterStrength()).toBe(.43);
+      fireEvent.change(slider, { target:{value:'0'} }); fireEvent.blur(slider);
+      expect(getImageFilter()).toBe('none');
+      expect(commandsManager.run).not.toHaveBeenCalled();
+    } finally { view.unmount(); jest.useRealTimers(); }
   });
   it('toggles axes with the button and Enter in a viewport without swallowing form or tool input', () => {
     const commandsManager = { run: jest.fn((name) => {

@@ -1,12 +1,14 @@
 import { cache, getRenderingEngines } from '@cornerstonejs/core';
-import { getRenderingPreference, reportGraphicsError, subscribeRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
+import { getRenderingPreference, reportGraphicsError, subscribeRenderingPreference, forgetFailedRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import { setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
-import { getGpuDiagnosticBudget, recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
+import { getGpuDiagnosticBudget, recordGpuDiagnostic, isGpuDiagnosticSession } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
 import { getAutomaticGpuProfile, rememberGpuRecovery } from '@ohif/core/src/constants/orbitalGpuProfile';
-import { getViewerOpenTracker, reportViewerAllocation } from '@ohif/core/src/constants/orbitalOpenTelemetry';
+import { getViewerOpenTracker, reportViewerAllocation, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
+import { MINIMUM_TEXTURE_BUDGET, MAXIMUM_Z_DECIMATION } from '@ohif/core/src/constants/orbitalRenderingPolicy';
+import { recordViewerEvent, recordViewerTexture, releaseViewerTexture } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 
 export const COMPATIBILITY_TEXTURE_BYTES = 256 * 1024 ** 2;
-export const MOBILE_TEXTURE_BYTES = 128 * 1024 ** 2;
+export const MOBILE_TEXTURE_BYTES = MINIMUM_TEXTURE_BUDGET;
 
 export function getDeviceTextureBudget(device = typeof navigator === 'undefined' ? undefined : navigator) {
   const mobile = device && (/Android|iPhone|iPad|iPod|Mobile/i.test(device.userAgent || '') ||
@@ -21,7 +23,8 @@ const watchedCanvases = new WeakSet<object>();
 const canvasBudgets = new WeakMap<object, number>();
 let subscribed = false;
 
-const failureMessage = 'На вашем компьютере не удалось отобразить исследование даже в облегчённом режиме. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново из личного кабинета. Если ошибка повторится, обновите драйвер видеокарты или используйте другой компьютер.';
+const failureMessage = 'Не удалось отобразить исследование без чрезмерного снижения детализации. Сильно прореженное изображение не показывается. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново. Если ошибка повторится, обновите драйвер видеокарты или используйте другой компьютер.';
+const qualityFailureMessage = 'Не удалось включить максимальную детализацию на этом устройстве. Качество автоматически не снижалось. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново из личного кабинета. Следующее открытие начнётся в автоматическом режиме.';
 
 /** Intercept only this volume's scalar texture; keep its CPU voxels and world geometry intact. */
 export function createAdaptiveTextureContext(gl, volume, texture, model, baseBudget = Infinity) {
@@ -36,9 +39,11 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
         getViewerOpenTracker()?.fail('context-lost');
         rememberGpuRecovery(nextRecoveryBudget(canvasBudgets.get(gl.canvas) ?? (allocatedBytes || activeBudget)));
         recordGpuDiagnostic('context-lost', { message: event.statusMessage || '' });
-        reportGraphicsError('Браузер потерял доступ к видеокарте во время отображения исследования. При следующем запуске в автоматическом режиме будет использован щадящий профиль. Закройте другие вкладки и программы, использующие графику, и откройте исследование заново из личного кабинета.');
+        forgetFailedRenderingPreference();
+        reportGraphicsError('Браузер потерял доступ к видеокарте во время отображения исследования. Закройте другие вкладки и программы, использующие графику, и откройте исследование заново из личного кабинета.');
       }
     });
+    gl.canvas.addEventListener('webglcontextrestored', () => recordViewerEvent('context-restored'));
   }
   const [width, height, sourceDepth] = volume.dimensions;
   let displayDepth = sourceDepth;
@@ -48,14 +53,20 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
   let retryQueued = false;
   let allocatedBytes = 0;
   let activeBudget = Infinity;
-  const nextRecoveryBudget = bytes => [256, 128, 64].map(mb => mb * 1024 ** 2).find(value => value < bytes) || 64 * 1024 ** 2;
+  const nextRecoveryBudget = _bytes => MINIMUM_TEXTURE_BUDGET;
   let uploadedSlices = 0;
   let uploadMilestone = -1;
-  const diagnosticEnabled = Number.isFinite(getGpuDiagnosticBudget());
+  const diagnosticEnabled = isGpuDiagnosticSession();
   const uploadedPositions = diagnosticEnabled ? new Set<number>() : null;
   const methods = new Map();
   const error = () => typeof gl.getError === 'function' ? gl.getError() : 0;
-  const fail = () => { failed = true; recordGpuDiagnostic('texture-failed', { contextLost: targetLost(), allocatedBytes, uploadedSlices }); reportGraphicsError(failureMessage); };
+  const fail = () => { failed = true; recordViewerEvent('allocation-error', { bytes: allocatedBytes });
+    recordGpuDiagnostic('texture-failed', { contextLost: targetLost(), allocatedBytes, uploadedSlices });
+    getViewerOpenTracker()?.fail('texture-unavailable');
+    const quality = getRenderingPreference() === 'quality';
+    forgetFailedRenderingPreference();
+    reportGraphicsError(quality ? qualityFailureMessage : failureMessage);
+  };
   const upload = args => {
     if (failed || retryQueued) return;
     // Journal before the first actual upload: drivers can crash before returning an error.
@@ -79,8 +90,10 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
       return;
     }
     recordGpuDiagnostic('upload-error', { code, allocatedBytes, uploadedSlices });
-    const next = [256, 128, 64].map(mb => mb * 1024 ** 2).find(bytes => bytes < allocatedBytes);
-    if (code !== (gl.OUT_OF_MEMORY || 1285) || !next || !controllers.has(volume)) { fail(); return; }
+    recordViewerEvent('allocation-error', { code, bytes: allocatedBytes });
+    const next = getRenderingPreference() === 'quality' ? undefined : [MINIMUM_TEXTURE_BUDGET].find(bytes => bytes < allocatedBytes);
+    if (code !== (gl.OUT_OF_MEMORY || 1285) || !next || !controllers.has(volume) ||
+        Math.floor(displayDepth * next / allocatedBytes) < Math.ceil(sourceDepth / MAXIMUM_Z_DECIMATION)) { fail(); return; }
     retryQueued = true;
     volume.orbitalGPUFallbackBudget = next;
     rememberGpuRecovery(next);
@@ -109,7 +122,7 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
     });
   };
   const replaceHandle = () => {
-    if (model.handle) gl.deleteTexture(model.handle);
+    if (model.handle) { releaseViewerTexture(typeof model.handle === 'object' ? model.handle : texture); gl.deleteTexture(model.handle); }
     model.handle = 0;
     texture.createTexture();
     texture.bind();
@@ -136,18 +149,22 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
           const deviceBudget = getDeviceTextureBudget();
           const diagnosticBudget = getGpuDiagnosticBudget();
           const preference = getRenderingPreference();
+          const quality = preference === 'quality';
           const automaticBudget = preference === 'auto' ? getAutomaticGpuProfile().budgetBytes : Infinity;
-          let budget = Math.min(baseBudget, deviceBudget, diagnosticBudget, automaticBudget,
-            preference === 'economy' ? 64 * 1024 ** 2 : manual ? COMPATIBILITY_TEXTURE_BYTES : Infinity,
-            volume.orbitalGPUFallbackBudget || Infinity);
+          let budget = quality ? Infinity : Math.min(baseBudget, deviceBudget, diagnosticBudget, automaticBudget,
+            manual ? COMPATIBILITY_TEXTURE_BYTES : Infinity, volume.orbitalGPUFallbackBudget || Infinity);
           activeBudget = budget;
           if (gl.canvas) canvasBudgets.set(gl.canvas, budget);
           const depthForBudget = size => Math.min(sourceDepth, maximum, Math.max(1, Math.floor(size / (width * height * bytes))));
           let depth = depthForBudget(budget);
+          const acceptable = count => count >= Math.ceil(sourceDepth / MAXIMUM_Z_DECIMATION);
+          // Refuse a coarse texture before displaying it. Explicit quality has
+          // one meaning: native Z resolution, or a clear failure, never silent fallback.
+          if ((quality && (depth !== sourceDepth || width * height * sourceDepth * bytes > deviceBudget)) || !acceptable(depth)) { fail(); return; }
           let reason = volume.orbitalGPUFallbackBudget ? 'memory' : Number.isFinite(diagnosticBudget) ? 'diagnostic' : manual || preference === 'economy' ? 'manual' :
             Number.isFinite(automaticBudget) ? 'automatic' :
             depth < sourceDepth ? (deviceBudget < Infinity ? 'mobile' : 'size') : 'normal';
-          const fallbackBudgets = [256, 128, 64].map(mb => mb * 1024 ** 2);
+          const fallbackBudgets = quality ? [] : [MINIMUM_TEXTURE_BUDGET];
           for (let attempt = 0; attempt < 4; attempt++) {
             // Drain earlier errors so only this allocation decides whether to retry.
             for (let i = 0; i < 8 && error() !== 0; i++) { /* bounded */ }
@@ -178,6 +195,9 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
             if (!code && !target.isContextLost?.()) {
               failed = false;
               allocatedBytes = width * height * depth * bytes;
+              const sourceBytes = width * height * sourceDepth * (/8/.test(volume.dataType || '') ? 1 : /16/.test(volume.dataType || '') ? 2 : /64/.test(volume.dataType || '') ? 8 : 4);
+              recordViewerTexture(typeof model.handle === 'object' && model.handle ? model.handle : texture,
+                allocatedBytes, sourceBytes, [width, height, depth]);
               reportViewerAllocation([width, height, sourceDepth], [width, height, depth], allocatedBytes, budget, reason);
               if (gl.canvas) canvasBudgets.set(gl.canvas, allocatedBytes);
               if (reason === 'memory') rememberGpuRecovery(budget);
@@ -192,7 +212,7 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
               fail(); return;
             }
             const next = fallbackBudgets.find(size => size < budget && depthForBudget(size) < depth);
-            if (!next) { fail(); return; }
+            if (!next || !acceptable(depthForBudget(next))) { fail(); return; }
             budget = next;
             activeBudget = budget;
             depth = depthForBudget(budget);
@@ -200,6 +220,12 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
             replaceHandle();
           }
           fail();
+        };
+      } else if (key === 'deleteTexture') {
+        method = (...args) => {
+          const result = value.apply(target, args);
+          releaseViewerTexture(typeof args[0] === 'object' && args[0] ? args[0] : texture);
+          return result;
         };
       } else if (key === 'texParameteri') {
         method = (...args) => {
@@ -268,6 +294,7 @@ export function installRenderingPreferenceControl() {
   if (subscribed) return;
   subscribed = true;
   subscribeRenderingPreference(() => {
+    reportViewerProfile();
     if (getRenderingPreference() === 'compatibility') setImageFilter('none');
     const seen = new Set();
     for (const engine of getRenderingEngines()) {
@@ -276,6 +303,7 @@ export function installRenderingPreferenceControl() {
         const volume = id && cache.getVolume(id);
         if (volume && !seen.has(volume)) {
           seen.add(volume);
+          delete volume.orbitalGPUFallbackBudget;
           controllers.get(volume)?.reset();
         }
       }

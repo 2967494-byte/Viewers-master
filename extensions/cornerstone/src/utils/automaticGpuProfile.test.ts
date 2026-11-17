@@ -9,8 +9,8 @@ afterEach(() => { jest.restoreAllMocks(); localStorage.clear(); initializeAutoma
 
 it.each([laptop, { renderer: 'ANGLE (Intel(R) HD Graphics 4000 Direct3D11)' },
   { renderer: 'ANGLE (Intel(R) HD Graphics Direct3D11)' }, { renderer: 'llvmpipe' }, { renderer: 'Google SwiftShader' }])(
-  'starts a known constrained adapter at 64 MiB without a stress test: %j', device => {
-    expect(chooseGpuProfile(device).budgetBytes).toBe(64 * MiB);
+  'starts a known constrained adapter at 256 MiB without a stress test: %j', device => {
+    expect(chooseGpuProfile(device).budgetBytes).toBe(256 * MiB);
   });
 
 it.each(['Intel(R) UHD Graphics 620', 'Intel(R) Iris Xe Graphics', 'Intel(R) HD Graphics 530',
@@ -20,40 +20,40 @@ it.each(['Intel(R) UHD Graphics 620', 'Intel(R) Iris Xe Graphics', 'Intel(R) HD 
   });
 
 it('uses memory/mobile hints conservatively and tolerates unavailable hints', () => {
-  expect(chooseGpuProfile({ mobile: true }).budgetBytes).toBe(128 * MiB);
-  expect(chooseGpuProfile({ mobile: true, deviceMemory: 4 }).budgetBytes).toBe(64 * MiB);
-  expect(chooseGpuProfile({ deviceMemory: 4 }).budgetBytes).toBe(128 * MiB);
-  expect(chooseGpuProfile({ deviceMemory: 2 }).budgetBytes).toBe(64 * MiB);
+  expect(chooseGpuProfile({ mobile: true }).budgetBytes).toBe(256 * MiB);
+  expect(chooseGpuProfile({ mobile: true, deviceMemory: 4 }).budgetBytes).toBe(256 * MiB);
+  expect(chooseGpuProfile({ deviceMemory: 4 }).budgetBytes).toBe(256 * MiB);
+  expect(chooseGpuProfile({ deviceMemory: 2 }).budgetBytes).toBe(256 * MiB);
   for (const deviceMemory of [undefined, NaN, 0, -1]) expect(chooseGpuProfile({ deviceMemory }).budgetBytes).toBe(Infinity);
 });
 
 it('remembers only stricter recovery for this graphics device, without changing a live profile', () => {
   initializeAutomaticGpuProfile(desktop, 1000);
-  rememberGpuRecovery(128 * MiB, 1000);
+  rememberGpuRecovery(256 * MiB, 1000);
   rememberGpuRecovery(256 * MiB, 1100);
   expect(getAutomaticGpuProfile().budgetBytes).toBe(Infinity);
-  expect(initializeAutomaticGpuProfile(desktop, 1200)).toEqual({ budgetBytes: 128 * MiB, reason: 'previous-graphics-error' });
+  expect(initializeAutomaticGpuProfile(desktop, 1200)).toEqual({ budgetBytes: 256 * MiB, reason: 'previous-graphics-error' });
   expect(initializeAutomaticGpuProfile({ ...desktop, renderer: 'different GPU' }, 1200).budgetBytes).toBe(Infinity);
   expect(initializeAutomaticGpuProfile(desktop, 32 * 24 * 60 * 60 * 1000).budgetBytes).toBe(Infinity);
 });
 
-it('never raises a legacy hardware budget based on a prior recovery record', () => {
+it('never revives a retired hardware budget based on a prior recovery record', () => {
   initializeAutomaticGpuProfile(laptop, 1000);
   rememberGpuRecovery(256 * MiB, 1000);
-  expect(initializeAutomaticGpuProfile(laptop, 1100)).toEqual({ budgetBytes: 64 * MiB, reason: 'legacy-intel' });
+  expect(initializeAutomaticGpuProfile(laptop, 1100)).toEqual({ budgetBytes: 256 * MiB, reason: 'legacy-intel' });
 });
 
 it('ignores malformed, future, unbounded and storage-blocked recovery records', () => {
-  initializeAutomaticGpuProfile(desktop, 1000); rememberGpuRecovery(64 * MiB, 1000);
+  initializeAutomaticGpuProfile(desktop, 1000); rememberGpuRecovery(256 * MiB, 1000);
   const saved = JSON.parse(localStorage.getItem(GPU_RECOVERY_KEY));
   for (const value of ['invalid json', JSON.stringify({ ...saved, budgetMiB: 4096 }), JSON.stringify({ ...saved, at: 5000 })]) {
     localStorage.setItem(GPU_RECOVERY_KEY, value);
     expect(initializeAutomaticGpuProfile(desktop, 1200).budgetBytes).toBe(Infinity);
   }
-  localStorage.setItem(GPU_RECOVERY_KEY, 'broken'); rememberGpuRecovery(64 * MiB, 1200);
-  expect(initializeAutomaticGpuProfile(desktop, 1300).budgetBytes).toBe(64 * MiB);
+  localStorage.setItem(GPU_RECOVERY_KEY, 'broken'); rememberGpuRecovery(256 * MiB, 1200);
+  expect(initializeAutomaticGpuProfile(desktop, 1300).budgetBytes).toBe(256 * MiB);
   jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
   expect(() => initializeAutomaticGpuProfile(laptop)).not.toThrow();
-  expect(() => rememberGpuRecovery(64 * MiB)).not.toThrow();
-  expect(getAutomaticGpuProfile().budgetBytes).toBe(64 * MiB);
+  expect(() => rememberGpuRecovery(256 * MiB)).not.toThrow();
+  expect(getAutomaticGpuProfile().budgetBytes).toBe(256 * MiB);
 });

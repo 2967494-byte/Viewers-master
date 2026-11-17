@@ -124,6 +124,23 @@ export function curveFrame(curve: Curve, mm: number, up: Point3) {
   return { point, tangent, normal: normalize(cross(up, tangent)) };
 }
 
+/** A positive angle leans the superior end toward increasing panorama distance. */
+export function sectionFrame(curve: Curve, mm: number, up: Point3, tilt = 0) {
+  const frame = curveFrame(curve, mm, up);
+  const angle = Math.max(-30, Math.min(30, tilt)) * Math.PI / 180;
+  const vertical = up.map((v, i) => v * Math.cos(angle) + frame.tangent[i] * Math.sin(angle)) as Point3;
+  return { ...frame, vertical, slope: Math.tan(angle) };
+}
+
+/** Straight orientation guide in the unfolded panorama (local tangent approximation).
+ * The volume itself is sampled in the physical tilted plane, not rotated as a bitmap. */
+export function sectionPanoramaPath(curve: Curve, up: Point3, mm: number, tilt: number, raster: Raster) {
+  const { slope } = sectionFrame(curve, mm, up, tilt);
+  const top = raster.topMm ?? raster.heightMm / 2;
+  const x = (z: number) => (mm + z * slope) / curve.length * (raster.width - 1);
+  return `M${x(top)},0 L${x(top - raster.heightMm)},${raster.height - 1}`;
+}
+
 /** Sample the existing volume without allocating another full decoded copy. Invalid points stay empty. */
 export function createTrilinearSampler(
   dimensions: number[],
@@ -335,6 +352,33 @@ export async function reconstructPanorama({
   return trimEmptyRasterRows({ pixels, width, height, widthMm: curve.length, heightMm });
 }
 
+type SectionParameters = { curve: Curve; up: Point3; sample: Sampler; distance: number; heightMm: number; tilt?: number };
+
+/** The same sampling grid is used for a live frame and for all nine review frames. */
+function prepareSection({ curve, up, sample, distance: mm, heightMm, tilt = 0 }: SectionParameters) {
+  if (!Number.isFinite(mm) || mm < 0 || mm > curve.length) return null;
+  const widthMm = 60, width = Math.ceil(widthMm / 0.5) + 1, height = Math.ceil(heightMm / 0.5) + 1;
+  const { point, normal, vertical } = sectionFrame(curve, mm, up, tilt);
+  const rays = Array.from({ length: width }, (_, x) => {
+    const horizontal = (x / (width - 1) - 0.5) * widthMm;
+    return samplingLine(sample, point.map((v, i) => v + normal[i] * horizontal) as Point3, vertical);
+  });
+  const raster: Raster = { pixels: new Float32Array(width * height), width, height, widthMm, heightMm };
+  const row = (y: number) => {
+    const vertical = (0.5 - y / (height - 1)) * heightMm;
+    for (let x = 0; x < width; x++) raster.pixels[y * width + x] = rays[x](vertical);
+  };
+  return { raster, row };
+}
+
+/** One real section for interactive navigation, without the other eight frames or a debounce. */
+export function reconstructSection(parameters: SectionParameters): Raster | null {
+  const section = prepareSection(parameters);
+  if (!section) return null;
+  for (let y = 0; y < section.raster.height; y++) section.row(y);
+  return section.raster;
+}
+
 export async function reconstructSections({
   curve,
   up,
@@ -354,9 +398,6 @@ export async function reconstructSections({
 }): Promise<Array<{ distance: number; raster: Raster | null }>> {
   const sections = [];
   const checkpoint = reconstructionWork(signal);
-  const widthMm = 60,
-    width = Math.ceil(widthMm / 0.5) + 1,
-    height = Math.ceil(heightMm / 0.5) + 1;
   for (let index = -4; index <= 4; index++) {
     checkCancelled(signal);
     const mm = center + index * step;
@@ -364,29 +405,13 @@ export async function reconstructSections({
       sections.push({ distance: mm, raster: null });
       continue;
     }
-    const { point, normal } = curveFrame(curve, mm, up);
-    const rays = Array.from({ length: width }, (_, x) => {
-      const horizontal = (x / (width - 1) - 0.5) * widthMm;
-      return samplingLine(
-        sample,
-        [
-          point[0] + normal[0] * horizontal,
-          point[1] + normal[1] * horizontal,
-          point[2] + normal[2] * horizontal,
-        ],
-        up
-      );
-    });
-    const pixels = new Float32Array(width * height);
-    for (let y = 0; y < height; y++) {
-      const vertical = (0.5 - y / (height - 1)) * heightMm;
-      for (let x = 0; x < width; x++) {
-        pixels[y * width + x] = rays[x](vertical);
-      }
+    const section = prepareSection({ curve, up, sample, distance: mm, heightMm });
+    for (let y = 0; y < section.raster.height; y++) {
+      section.row(y);
       const pause = checkpoint();
       if (pause) await pause;
     }
-    sections.push({ distance: mm, raster: { pixels, width, height, widthMm, heightMm } });
+    sections.push({ distance: mm, raster: section.raster });
     const pause = checkpoint();
     if (pause) await pause;
   }

@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react';
-import { cache, eventTarget, Enums, getEnabledElement } from '@cornerstonejs/core';
+import { cache, eventTarget, Enums, getEnabledElement, utilities } from '@cornerstonejs/core';
 import ManualPanorama, { START_MANUAL_PANORAMA, START_AUTOMATIC_PANORAMA } from './ManualPanorama';
 import { detectDentalArch } from './automaticArch';
 import { getPanoramaSession } from './panoramaSession';
 import DentalPanoramaButton from '../../../../default/src/ViewerLayout/DentalPanoramaButton';
-import { buildCurve, reconstructPanorama, reconstructSections } from './reconstruction';
+import { buildCurve, reconstructPanorama, reconstructSections, reconstructSection } from './reconstruction';
 import {
   getFocusedMprViewport,
   MPR_VIEWPORT_IDS,
@@ -16,7 +16,7 @@ jest.mock('@cornerstonejs/core', () => ({
   cache: { getVolume: jest.fn(), getImage: jest.fn() },
   getEnabledElement: jest.fn(),
   eventTarget: new EventTarget(),
-  utilities: { scroll: jest.fn() },
+  utilities: { scroll: jest.fn(), jumpToSlice: jest.fn() },
   Enums: {
     OrientationAxis: { AXIAL: 'axial' },
     Events: {
@@ -32,6 +32,7 @@ jest.mock('./reconstruction', () => ({
   ...jest.requireActual('./reconstruction'),
   reconstructPanorama: jest.fn(),
   reconstructSections: jest.fn(),
+  reconstructSection: jest.fn(jest.requireActual('./reconstruction').reconstructSection),
 }));
 jest.mock('./automaticArch', () => ({
   ...jest.requireActual('./automaticArch'),
@@ -99,6 +100,8 @@ describe('Manual panorama from an expanded axial viewport', () => {
       element,
       canvas: document.createElement('canvas'),
       getVolumeId: () => 'volume-a',
+      getNumberOfSlices: () => 2,
+      getCurrentImageIdIndex: () => 0,
       getImageData: () => ({
         dimensions: [2, 2, 2],
         imageData: {
@@ -138,6 +141,7 @@ describe('Manual panorama from an expanded axial viewport', () => {
       voxelManager: { numberOfComponents: 1 },
       metadata: {},
       imageIds: ['a', 'b'],
+      spacing: [0.2, 0.2, 0.2],
     });
     (cache.getImage as jest.Mock).mockReturnValue({ voxelManager: { getAtIndex: () => 1 } });
     (detectDentalArch as jest.Mock).mockResolvedValue({
@@ -187,6 +191,138 @@ describe('Manual panorama from an expanded axial viewport', () => {
     global.requestAnimationFrame = originalRAF;
     global.cancelAnimationFrame = originalCancel;
     global.ResizeObserver = originalObserver;
+  });
+
+  it('puts the axial preview before sections and scrolls the existing source with synchronized position', async () => {
+    const engine = getEnabledElement(element).renderingEngine;
+    const getViewport = engine.getViewport;
+    const renderSkull = jest.fn();
+    engine.getViewport = id => ({ ...getViewport(id), render: id === 'mpr-3d' ? renderSkull : undefined });
+    const viewport = getEnabledElement(element).viewport as any;
+    let index = 0;
+    viewport.getNumberOfSlices = () => 50;
+    viewport.getCurrentImageIdIndex = () => index;
+    const view = render(React.createElement(ManualPanorama, { element, viewportGridService: service }));
+    await act(async () => { window.dispatchEvent(new Event(START_AUTOMATIC_PANORAMA)); });
+    await flushFrames();
+    expect(renderSkull).toHaveBeenCalled();
+    await waitFor(() => expect(view.getByLabelText('Аксиальный срез с зубной дугой')).toBeTruthy());
+    await flushFrames();
+    const panels = document.querySelector('.manual-panorama-workspace').querySelectorAll(':scope > section');
+    expect(panels[0].querySelector('header').textContent).toContain('Аксиальный срез');
+    expect(panels[1].querySelector('header').textContent).toContain('Поперечные сечения');
+    const scrollbar = view.getByRole('slider', { name: 'Прокрутка аксиальных слоёв' }) as HTMLInputElement;
+    expect(scrollbar.max).toBe('49');
+    fireEvent.change(scrollbar, { target: { value: '23' } });
+    expect(utilities.jumpToSlice).toHaveBeenLastCalledWith(element, { imageIndex: 23, debounceLoading: true });
+    index = 23;
+    act(() => element.dispatchEvent(new Event(Enums.Events.IMAGE_RENDERED)));
+    await flushFrames();
+    expect(scrollbar.value).toBe('23');
+    view.unmount();
+  });
+
+  it('expands any selected section without recentering or reconstructing and restores the editor on Escape', async () => {
+    const view = render(React.createElement(ManualPanorama, { element, viewportGridService: service }));
+    await act(async () => { window.dispatchEvent(new Event(START_AUTOMATIC_PANORAMA)); });
+    await flushFrames();
+    const expand = await view.findByRole('button', { name: 'Увеличить сечение 1' });
+    const calls = (reconstructSections as jest.Mock).mock.calls.length;
+    fireEvent.click(expand);
+    const full = view.getByLabelText('Развёрнутое поперечное сечение');
+    expect(full.parentElement.className).toBe('manual-panorama-workspace');
+    expect(full.style.width).toBe('600px');
+    expect(full.style.height).toBe('300px');
+    expect(full.style.inset).toBe('0 0 auto auto');
+    expect(view.getByLabelText('Увеличенное поперечное сечение 1')).toBeTruthy();
+    const overlay = view.getByLabelText('Зубная дуга: точки можно перетаскивать');
+    expect(overlay.querySelectorAll('line')).toHaveLength(1);
+    expect(overlay.querySelectorAll('circle, text')).toHaveLength(0);
+    expect(overlay.querySelectorAll('polyline')).toHaveLength(1);
+    expect(full.querySelectorAll('[data-panorama-marker]')).toHaveLength(2);
+    fireEvent.click(view.getByRole('button', { name:'Скрыть крест сечения', exact:true }));
+    expect(full.querySelectorAll('[data-panorama-marker]')).toHaveLength(0);
+    fireEvent.click(view.getByRole('button', { name:'Показать крест сечения', exact:true }));
+    expect(full.querySelectorAll('[data-panorama-marker]')).toHaveLength(2);
+    fireEvent.click(view.getByRole('button', { name:'Перемещение поперечного сечения', exact:true }));
+    expect(view.getByRole('button', { name:'Перемещение поперечного сечения', exact:true }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(view.getByRole('button', { name: 'Увеличить масштаб сечения', exact: true }));
+    expect(view.getByLabelText('Увеличенное поперечное сечение 1').closest('.manual-section-raster').getAttribute('style')).toContain('scale(1.25)');
+    fireEvent.click(view.getByRole('button', { name: 'Уменьшить масштаб сечения', exact: true }));
+    expect(view.getByLabelText('Увеличенное поперечное сечение 1').closest('.manual-section-raster').getAttribute('style')).toContain('scale(1)');
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
+    expect(reconstructSections).toHaveBeenCalledTimes(calls);
+    fireEvent.click(view.getByRole('button', { name: 'Вернуть сетку сечений' }));
+    expect(view.queryByLabelText('Развёрнутое поперечное сечение')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: 'Увеличить сечение 9' }));
+    expect(view.getByLabelText('Увеличенное поперечное сечение 9')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(view.queryByLabelText('Развёрнутое поперечное сечение')).toBeNull();
+    expect(document.body.classList.contains('manual-panorama-active')).toBe(true);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.body.classList.contains('manual-panorama-active')).toBe(false);
+    view.unmount();
+  });
+
+  it('navigates an enlarged off-center frame with wheel and scrollbar all the way to both arch endpoints', async () => {
+    const raster = { width: 2, height: 2, widthMm: 20, heightMm: 20, pixels: new Float32Array(4) };
+    (reconstructSections as jest.Mock).mockImplementation(async ({ center, step, curve }) =>
+      Array.from({ length: 9 }, (_, i) => {
+        const distance = center + (i - 4) * step;
+        return { distance, raster: distance >= 0 && distance <= curve.length ? raster : null };
+      }));
+    const view = render(React.createElement(ManualPanorama, { element, viewportGridService: service }));
+    await act(async () => { window.dispatchEvent(new Event(START_AUTOMATIC_PANORAMA)); });
+    await flushFrames();
+    fireEvent.click(await view.findByRole('button', { name: 'Увеличить сечение 9' }));
+    const initialCenter = (reconstructSections as jest.Mock).mock.calls[0][0].center;
+    const full = view.getByLabelText('Развёрнутое поперечное сечение');
+    fireEvent.wheel(full, { deltaY: 100 });
+    await flushFrames();
+    expect((reconstructSection as jest.Mock).mock.calls.at(-1)[0].distance).toBeCloseTo(initialCenter + 8.2);
+    act(() => { for (let i = 0; i < 3; i++) fireEvent.wheel(full, { deltaY: 100 }); });
+    await flushFrames();
+    expect((reconstructSection as jest.Mock).mock.calls.at(-1)[0].distance).toBeCloseTo(initialCenter + 8.8);
+    await view.findByLabelText('Увеличенное поперечное сечение 5');
+    const scrollbar = view.getByRole('slider', { name: 'Положение сечения по зубной дуге' }) as HTMLInputElement;
+    const length = (reconstructSections as jest.Mock).mock.calls.at(-1)[0].curve.length;
+    for (const value of [1000, 0, 400]) {
+      fireEvent.change(scrollbar, { target: { value: String(value) } });
+      await flushFrames();
+      expect((reconstructSection as jest.Mock).mock.calls.at(-1)[0].distance).toBeCloseTo(value / 1000 * length);
+      await view.findByLabelText('Увеличенное поперечное сечение 5');
+      expect(Number(scrollbar.value)).toBe(value);
+    }
+    const tilt = view.getByRole('slider', { name: 'Наклон поперечного сечения' });
+    for (const angle of [15, -15]) {
+      fireEvent.change(tilt, { target: { value: String(angle) } });
+      await flushFrames();
+      const sampled = (reconstructSection as jest.Mock).mock.calls.at(-1)[0];
+      expect(sampled.tilt).toBe(angle);
+      expect(sampled.distance).toBeCloseTo(length * 0.4);
+      expect(view.container.ownerDocument.querySelector('[data-panorama-marker="tilted-section"]')).toBeTruthy();
+    }
+    fireEvent.doubleClick(tilt);
+    await flushFrames();
+    expect((reconstructSection as jest.Mock).mock.calls.at(-1)[0].tilt).toBe(0);
+    expect(reconstructPanorama).toHaveBeenCalledTimes(1);
+    expect(reconstructSections).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(reconstructSections).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect((reconstructSections as jest.Mock).mock.calls.at(-1)[0].center).toBeCloseTo(length * 0.4));
+    view.unmount();
+  });
+
+  it('does not read voxel spacing from the cache until its source volume is assigned', () => {
+    (getEnabledElement as jest.Mock).mockReturnValue(undefined);
+    (cache.getVolume as jest.Mock).mockImplementation(id => {
+      if (!id) throw new Error('volumeId must not be undefined');
+      return undefined;
+    });
+    const view = render(React.createElement(ManualPanorama, { element, viewportGridService: service }));
+    expect(view.getByRole('button', { name: 'Панорама' })).toBeTruthy();
+    expect(cache.getVolume).not.toHaveBeenCalled();
+    view.unmount();
   });
 
   it('starts drawing from the real header button without relying on the viewport ref prop', async () => {
@@ -403,13 +539,18 @@ describe('Manual panorama from an expanded axial viewport', () => {
     });
     await flushFrames();
     await waitFor(() => expect(reconstructPanorama).toHaveBeenCalledTimes(1));
-    const canvas = (await view.findByLabelText(
+    let canvas = (await view.findByLabelText(
       'Панорама: нажмите для выбора сечения'
     )) as HTMLCanvasElement;
     canvas.getBoundingClientRect = () =>
       ({ left: 10, top: 20, width: 600, height: 300 }) as DOMRect;
     const viewport = getEnabledElement(element).viewport as any;
     viewport.setCamera.mockClear();
+    fireEvent.change(view.getByRole('combobox', { name: 'Высота панорамы' }), { target: { value: '80' } });
+    const bounds = canvas.getBoundingClientRect;
+    canvas = await view.findByLabelText('Панорама: нажмите для выбора сечения') as HTMLCanvasElement;
+    await waitFor(() => expect(canvas.height).toBe(80));
+    canvas.getBoundingClientRect = bounds;
     // At 200 x 80 the image fits the width, with 30px margins above and below.
     fireEvent.click(canvas, { clientX: 310, clientY: 25 });
     expect(viewport.setCamera).not.toHaveBeenCalled();
@@ -536,7 +677,8 @@ describe('Manual panorama from an expanded axial viewport', () => {
     await flushFrames();
     await waitFor(() => expect(reconstructPanorama).toHaveBeenCalledTimes(1));
     expect(view.getByText('Поперечные сечения')).toBeTruthy();
-    expect(view.getByText('Автодуга · проверьте и поправьте точки')).toBeTruthy();
+    expect(view.getByRole('button', { name: 'Редактирование', exact: true }).getAttribute('aria-pressed')).toBe('true');
+    expect((reconstructPanorama as jest.Mock).mock.calls[0][0].heightMm).toBe(140);
     expect(
       view.getByLabelText('Зубная дуга: точки можно перетаскивать').querySelectorAll('circle')
     ).toHaveLength(3);
@@ -551,6 +693,19 @@ describe('Manual panorama from an expanded axial viewport', () => {
     expect((reconstructPanorama as jest.Mock).mock.calls[0][0].curve.points[0]).toEqual([
       10, 20, 7,
     ]);
+    const overlay = view.getByLabelText('Зубная дуга: точки можно перетаскивать');
+    const calls = (reconstructPanorama as jest.Mock).mock.calls.length;
+    fireEvent.click(view.getByRole('button', { name: 'Без дуги', exact: true }));
+    expect(overlay.querySelectorAll('line, circle, polyline, text')).toHaveLength(0);
+    fireEvent.click(view.getByRole('button', { name: 'Автодуга', exact: true }));
+    expect(overlay.querySelector('polyline')).toBeTruthy();
+    expect(overlay.querySelector('line')).toBeTruthy();
+    expect(overlay.querySelectorAll('circle')).toHaveLength(0);
+    fireEvent.click(view.getByRole('button', { name: 'Редактирование', exact: true }));
+    expect(overlay.querySelectorAll('circle')).toHaveLength(3);
+    fireEvent.click(view.getByRole('button', { name: 'Увеличить масштаб сечений', exact: true }));
+    expect(view.getAllByLabelText('Поперечное сечение')[0].closest('.manual-section-raster').getAttribute('style')).toContain('scale(1.25)');
+    expect(reconstructPanorama).toHaveBeenCalledTimes(calls);
     fireEvent.click(view.getByRole('button', { name: 'Изменить дугу' }));
     expect(view.getByRole('button', { name: 'Построить' })).toBeTruthy();
     expect(

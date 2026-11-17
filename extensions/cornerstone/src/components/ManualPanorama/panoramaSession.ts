@@ -162,7 +162,7 @@ export class PanoramaSession {
         if (!current()) throw new DOMException('Cancelled', 'AbortError');
         const curve = buildCurve(arch.points);
         const up: Point3 = [0, 0, 1];
-        const settings: PanoramaSettings = { thickness: 20, heightMm: 80, projection: 'mean' };
+        const settings: PanoramaSettings = { thickness: 20, heightMm: 140, projection: 'mean' };
         const raster = await reconstructPanorama({
           curve,
           up,

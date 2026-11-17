@@ -26,6 +26,17 @@ it('resumes the same renderer when the panorama is removed and suspends again on
   expect(original).toHaveBeenCalledTimes(1);
 });
 
+it('renders the live skull while the editor hides its automatic panorama, then suspends it again', () => {
+  const { engine, viewport, original } = setup();
+  document.body.classList.add('manual-panorama-active');
+  try {
+    expect(engine.renderViewportUsingCustomOrVtkPipeline(viewport)).toEqual({ frame: 'mpr-3d' });
+    expect(original).toHaveBeenCalledTimes(1);
+  } finally { document.body.classList.remove('manual-panorama-active'); }
+  engine.renderViewportUsingCustomOrVtkPipeline(viewport);
+  expect(original).toHaveBeenCalledTimes(1);
+});
+
 it('keeps all other viewports and layouts rendering with original arguments', () => {
   const { engine, viewport, original, wrapper } = setup();
   viewport.id = 'mpr-axial'; engine.renderViewportUsingCustomOrVtkPipeline(viewport, 'argument');

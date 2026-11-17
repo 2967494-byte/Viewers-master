@@ -56,6 +56,7 @@ describe('A shared panorama per decoded volume', () => {
     expect(session.ensure(viewport, volume)).toBe(first);
     const value = await first;
     expect(await session.ensure(viewport, volume)).toBe(value);
+    expect(value.heightMm).toBe(140);
     expect(value.points).toBe(points);
     expect(value.raster).toBe(await (reconstructPanorama as jest.Mock).mock.results[0].value);
     expect(value.range).toEqual({ lower: -300, upper: 2000 });
@@ -106,7 +107,7 @@ describe('A shared panorama per decoded volume', () => {
     expect(matchesPanorama(value, value.points, value.up, value)).toBe(true);
     expect(matchesPanorama(value, [...value.points], value.up, value)).toBe(false);
     expect(matchesPanorama(value, value.points, value.up, { ...value, thickness: 30 })).toBe(false);
-    expect(matchesPanorama(value, value.points, value.up, { ...value, heightMm: 140 })).toBe(false);
+    expect(matchesPanorama(value, value.points, value.up, { ...value, heightMm: 80 })).toBe(false);
     expect(matchesPanorama(value, value.points, [0, 1, 0], value)).toBe(false);
     session.publish({ ...value, sharpness: 10, range: { lower: 0, upper: 1000 } });
     expect(matchesPanorama(session.state.snapshot, value.points, value.up, value)).toBe(true);

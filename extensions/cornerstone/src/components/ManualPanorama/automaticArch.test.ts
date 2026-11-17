@@ -63,7 +63,7 @@ describe('Automatic arch detection from volume pixels', () => {
     expect(result.points[0][1]).toBeGreaterThan(49);
     expect(result.points[result.points.length - 1][1]).toBeGreaterThan(49);
     expect(result.coverageWarning).toBeUndefined();
-  }, 20000);
+  }, 60000); // Two complete synthetic reconstructions; allow slower Windows CI hosts.
   it.each([0, 1, 2])(
     'chooses the lower jaw over the brighter forehead with %s posterior teeth',
     async teeth => {

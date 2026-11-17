@@ -9,6 +9,7 @@ export interface ImageScrollbarProps {
   onChange: (value: number) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   className?: string;
+  ariaLabel?: string;
 }
 
 export const ImageScrollbar: React.FC<ImageScrollbarProps> = ({
@@ -18,6 +19,7 @@ export const ImageScrollbar: React.FC<ImageScrollbarProps> = ({
   onChange,
   onContextMenu = e => e.preventDefault(),
   className = '',
+  ariaLabel = 'Image navigation scrollbar',
 }) => {
   if (max === 0) {
     return null;
@@ -63,7 +65,7 @@ export const ImageScrollbar: React.FC<ImageScrollbarProps> = ({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          aria-label="Image navigation scrollbar"
+          aria-label={ariaLabel}
           data-testid="image-scrollbar-input"
         />
       </div>

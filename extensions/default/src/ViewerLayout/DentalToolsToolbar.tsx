@@ -2,8 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import './DentalToolsToolbar.css';
 import { ORBITAL_MAGNIFICATIONS, normalizeMagnification } from '@ohif/core/src/constants/orbitalTheme';
 import useAxesVisibility from '@ohif/core/src/hooks/useAxesVisibility';
-import useImageFilter from '@ohif/core/src/hooks/useImageFilter';
-import { IMAGE_FILTER_OPTIONS, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
+import SharpnessSlider from './SharpnessSlider';
 
 const groups = [
   {
@@ -244,7 +243,6 @@ function ToolIcon({ name, spatial = false }: { name: string; spatial?: boolean }
 
 export default function DentalToolsToolbar({ commandsManager }) {
   const axesVisible = useAxesVisibility();
-  const imageFilter = useImageFilter();
   const [active, setActive] = useState('navigate');
   const [implantPlaced, setImplantPlaced] = useState(false);
   const [deleteReady, setDeleteReady] = useState(false);
@@ -356,49 +354,7 @@ export default function DentalToolsToolbar({ commandsManager }) {
         >
           <ToolIcon name="axes" />
         </button>
-        <div className="dental-tool-group">
-          <button
-            type="button"
-            className="dental-header-tool"
-            aria-label="Фильтры 2D"
-            title={`Фильтр всех 2D-окон: ${IMAGE_FILTER_OPTIONS.find(option => option.id === imageFilter).title}`}
-            data-active={imageFilter !== 'none'}
-            aria-haspopup="menu"
-            aria-expanded={menu === 'filter'}
-            onClick={() => setMenu(menu === 'filter' ? null : 'filter')}
-          >
-            <ToolIcon name="filter" />
-            <span className="dental-tool-chevron">▾</span>
-          </button>
-          {menu === 'filter' && (
-            <div
-              className="dental-tool-menu"
-              role="menu"
-              aria-label="Обработка всех 2D-окон"
-              onKeyDown={event => {
-                const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
-                const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  buttons[(index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus();
-                }
-              }}
-            >
-              {IMAGE_FILTER_OPTIONS.map(option => (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={imageFilter === option.id}
-                  onClick={() => { setImageFilter(option.id); setMenu(null); }}
-                >
-                  <span>{option.title}</span>
-                  <small>{option.help}</small>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SharpnessSlider />
         <div className="dental-tool-group">
           <button
             type="button"

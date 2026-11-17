@@ -23,11 +23,11 @@
     <ol id="results"></ol>
   </section>
   <section class="card" aria-label="Диагностика просмотрщика">
-    <h2>Проверка просмотрщика с лимитом 64 МиБ</h2>
-    <p>Тестовый режим уменьшает только текстуру снимка для видеокарты. Детализация отображения будет снижена. Все инструменты и исходные данные сохраняются.</p>
+    <h2>Журнал работы просмотрщика</h2>
+    <p>Запись технического журнала без изменения разрешения исследования. Прежний режим просмотра 64 МиБ больше не применяется.</p>
     <p id="viewer-profile" role="status"></p>
-    <div class="actions"><button id="enable-profile">Включить тестовый режим 64 МиБ</button><button id="disable-profile">Выключить тестовый режим</button><button id="download-viewer">Скачать журнал просмотрщика</button></div>
-    <p class="note">Настройка действует только в этом браузере. После включения закройте прежние вкладки просмотрщика и откройте снимок заново из кабинета врача. Затем вернитесь сюда и скачайте журнал. При выключении также потребуется заново открыть снимок. Лимит 64 МиБ относится к текстуре, а не ко всей памяти приложения.</p>
+    <div class="actions"><button id="enable-profile">Записать журнал следующего открытия</button><button id="disable-profile">Отменить запись</button><button id="download-viewer">Скачать журнал просмотрщика</button></div>
+    <p class="note">После включения откройте снимок заново из кабинета врача, затем вернитесь сюда и скачайте журнал. Запрос записи действует на одно открытие в этом браузере и не меняет режим графики.</p>
     <p id="viewer-message" class="note" role="status"></p>
   </section>
   <section class="card" aria-label="Диагностический отчёт">
@@ -226,7 +226,7 @@
   function showProfile(){
     try{
       const enabled=localStorage.getItem(PROFILE_KEY)==='64';
-      $('viewer-profile').textContent=enabled?'Тестовый режим включён. Для применения откройте исследование заново.':'Тестовый режим выключен. Просмотрщик использует обычные настройки.';
+      $('viewer-profile').textContent=enabled?'Журнал будет записан при следующем открытии исследования.':'Запись для следующего открытия не запрошена.';
       $('enable-profile').disabled=enabled;$('disable-profile').disabled=!enabled;
     }catch(_error){$('viewer-profile').textContent='Хранилище браузера недоступно. Включить тестовый режим не удалось.';}
   }
@@ -242,7 +242,7 @@
   $('download-viewer').addEventListener('click',()=>{
     try{
       const value=localStorage.getItem(VIEWER_KEY);
-      if(!value){$('viewer-message').textContent='Журнала пока нет. Включите тестовый режим и откройте снимок в новой версии просмотрщика.';return;}
+      if(!value){$('viewer-message').textContent='Журнала пока нет. Включите запись и откройте снимок в новой версии просмотрщика.';return;}
       const data=JSON.parse(value);
       const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'text/plain;charset=utf-8'}));
       const a=document.createElement('a');a.href=url;a.download='orbital-viewer-gpu-'+new Date().toISOString().replace(/[:.]/g,'-')+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);

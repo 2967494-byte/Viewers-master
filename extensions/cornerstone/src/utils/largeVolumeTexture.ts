@@ -1,5 +1,7 @@
 import { Enums, eventTarget } from '@cornerstonejs/core';
-import { configureAdaptiveVolumeTexture, installRenderingPreferenceControl } from './adaptiveVolumeTexture';
+import { configureAdaptiveVolumeTexture, installRenderingPreferenceControl, getDeviceTextureBudget } from './adaptiveVolumeTexture';
+import { getRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
+import { getAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 
 const FLOAT_TEXTURE_BUDGET = 1024 ** 3;
 const COMPACT_TEXTURE_BUDGET = 768 * 1024 ** 2;
@@ -48,13 +50,12 @@ export function createDepthLimitedTextureContext(context: any, dimensions: numbe
   });
 }
 
-/** Keep full-resolution CPU voxels; reduce only the GPU texture's display precision. */
+/** Compact signed source voxels before considering any spatial reduction. */
 export function configureLargeVolumeTexture(volume: any): boolean {
   if (!volume || configured.has(volume) || volume.dataType !== 'Int16Array') return false;
   const dimensions = volume.dimensions;
   if (!Array.isArray(dimensions) || dimensions.length !== 3 ||
       !dimensions.every(value => Number.isSafeInteger(value) && value > 0)) return false;
-  if (dimensions.reduce((size, value) => size * value, 4) <= FLOAT_TEXTURE_BUDGET) return false;
   const texture = volume.vtkOpenGLTexture;
   if (typeof texture?.useHalfFloat !== 'function' || typeof texture.getOglNorm16Ext !== 'function' ||
       typeof texture.get !== 'function') return false;
@@ -69,23 +70,17 @@ export function configureLargeVolumeTexture(volume: any): boolean {
   // VTK freezes its public API. get() exposes the mutable model;
   // pin these two per-texture flags so the streaming mapper cannot disable R16F.
   // Keep accessors configurable for VTK's normal delete() lifecycle.
+  const large = dimensions.reduce((size, value) => size * value, 4) > FLOAT_TEXTURE_BUDGET;
+  const constrained = () => getRenderingPreference() === 'compatibility' || Number.isFinite(getDeviceTextureBudget()) ||
+    (getRenderingPreference() === 'auto' && Number.isFinite(getAutomaticGpuProfile().budgetBytes));
   Object.defineProperties(model, {
     enableUseHalfFloat: { configurable: true, enumerable: true,
-      get: () => !texture.getOglNorm16Ext(), set: () => {} },
+      get: () => !texture.getOglNorm16Ext() && getRenderingPreference() !== 'quality' && (large || constrained()), set: () => {} },
     canUseHalfFloat: { configurable: true, enumerable: true,
       get: () => true, set: () => {} },
   });
-  if (dimensions.reduce((size, value) => size * value, 2) > COMPACT_TEXTURE_BUDGET) {
-    // VTK samples in normalized texture coordinates. Keeping its volume geometry
-    // intact and changing only GL storage/upload depth preserves physical bounds,
-    // crosshairs, measurements and CPU panorama data. Some ANGLE backends reject
-    // even a 1.2 GB R16F texture, so provide a bounded display level of detail.
-    configureAdaptiveVolumeTexture(volume, COMPACT_TEXTURE_BUDGET);
-    volume.orbitalDisplaySampling = {
-      sourceDepth: dimensions[2],
-      displayDepth: Math.max(1, Math.floor(COMPACT_TEXTURE_BUDGET / (dimensions[0] * dimensions[1] * 2))),
-    };
-  }
+  // Publish sampling metadata only after a real successful allocation. A chosen
+  // quality profile must not inherit this normal-mode cap or an earlier label.
   configureAdaptiveVolumeTexture(volume, COMPACT_TEXTURE_BUDGET);
   configured.add(volume);
   return true;
@@ -98,7 +93,7 @@ export function installLargeVolumeTextureSupport(): void {
   eventTarget.addEventListener(Enums.Events.VOLUME_LOADED, (event: any) => {
     const volume = event.detail?.volume;
     if (configureLargeVolumeTexture(volume)) {
-      console.info('[orbital-rendering] large volume uses compact GPU texture', {
+      console.info('[orbital-rendering] GPU scalar storage configured', {
         dimensions: event.detail.volume.dimensions,
         cpuDataType: event.detail.volume.dataType,
       });

@@ -22,8 +22,31 @@ export function crosshairHandles(viewport, annotation): CrosshairHandle[] {
       const overlap = kind === 'slab' && handles.find(handle => handle.kind === kind &&
         handle.target.id === target.id && Math.hypot(handle.center[0] - center[0], handle.center[1] - center[1]) < 6);
       if (overlap) continue;
-      handles.push({ kind, target, world, center, angle,
-        width: 36, height: kind === 'slab' ? 6 : 8 });
+      let gripCenter = center, gripAngle = angle, width = 36;
+      if (kind === 'rotation') {
+        const entries = annotation.data.handles.rotationPoints.filter(entry => entry[1].id === target.id);
+        const centers = entries.map(entry => viewport.worldToCanvas(entry[0]));
+        // Native rotation grips are paired on opposite rays. Their midpoint is
+        // the crosshair pivot; native start/end segments may belong to the other ray.
+        const pivot = centers.length > 1
+          ? [centers.reduce((sum, p) => sum + p[0], 0) / centers.length,
+             centers.reduce((sum, p) => sum + p[1], 0) / centers.length]
+          : [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+        const length = Math.hypot(center[0] - pivot[0], center[1] - pivot[1]);
+        if (length > 1e-6) {
+          const ux = (center[0] - pivot[0]) / length, uy = (center[1] - pivot[1]) / length;
+          const extent = Math.max(...entries.flatMap(entry => [entry[2], entry[3]])
+            .map(p => (p[0] - center[0]) * ux + (p[1] - center[1]) * uy));
+          if (Number.isFinite(extent) && extent > -18) {
+            width = extent + 18;
+            const offset = (extent - 18) / 2;
+            gripCenter = [center[0] + ux * offset, center[1] + uy * offset];
+            gripAngle = Math.atan2(uy, ux);
+          }
+        }
+      }
+      handles.push({ kind, target, world, center: gripCenter, angle: gripAngle,
+        width, height: kind === 'slab' ? 6 : 8 });
     }
   }
   return handles;

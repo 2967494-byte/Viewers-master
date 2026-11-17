@@ -1,11 +1,11 @@
-import { getGpuDiagnosticBudget, recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
+import { isGpuDiagnosticSession, recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
 
 const watchedContexts = new WeakSet<object>();
 const watchedEngines = new WeakSet<object>();
 
 /** Observe native calls without reading voxels, consuming GL errors or forcing synchronization. */
 export function installGpuContextDiagnostics(gl: any) {
-  if (!gl || !Number.isFinite(getGpuDiagnosticBudget()) || watchedContexts.has(gl)) return;
+  if (!gl || !isGpuDiagnosticSession() || watchedContexts.has(gl)) return;
   watchedContexts.add(gl);
   const frame = () => ({ canvas: [gl.drawingBufferWidth, gl.drawingBufferHeight] });
   const counts = new Map<string, number>();
@@ -53,7 +53,7 @@ export function installGpuContextDiagnostics(gl: any) {
 
 /** Attach only to the real implementation returned by core's engine registry. */
 export function installGpuEngineDiagnostics(engine: any) {
-  if (!engine || !Number.isFinite(getGpuDiagnosticBudget()) || watchedEngines.has(engine)) return;
+  if (!engine || !isGpuDiagnosticSession() || watchedEngines.has(engine)) return;
   watchedEngines.add(engine);
   for (const context of engine.contextPool?.getAllContexts?.() || []) {
     installGpuContextDiagnostics(context.getOpenGLRenderWindow?.()?.get3DContext?.());

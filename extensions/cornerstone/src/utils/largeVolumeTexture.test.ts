@@ -1,7 +1,12 @@
 import { configureLargeVolumeTexture, installLargeVolumeTextureSupport, createDepthLimitedTextureContext } from './largeVolumeTexture';
 import { eventTarget } from '@cornerstonejs/core';
+import { setRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
+
+beforeEach(() => setRenderingPreference('auto'));
+afterEach(() => setRenderingPreference('auto'));
 
 jest.mock('@cornerstonejs/core', () => ({
+  getRenderingEngines: () => [],
   Enums: { Events: { VOLUME_LOADED: 'volume-created' } },
   eventTarget: { addEventListener: jest.fn() },
 }));
@@ -40,8 +45,15 @@ it('prefers exact normalized 16-bit on supported GPUs', () => {
   expect(original).toHaveBeenCalledTimes(1);
 });
 
+it('uses exact float values in quality mode when normalized signed 16-bit is unavailable', () => {
+  const { volume } = makeVolume(); configureLargeVolumeTexture(volume);
+  setRenderingPreference('quality');
+  expect(volume.vtkOpenGLTexture.useHalfFloat()).toBe(false);
+  setRenderingPreference('auto');
+  expect(volume.vtkOpenGLTexture.useHalfFloat()).toBe(true);
+});
+
 it.each([
-  [[600, 600, 550], 'Int16Array'],
   [[900, 900, 750], 'Float32Array'],
   [[900, 900, 750], 'Uint16Array'],
   [[0, 900, 750], 'Int16Array'],
@@ -82,4 +94,13 @@ it('does not wrap textures that already fit and preserves native GL receivers', 
   expect(createDepthLimitedTextureContext(gl, [600, 600, 550])).toBe(gl);
   const wrapped = createDepthLimitedTextureContext(gl, [900, 900, 750]);
   expect(wrapped.receiver()).toBe(gl);
+});
+
+it('compacts small signed studies too, without publishing a speculative reduced-resolution badge', () => {
+  const {volume}=makeVolume([600,600,550]);
+  expect(configureLargeVolumeTexture(volume)).toBe(true);
+  expect(volume.vtkOpenGLTexture.useHalfFloat()).toBe(false);
+  setRenderingPreference('compatibility');
+  expect(volume.vtkOpenGLTexture.useHalfFloat()).toBe(true);
+  expect(volume.orbitalDisplaySampling).toBeUndefined();
 });

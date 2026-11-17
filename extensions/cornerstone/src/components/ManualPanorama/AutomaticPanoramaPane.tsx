@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 import { cache, Enums, eventTarget, getEnabledElement } from '@cornerstonejs/core';
 import type { BaseVolumeViewport, VolumeViewport } from '@cornerstonejs/core';
 import { annotation, Enums as ToolEnums, ToolGroupManager } from '@cornerstonejs/tools';
@@ -20,6 +21,7 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
   const [navigationEnabled, setNavigationEnabled] = useState(false);
   const sessionRef = useRef<PanoramaSession>(null);
   useEffect(() => {
+    recordViewerEvent('panorama', { value: showPanorama ? 'automatic' : 'volume' });
     // React has removed the covering panorama before requesting the first visible skull frame.
     if (element && !showPanorama) getEnabledElement(element)?.viewport?.render?.();
   }, [element, showPanorama]);

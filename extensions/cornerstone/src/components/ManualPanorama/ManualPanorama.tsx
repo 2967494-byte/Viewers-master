@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cache, Enums, eventTarget, getEnabledElement, utilities } from '@cornerstonejs/core';
+import { ImageScrollbar } from '@ohif/ui-next/components/Viewport/ImageScrollbar';
 import {
   buildCurve,
   createTrilinearSampler,
   curveFrame,
+  sectionFrame,
+  sectionPanoramaPath,
   distance,
   normalize,
   reconstructPanorama,
@@ -13,14 +16,38 @@ import {
   type Raster,
 } from './reconstruction';
 import RasterView from './RasterView';
+import LivePanoramaSection from './LivePanoramaSection';
+import SectionImageSurface from './SectionImageSurface';
 import { getPanoramaSession, matchesPanorama } from './panoramaSession';
 import { detectDentalArch, volumeWorldBounds } from './automaticArch';
 import { movePointInArchPlane } from './archEditing';
 import './ManualPanorama.css';
 import { getFocusedMprViewport, setMprFocus } from '../../utils/mprFocusLayout';
+import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 
 export const START_MANUAL_PANORAMA = 'orbital:start-manual-panorama';
 export const START_AUTOMATIC_PANORAMA = 'orbital:start-automatic-panorama';
+
+function SectionFocusButton({ expanded = false, index, onClick }) {
+  const title = expanded ? 'Вернуть сетку сечений' : `Увеличить сечение ${index + 1}`;
+  return <button type="button" className="manual-section-focus" aria-label={title} title={title}
+    aria-pressed={expanded} onPointerDown={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()}
+    onClick={event => { event.stopPropagation(); onClick(); }}>
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d={expanded ? 'M3 8h5V3 M21 8h-5V3 M3 16h5v5 M21 16h-5v5' : 'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5'} />
+    </svg>
+  </button>;
+}
+
+function SectionZoomButtons({ zoom, setZoom, expanded = false }) {
+  const target = expanded ? 'сечения' : 'сечений';
+  return <div className="manual-section-zoom-controls" role="group" aria-label="Масштаб поперечных сечений">
+    <button type="button" title="Приблизить" aria-label={`Увеличить масштаб ${target}`} disabled={zoom >= 4}
+      onClick={event => { event.stopPropagation(); setZoom(value => Math.min(4, value * 1.25)); }}>+</button>
+    <button type="button" title="Отдалить" aria-label={`Уменьшить масштаб ${target}`} disabled={zoom <= 0.5}
+      onClick={event => { event.stopPropagation(); setZoom(value => Math.max(0.5, value / 1.25)); }}>−</button>
+  </div>;
+}
 
 function ArchOverlay({
   source,
@@ -34,6 +61,10 @@ function ArchOverlay({
   center,
   step,
   onCenter,
+  tilt = 0,
+  sliceOffset = 0,
+  archMode = 'edit',
+  singleSection = false,
   onEditingChange = (_editing: boolean) => {},
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -91,7 +122,7 @@ function ArchOverlay({
     ]);
   };
   const path = (displayCurve?.points || points).map(project);
-  const tickDistances = displayCurve
+  const tickDistances = displayCurve && archMode !== 'none' && !singleSection
     ? Array.from({ length: Math.floor(displayCurve.length / 2) + 1 }, (_, i) => i * 2)
     : [];
   const sectionCenter = drawing ? (displayCurve?.length || 0) / 2 : center;
@@ -168,13 +199,14 @@ function ArchOverlay({
           </g>
         );
       })}
-      {displayCurve &&
-        Array.from({ length: 9 }, (_, i) => sectionCenter + (i - 4) * step)
+      {displayCurve && archMode !== 'none' &&
+        (singleSection ? [sectionCenter] : Array.from({ length: 9 }, (_, i) => sectionCenter + (i - 4) * step))
           .filter(mm => mm >= 0 && mm <= displayCurve.length)
           .map((mm, i) => {
-            const { point, normal } = curveFrame(displayCurve, mm, up);
-            const a = project(point.map((v, axis) => v - normal[axis] * 22) as Point3);
-            const b = project(point.map((v, axis) => v + normal[axis] * 22) as Point3);
+            const { point, normal, tangent, slope } = sectionFrame(displayCurve, mm, up,
+              Math.abs(mm - sectionCenter) < 0.01 ? tilt : 0);
+            const a = project(point.map((v, axis) => v + tangent[axis] * sliceOffset * slope - normal[axis] * 22) as Point3);
+            const b = project(point.map((v, axis) => v + tangent[axis] * sliceOffset * slope + normal[axis] * 22) as Point3);
             return (
               <line
                 key={i}
@@ -188,7 +220,7 @@ function ArchOverlay({
               />
             );
           })}
-      {path.length > 1 && (
+      {archMode !== 'none' && path.length > 1 && (
         <polyline
           points={path.map(p => p.join(',')).join(' ')}
           fill="none"
@@ -197,7 +229,7 @@ function ArchOverlay({
           pointerEvents="none"
         />
       )}
-      {points.map((point, index) => {
+      {(drawing || (archMode === 'edit' && !singleSection)) && points.map((point, index) => {
         const p = project(point);
         return (
           <circle
@@ -245,16 +277,26 @@ function AxialPreview({
   center,
   step,
   onCenter,
+  tilt = 0,
+  sliceOffset = 0,
+  archMode = 'edit',
+  singleSection = false,
   onEditingChange,
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [geometry, setGeometry] = useState(null);
+  const [slice, setSlice] = useState({ index: 0, count: 0 });
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     let frame = 0;
     const draw = () => {
       frame = 0;
+      try {
+        const count = source.getNumberOfSlices?.() || 0;
+        const index = source.getCurrentImageIdIndex?.() || 0;
+        setSlice(previous => previous.index === index && previous.count === count ? previous : { index, count });
+      } catch { /* A volume may be changing while its source viewport resizes. */ }
       const rect = canvas.getBoundingClientRect();
       const width = rect.width,
         height = rect.height;
@@ -309,12 +351,28 @@ function AxialPreview({
             center,
             step,
             onCenter,
+            tilt,
+            sliceOffset,
+            archMode,
+            singleSection,
             geometry,
             onEditingChange,
           }}
           drawing={false}
           finish={() => {}}
         />
+      )}
+      {geometry && slice.count > 1 && (
+        <div onPointerDown={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()}
+          onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+          <ImageScrollbar
+            ariaLabel="Прокрутка аксиальных слоёв"
+            max={slice.count - 1}
+            value={slice.index}
+            height={`${Math.max(0, geometry.height - 5)}px`}
+            onChange={imageIndex => utilities.jumpToSlice(source.element, { imageIndex, debounceLoading: true })}
+          />
+        </div>
       )}
     </div>
   );
@@ -340,10 +398,21 @@ export default function ManualPanorama({
   const [layout, setLayout] = useState(null);
   const [panorama, setPanorama] = useState<Raster>(null);
   const [sections, setSections] = useState([]);
+  const [expandedSection, setExpandedSection] = useState<number | null>(null);
+  const [sectionTilt, setSectionTilt] = useState(0);
+  const activeTilt = expandedSection !== null ? sectionTilt : 0;
+  useEffect(() => { if (expandedSection === null) setSectionTilt(0); }, [expandedSection]);
+  const [expandedDistance, setExpandedDistance] = useState(0);
+  const expandedDistanceRef = useRef(0);
+  expandedDistanceRef.current = expandedDistance;
   const [center, setCenter] = useState(0);
   const [step, setStep] = useState(2);
   const [thickness, setThickness] = useState(20);
-  const [heightMm, setHeightMm] = useState(80);
+  const [heightMm, setHeightMm] = useState(140);
+  const [archMode, setArchMode] = useState('edit');
+  const [sectionZoom, setSectionZoom] = useState(1);
+  const [sectionPanEnabled, setSectionPanEnabled] = useState(false);
+  const [sectionCrossVisible, setSectionCrossVisible] = useState(true);
   const [projection, setProjection] = useState<'mean' | 'mip'>('mean');
   const [range, setRange] = useState({ lower: -500, upper: 2500 });
   const [sharpness, setSharpness] = useState(5);
@@ -385,6 +454,7 @@ export default function ManualPanorama({
     setContext(null);
     setPanorama(null);
     setSections([]);
+    setExpandedSection(null);
     setError('');
     setCoverageWarning('');
     setEditing(false);
@@ -426,6 +496,7 @@ export default function ManualPanorama({
   const start = useCallback(
     async (findAutomatically = false, forceSearch = false) => {
       const owner = ++launchGeneration.current;
+      setExpandedSection(null);
       autoController.current?.abort();
       const controller = new AbortController();
       autoController.current = controller;
@@ -473,6 +544,11 @@ export default function ManualPanorama({
         const voi = viewport.getProperties().voiRange;
         if (voi && voi.upper > voi.lower) setRange({ lower: voi.lower, upper: voi.upper });
         setThickness(20);
+        setHeightMm(140);
+        setArchMode('edit');
+        setSectionZoom(1);
+        setSectionPanEnabled(false);
+        setSectionCrossVisible(true);
         setSharpness(5);
         setAutomatic(findAutomatically);
         setAutoProgress(0);
@@ -561,8 +637,13 @@ export default function ManualPanorama({
 
   useEffect(() => {
     document.body.classList.toggle('manual-panorama-active', stage !== 'idle');
+    if (stage !== 'review') setExpandedSection(null);
+    // The editor hides the panorama using CSS. Resume the same skull renderer
+    // now that it is visible, even if its automatic panorama remains mounted.
+    if (stage !== 'idle') getEnabledElement(element)?.renderingEngine?.getViewport('mpr-3d')?.render?.();
+    recordViewerEvent('panorama', { value: stage === 'autoError' ? 'auto-error' : stage });
     return () => document.body.classList.remove('manual-panorama-active');
-  }, [stage]);
+  }, [stage, element]);
 
   const finish = async () => {
     if (!curve) {
@@ -616,22 +697,30 @@ export default function ManualPanorama({
     const onVolume = () => {
       if (source.getVolumeId() !== activeVolume.current) close();
     };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-    };
     const observer = new ResizeObserver(resize);
     observer.observe(element);
     window.addEventListener('resize', resize);
-    window.addEventListener('keydown', escape);
     element.addEventListener(Enums.Events.VOLUME_VIEWPORT_NEW_VOLUME, onVolume);
     resize();
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', resize);
-      window.removeEventListener('keydown', escape);
       element.removeEventListener(Enums.Events.VOLUME_VIEWPORT_NEW_VOLUME, onVolume);
     };
   }, [source, stage, element, close]);
+
+  useEffect(() => {
+    if (stage === 'idle') return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (expandedSection !== null) setExpandedSection(null);
+      else close();
+    };
+    window.addEventListener('keydown', escape, true);
+    return () => window.removeEventListener('keydown', escape, true);
+  }, [stage, expandedSection, close]);
 
   useEffect(() => {
     if (!source || stage !== 'review' || !curve || !context) return;
@@ -745,7 +834,7 @@ export default function ManualPanorama({
     coverageWarning,
   ]);
   useEffect(() => {
-    if (editing) {
+    if (editing || expandedSection !== null) {
       setSectionBusy(false);
       return;
     }
@@ -788,10 +877,21 @@ export default function ManualPanorama({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [stage, curve, context, center, step, heightMm, editing]);
+  }, [stage, curve, context, center, step, heightMm, editing, expandedSection !== null]);
 
   if (!element) return null;
-  const selectCenter = mm => setCenter(Math.max(0, Math.min(curve?.length || 0, mm)));
+  const selectCenter = mm => {
+    const next = Math.max(0, Math.min(curve?.length || 0, mm));
+    setCenter(next);
+    if (expandedSection !== null) {
+      expandedDistanceRef.current = next;
+      setExpandedDistance(next);
+      setExpandedSection(4);
+    }
+  };
+  const sectionVolumeId = source?.getVolumeId?.();
+  const sectionWheelStep = Math.min(0.5, ...((sectionVolumeId ? cache.getVolume(sectionVolumeId)?.spacing?.slice(0, 2) : []) || [])
+    .filter(value => Number.isFinite(value) && value > 0));
   const drawingGeometry = {
     width: element.clientWidth,
     height: element.clientHeight,
@@ -930,7 +1030,10 @@ export default function ManualPanorama({
                 <select
                   aria-label="Шаг поперечных сечений"
                   value={step}
-                  onChange={e => setStep(Number(e.target.value))}
+                  onChange={e => {
+                    setStep(Number(e.target.value));
+                    if (expandedSection !== null) selectCenter(expandedDistance);
+                  }}
                 >
                   {[1, 2, 3, 5].map(v => (
                     <option
@@ -1002,7 +1105,36 @@ export default function ManualPanorama({
           >
             <section className="manual-panel">
               <header>
+                Аксиальный срез{' '}
+                <div className="manual-arch-modes" role="group" aria-label="Отображение зубной дуги">
+                  {[['none', 'Без дуги'], ['auto', 'Автодуга'], ['edit', 'Редактирование']].map(([mode, label]) =>
+                    <button type="button" key={mode} aria-pressed={archMode === mode} disabled={stage !== 'review'}
+                      onClick={() => setArchMode(mode)}>{label}</button>)}
+                </div>
+              </header>
+              {coverageWarning && (
+                <div
+                  className="manual-coverage-warning"
+                  role="alert"
+                >
+                  {coverageWarning}
+                </div>
+              )}
+              <AxialPreview
+                {...{ source, points, curve, step }}
+                center={expandedSection !== null ? expandedDistance : center}
+                tilt={activeTilt} sliceOffset={sliceOffset}
+                archMode={archMode} singleSection={expandedSection !== null}
+                setPoints={editPoints}
+                up={context.up}
+                onCenter={selectCenter}
+                onEditingChange={setEditing}
+              />
+            </section>
+            <section className="manual-panel">
+              <header>
                 Поперечные сечения{' '}
+                <SectionZoomButtons zoom={sectionZoom} setZoom={setSectionZoom} />
                 <span>
                   {stage !== 'review'
                     ? 'Ожидание зубной дуги'
@@ -1030,43 +1162,20 @@ export default function ManualPanorama({
                           <span className="manual-section-label">
                             {section.distance.toFixed(1)} мм
                           </span>
-                          <RasterView
-                            raster={section.raster}
-                            range={range}
-                          />
+                          <SectionFocusButton index={index} onClick={() => {
+                            setExpandedSection(index);
+                            expandedDistanceRef.current = section.distance;
+                            setExpandedDistance(section.distance);
+                          }} />
+                          <div className="manual-section-raster" style={{ transform: `scale(${sectionZoom})` }}>
+                            <RasterView raster={section.raster} range={range} />
+                          </div>
                         </>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </section>
-            <section className="manual-panel">
-              <header>
-                Аксиальный срез{' '}
-                <span>
-                  {stage === 'review'
-                    ? automatic
-                      ? 'Автодуга · проверьте и поправьте точки'
-                      : 'Перетаскивайте точки дуги · колесо — выбор среза'
-                    : 'Автоматическое определение дуги'}
-                </span>
-              </header>
-              {coverageWarning && (
-                <div
-                  className="manual-coverage-warning"
-                  role="alert"
-                >
-                  {coverageWarning}
-                </div>
-              )}
-              <AxialPreview
-                {...{ source, points, curve, center, step }}
-                setPoints={editPoints}
-                up={context.up}
-                onCenter={selectCenter}
-                onEditingChange={setEditing}
-              />
             </section>
             <section className="manual-panel">
               <header>
@@ -1083,7 +1192,8 @@ export default function ManualPanorama({
                     raster={panorama}
                     range={range}
                     sharpness={sharpness}
-                    position={center / curve.length}
+                    position={(expandedSection !== null ? expandedDistance : center) / curve.length}
+                    sectionPath={activeTilt ? sectionPanoramaPath(curve, context.up, expandedDistance, activeTilt, panorama) : undefined}
                     slicePosition={
                       ((panorama.topMm ?? panorama.heightMm / 2) - sliceOffset) / panorama.heightMm
                     }
@@ -1095,7 +1205,8 @@ export default function ManualPanorama({
                         : ['Начало', 'Конец']
                     }
                     onPosition={(fraction, vertical) => {
-                      selectCenter(fraction * curve.length);
+                      const targetHeight = (panorama.topMm ?? panorama.heightMm / 2) - vertical * panorama.heightMm;
+                      selectCenter(fraction * curve.length - (expandedSection !== null ? targetHeight * Math.tan(activeTilt * Math.PI / 180) : 0));
                       const offset =
                         (panorama.topMm ?? panorama.heightMm / 2) -
                         vertical * panorama.heightMm -
@@ -1183,6 +1294,65 @@ export default function ManualPanorama({
               </div>
             </section>
             <div className="manual-live-3d-label">3D · живая модель</div>
+            {stage === 'review' && expandedSection !== null && (
+              <section className="manual-panel manual-section-expanded" aria-label="Развёрнутое поперечное сечение"
+                style={{ inset:'0 0 auto auto', width:layout.width - layout.column, height:layout.row }}
+                onWheel={event => { event.stopPropagation(); if (curve && event.deltaY) selectCenter(expandedDistanceRef.current + Math.sign(event.deltaY) * sectionWheelStep); }}>
+                <header>
+                  <span>Поперечное сечение · {expandedDistance.toFixed(1)} мм</span>
+                  <button type="button" className="manual-section-cross-toggle"
+                    aria-label={sectionCrossVisible ? 'Скрыть крест сечения' : 'Показать крест сечения'}
+                    title={sectionCrossVisible ? 'Скрыть крест' : 'Показать крест'} aria-pressed={sectionCrossVisible}
+                    onClick={() => setSectionCrossVisible(value => !value)}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                      <path d="M12 2v7m0 6v7M2 12h7m6 0h7" /><circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                  <button type="button" className="manual-section-hand" aria-label="Перемещение поперечного сечения"
+                    title="Рука: перемещение изображения" aria-pressed={sectionPanEnabled}
+                    onClick={() => setSectionPanEnabled(value => !value)}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M7 12V5a1.5 1.5 0 0 1 3 0v6-8a1.5 1.5 0 0 1 3 0v8-6a1.5 1.5 0 0 1 3 0v7-4a1.5 1.5 0 0 1 3 0v7c0 5-3 7-7 7-3 0-5-2-6-4l-3-5a1.5 1.5 0 0 1 2.5-1.5L7 14" />
+                    </svg>
+                  </button>
+                  <SectionZoomButtons zoom={sectionZoom} setZoom={setSectionZoom} expanded />
+                  <SectionFocusButton expanded index={expandedSection} onClick={() => setExpandedSection(null)} />
+                </header>
+                <div className="manual-section-expanded-image">
+                  <SectionImageSurface zoom={sectionZoom} enabled={sectionPanEnabled}>
+                  <LivePanoramaSection seed={sections[expandedSection]} curve={curve} {...context} heightMm={heightMm}
+                    distance={expandedDistance} tilt={activeTilt} range={range} editing={editing}
+                    sliceOffset={sliceOffset} crossVisible={sectionCrossVisible}
+                    onPosition={(_fraction, vertical) => {
+                      const target = (0.5 - vertical) * heightMm * Math.cos(activeTilt * Math.PI / 180);
+                      const offset = target - sliceOffset;
+                      const camera = source.getCamera();
+                      source.setCamera({
+                        focalPoint: camera.focalPoint.map((v, i) => v + context.up[i] * offset),
+                        position: camera.position.map((v, i) => v + context.up[i] * offset),
+                      });
+                      source.render();
+                    }}
+                    label={`Увеличенное поперечное сечение ${expandedSection + 1}`} />
+                  </SectionImageSurface>
+                  <div className="manual-section-tilt" onWheel={event => event.stopPropagation()}
+                    onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
+                    <input type="range" min="-30" max="30" step="0.25" value={sectionTilt}
+                      aria-label="Наклон поперечного сечения" aria-valuetext={`${sectionTilt}°`}
+                      title={`Наклон ${sectionTilt}° · двойной щелчок — сброс`}
+                      onDoubleClick={() => setSectionTilt(0)} onKeyDown={event => event.stopPropagation()}
+                      onChange={event => setSectionTilt(Number(event.target.value))} />
+                  </div>
+                  {curve && <div onPointerDown={event => event.stopPropagation()} onMouseDown={event => event.stopPropagation()}
+                    onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                    <ImageScrollbar ariaLabel="Положение сечения по зубной дуге" max={1000}
+                      value={Math.round(expandedDistance / curve.length * 1000)}
+                      height={`${Math.max(0, layout.row - 39)}px`}
+                      onChange={value => selectCenter(value / 1000 * curve.length)} />
+                  </div>}
+                </div>
+              </section>
+            )}
           </div>,
           document.body
         )}

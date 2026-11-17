@@ -2,6 +2,8 @@ import { getRenderingPreference } from './orbitalRendering';
 import { getAutomaticGpuProfile } from './orbitalGpuProfile';
 import type { GpuDevice } from './orbitalGpuProfile';
 import { getGpuDiagnosticBudget } from './orbitalGpuDiagnostics';
+import { ViewerDiagnostics, getViewerDiagnostics, setViewerDiagnostics, recordViewerEvent, DIAGNOSTIC_BODY_LIMIT } from './orbitalViewerDiagnostics';
+import { startDiagnosticRuntime } from './orbitalDiagnosticRuntime';
 
 export const MPR_TELEMETRY_IDS = ['mpr-coronal', 'mpr-sagittal', 'mpr-axial'];
 export type OpenSnapshot = {
@@ -54,11 +56,12 @@ export class ViewerOpenTracker {
     this.confirmed.add(viewportId);
     this.update({ rendered: [...this.confirmed] }, false);
     if (MPR_TELEMETRY_IDS.every(id => this.confirmed.has(id))) {
+      recordViewerEvent('ready');
       this.update({ status: 'ready', readyMs: elapsed, errorCode: null,
         readyMode: this.state.requestedMode, readyBudgetMiB: this.state.budgetMiB });
     }
   }
-  fail(code: string) { this.update({ status: 'error', errorCode: code }); }
+  fail(code: string) { recordViewerEvent('error', { value: code }); this.update({ status: 'error', errorCode: code }); }
   close() { if (this.state.status === 'loading') this.update({ status: 'interrupted' }); }
 }
 
@@ -96,11 +99,21 @@ export function startViewerOpenTelemetry(launchToken: string) {
   bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
   const hex = [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
   const runId = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-  let csrf = '', initialized = false, sending = false, stopped = false;
+  let csrf = '', initialized = false, sending = false, stopped = false, diagnosticsEnabled = false;
+  let csrfAt = 0, retries = 0, retrying = false;
   let sentSequence = -1;
   let timer: ReturnType<typeof setTimeout>;
+  let retryTimer: ReturnType<typeof setTimeout>;
+  let stopRuntime: (() => void) | undefined;
   const tracker = new ViewerOpenTracker(() => performance.now(), () => schedule());
   active = tracker;
+  const choice = new URLSearchParams(window.location.search).get('viewerDiagnostics');
+  const collector = choice === 'off' ? null : new ViewerDiagnostics(() => performance.now(), choice === 'deep');
+  setViewerDiagnostics(collector);
+  const stopReporting = () => {
+    stopped = true; clearTimeout(timer); clearTimeout(retryTimer); stopRuntime?.();
+    if (getViewerDiagnostics() === collector) setViewerDiagnostics(null);
+  };
   const script = document.querySelector<HTMLScriptElement>('script[src*="app.bundle."]');
   tracker.state.bundle = script?.src.match(/app\.bundle\.([a-f0-9]+)\.js/)?.[1] || '';
   const send = (url: string, options: RequestInit) => {
@@ -109,33 +122,79 @@ export function startViewerOpenTelemetry(launchToken: string) {
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout));
   };
   const schedule = (immediate = false) => {
-    if (stopped) return;
+    if (stopped || retrying) return;
     clearTimeout(timer);
     timer = setTimeout(() => void flush(), immediate ? 0 : 1000);
   };
+  const retry = (bootstrap: boolean) => {
+    if (stopped) return;
+    if (collector) collector.transport.failures++;
+    if (retries >= 3) { stopReporting(); return; }
+    retrying = true;
+    const delay = [30000, 120000, 300000][retries++];
+    retryTimer = setTimeout(() => {
+      retrying = false;
+      if (!stopped) void (bootstrap ? configure() : flush());
+    }, delay);
+  };
   const flush = async () => {
-    if (!csrf || sending || stopped || sentSequence === tracker.state.sequence) return;
+    if (!csrf || sending || stopped || retrying || sentSequence === tracker.state.sequence) return;
+    if (performance.now() - csrfAt >= 50 * 60000) { void configure(); return; }
     sending = true;
     const sequence = tracker.state.sequence;
     try {
+      const body: any = initialized ? { snapshot: tracker.state } : { runId, launchToken, snapshot: tracker.state };
+      if (diagnosticsEnabled && collector) body.diagnostics = collector.snapshot();
+      let payload = JSON.stringify(body);
+      let bytes = new Blob([payload]).size;
+      if (bytes > DIAGNOSTIC_BODY_LIMIT) {
+        delete body.diagnostics; payload = JSON.stringify(body); bytes = new Blob([payload]).size;
+      }
+      if (collector) { collector.transport.posts++; collector.transport.bodyBytes += bytes; }
       const response = await send(initialized ? `/api/viewer/telemetry/sessions/${runId}` : '/api/viewer/telemetry/sessions', {
         // HTTPS CSRF validation requires a same-origin Referer. Send only the origin,
         // never the /v/<launchToken> path, while keeping the server's protection enabled.
         method: 'POST', credentials: 'same-origin', keepalive: true, referrerPolicy: 'origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-        body: JSON.stringify(initialized ? { snapshot: tracker.state } : { runId, launchToken, snapshot: tracker.state }),
+        body: payload,
       });
+      if (stopped) return;
       if (response.ok) { initialized = true; sentSequence = sequence; }
-      else stopped = true; // Auth/CSRF failures do not affect the viewer or flood the CRM.
-    } catch (_error) { stopped = true; }
-    finally { sending = false; if (sentSequence !== tracker.state.sequence && !stopped) schedule(); }
+      else if (response.status >= 500 || response.status === 429) retry(false);
+      else stopReporting();
+    } catch (_error) { retry(false); }
+    finally { sending = false; if (sentSequence !== tracker.state.sequence && !stopped && !retrying) schedule(); }
   };
-  const onHide = () => { tracker.close(); schedule(true); void flush(); };
+  const onHide = () => { recordViewerEvent('visibility', { value: 'pagehide' }); tracker.close(); schedule(true); void flush(); };
   window.addEventListener('pagehide', onHide);
-  // Avoid including the /v/<token> Referer even in the authenticated bootstrap request.
-  void send('/api/viewer/telemetry/config', { credentials: 'same-origin', referrerPolicy: 'no-referrer' })
-    .then(response => response.ok ? response.json() : null)
-    .then(value => { if (typeof value?.csrfToken === 'string') { csrf = value.csrfToken; schedule(true); } })
-    .catch(() => { stopped = true; });
-  return () => { stopped = true; clearTimeout(timer); window.removeEventListener('pagehide', onHide); active = null; };
+  const configure = async () => {
+    try {
+      // Never include the /v/<token> Referer in bootstrap.
+      const response = await send('/api/viewer/telemetry/config', { credentials: 'same-origin', referrerPolicy: 'no-referrer' });
+      if (stopped) return;
+      if (!response.ok) {
+        if (response.status >= 500 || response.status === 429) retry(true);
+        else stopReporting();
+        return;
+      }
+      const value = await response.json();
+      if (stopped || typeof value?.csrfToken !== 'string') return;
+      csrf = value.csrfToken; csrfAt = performance.now();
+      diagnosticsEnabled = value.diagnosticsVersion === 1 && !!collector;
+      if (!diagnosticsEnabled) setViewerDiagnostics(null);
+      if (diagnosticsEnabled && !stopRuntime) {
+        try {
+          stopRuntime = startDiagnosticRuntime(collector, runId, () => {
+            if (['loading', 'ready'].includes(tracker.state.status)) { tracker.update({}, false); schedule(true); }
+          });
+        } catch { /* Reporting continues even if optional browser APIs are unavailable. */ }
+      }
+      schedule(true);
+    } catch (_error) { if (!stopped) retry(true); }
+  };
+  void configure();
+  return () => {
+    stopReporting(); window.removeEventListener('pagehide', onHide);
+    if (active === tracker) active = null;
+  };
 }

@@ -1,3 +1,4 @@
+import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 export const MPR_VIEWPORT_IDS = ['mpr-coronal', 'mpr-sagittal', 'mpr-axial', 'mpr-3d'];
 
 export function mprFocusRectangles(focusedId: string | null) {
@@ -32,6 +33,7 @@ export async function setMprFocus(viewportGridService, focusedId: string | null)
   const state = viewportGridService.getState();
   if (state.viewports.size !== 4 || !MPR_VIEWPORT_IDS.every(id => state.viewports.has(id))) return;
   if (focusedId && !MPR_VIEWPORT_IDS.includes(focusedId)) return;
+  recordViewerEvent('layout', { value: focusedId || 'grid' });
   const rectangles = mprFocusRectangles(focusedId);
   // This changes geometry only. setLayout would mark the existing renderers unready.
   viewportGridService.set({

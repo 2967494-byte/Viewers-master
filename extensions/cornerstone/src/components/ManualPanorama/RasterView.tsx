@@ -4,7 +4,7 @@ import { applySharpness, createSharpeningDetail } from './sharpening';
 import { ORBITAL_MPR_COLORS, ORBITAL_OVERLAY_COLOR } from '@ohif/core/src/constants/orbitalTheme';
 import { panoramaRasterPosition } from './panoramaNavigation';
 import useAxesVisibility from '@ohif/core/src/hooks/useAxesVisibility';
-import useImageFilter from '@ohif/core/src/hooks/useImageFilter';
+import { useRasterImageFilter as useImageFilter } from '@ohif/core/src/hooks/useImageFilter';
 import { filterImagePixels } from '@ohif/core/src/constants/orbitalImageFilters';
 
 export default function RasterView({
@@ -13,6 +13,7 @@ export default function RasterView({
   sharpness = 1,
   position,
   slicePosition,
+  sectionPath,
   orientation,
   onPosition,
   dragToPosition = false,
@@ -24,6 +25,7 @@ export default function RasterView({
   sharpness?: number;
   position?: number;
   slicePosition?: number;
+  sectionPath?: string;
   orientation?: [string, string];
   onPosition?: (fraction: number, vertical: number) => void;
   dragToPosition?: boolean;
@@ -209,7 +211,8 @@ export default function RasterView({
           aria-hidden="true"
         >
           {overlay}
-          {axesVisible && Number.isFinite(position) && position >= 0 && position <= 1 && (
+          {axesVisible && sectionPath !== undefined && <path data-panorama-marker="tilted-section" d={sectionPath} fill="none" stroke={ORBITAL_MPR_COLORS.sagittal} strokeWidth="1.25" vectorEffect="non-scaling-stroke" />}
+          {axesVisible && sectionPath === undefined && Number.isFinite(position) && position >= 0 && position <= 1 && (
             <line
               data-panorama-marker="vertical"
               x1={position * (raster.width - 1)}

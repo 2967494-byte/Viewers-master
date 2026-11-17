@@ -89,9 +89,10 @@ function App({
     getGraphicsError
   );
   useEffect(() => {
+    let stopTelemetry: (() => void) | undefined;
     try {
       const match = window.location.pathname.match(/\/v\/([^/]+)\/?$/);
-      if (match) startViewerOpenTelemetry(decodeURIComponent(match[1]));
+      if (match) stopTelemetry = startViewerOpenTelemetry(decodeURIComponent(match[1]));
     } catch { /* Optional statistics must never stop study access. */ }
     const unsubscribe = subscribeGraphicsError(() => {
       if (getGraphicsError() && getViewerOpenTracker()?.state.status !== 'error') getViewerOpenTracker()?.fail('graphics-error');
@@ -123,7 +124,7 @@ function App({
     };
 
     run();
-    return unsubscribe;
+    return () => { unsubscribe(); stopTelemetry?.(); };
   }, []);
 
   if (startupError || graphicsError) {

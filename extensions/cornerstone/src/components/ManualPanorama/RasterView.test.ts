@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { setAxesVisible } from '@ohif/core/src/constants/orbitalAxes';
-import { setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
+import { setImageFilter, setImageFilterStrength } from '@ohif/core/src/constants/orbitalImageFilters';
 import RasterView from './RasterView';
 
 describe('Panorama markers independent from the grayscale raster', () => {
@@ -40,6 +40,9 @@ describe('Panorama markers independent from the grayscale raster', () => {
     expect(pixels).toEqual(source);
     act(() => setImageFilter('none'));
     expect(ctx.putImageData.mock.calls[2][0].data).toEqual(first);
+    const paints = ctx.putImageData.mock.calls.length;
+    for (const strength of [.2,.5,.8]) act(() => setImageFilterStrength(strength));
+    expect(ctx.putImageData).toHaveBeenCalledTimes(paints);
     view.unmount();
   });
   it('hides only coordinate lines, preserving implants, pixels and panorama navigation', () => {

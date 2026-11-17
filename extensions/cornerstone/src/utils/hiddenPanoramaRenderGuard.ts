@@ -10,7 +10,8 @@ export default function installHiddenPanoramaRenderGuard(engine: any) {
   const reported = new WeakSet<object>();
   engine.renderViewportUsingCustomOrVtkPipeline = function (viewport, ...args) {
     const wrapper = viewport.element?.parentElement;
-    const covered = viewport.id === 'mpr-3d' && wrapper?.classList.contains('viewport-wrapper') &&
+    const covered = !document.body.classList.contains('manual-panorama-active') &&
+      viewport.id === 'mpr-3d' && wrapper?.classList.contains('viewport-wrapper') &&
       Array.from(wrapper.children).some((child: Element) => child.classList.contains('automatic-panorama-pane'));
     if (covered) {
       if (!reported.has(viewport)) {

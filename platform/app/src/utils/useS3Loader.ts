@@ -11,6 +11,7 @@ import { imageLoader } from '@cornerstonejs/core';
 import { prepareS3Instances } from './s3MetadataIndex';
 import { loadCompressedStudy } from './s3CompressedStudy';
 import { getViewerOpenTracker } from '@ohif/core/src/constants/orbitalOpenTelemetry';
+import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 
 export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   };
 
   const fail = useCallback((message: string) => {
+    recordViewerEvent('index', { value: 'failed' });
     getViewerOpenTracker()?.fail('index-load-error');
     console.error('S3 Loader error:', message);
     setInitProgress(message, 0);
@@ -35,6 +37,8 @@ export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
     async (prefix: string, options?: { sourceVersion?: string | number }) => {
       setLoading(true);
       setError(null);
+      const indexStarted = performance.now();
+      recordViewerEvent('index', { value: 'start' });
 
       try {
         registerOrbitalS3ImageLoader();
@@ -102,6 +106,7 @@ export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
           }
           console.info('[orbital-s3] metadata prepared', { instances: instances.length,
             elapsedMs: Math.round(performance.now() - preparedAt) });
+          recordViewerEvent('index', { value: 'ready', count: instances.length, durationMs: performance.now() - indexStarted });
 
           // Start the middle slice before background volume requests fill the queue.
           // It is the original full-resolution slice, not an interpolated substitute.
