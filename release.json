@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "22040252b2b521985e53fb9e1f2c8d13aa5f9f57",
-  "createdAt": "2026-11-18T18:25:51.296Z",
-  "mainBundle": "app.bundle.e447b94d47d35a06621c.js",
-  "mainSha256": "6e408ac11b2a6c08b23a743ef1fec58d7d1b6ca7d56f2f46d8fc94087a5bcc36",
+  "sourceCommit": "5b9591047f829d7c7351db3faae02356d04a41d7",
+  "createdAt": "2026-11-18T18:45:19.614Z",
+  "mainBundle": "app.bundle.ded7a7110e30e3ae64e6.js",
+  "mainSha256": "2fc287132e7a86eedcd0386253c2a31133c00d666f3bae77231f4f6aa4ec27e5",
   "files": [
     {
       "path": "1403.bundle.ec6ddc9a94f366cad9ea.js",
@@ -169,12 +169,12 @@
       "sha256": "43f000776459e90507472df63e3aaaba3cf94b5864da48cf1c9c5204a8da4993"
     },
     {
-      "path": "3664.bundle.a603ca4b0603ceed01f4.js",
-      "sha256": "763a12e14af6d4a4291983acb11400b34869a9fe4ac6357f2a716ac719c25900"
+      "path": "3664.bundle.5ffeea1c236ea80b2ddf.js",
+      "sha256": "1b56f59421fa80fcb24666b9a8b687895037cc20c28e491fe75d6eede4c3a7cb"
     },
     {
-      "path": "3664.bundle.a603ca4b0603ceed01f4.js.map",
-      "sha256": "573db6b220767d5d16c81aa25313f3dd392c800eff853cc8e28b0f0bb7416236"
+      "path": "3664.bundle.5ffeea1c236ea80b2ddf.js.map",
+      "sha256": "9dcdba9eabd7d7f71ca57d922d7b033a8b4e0930b1570e158eaa66064b48ac5d"
     },
     {
       "path": "4202.bundle.8fb57677c48d98a92e42.js",
@@ -597,16 +597,16 @@
       "sha256": "f0dec15ad54b39eede93fbd0db904ad1f0a335599db684a4f2069b2ed7cc190d"
     },
     {
-      "path": "app.bundle.e447b94d47d35a06621c.js",
-      "sha256": "6e408ac11b2a6c08b23a743ef1fec58d7d1b6ca7d56f2f46d8fc94087a5bcc36"
+      "path": "app.bundle.ded7a7110e30e3ae64e6.js",
+      "sha256": "2fc287132e7a86eedcd0386253c2a31133c00d666f3bae77231f4f6aa4ec27e5"
     },
     {
-      "path": "app.bundle.e447b94d47d35a06621c.js.LICENSE.txt",
+      "path": "app.bundle.ded7a7110e30e3ae64e6.js.LICENSE.txt",
       "sha256": "a50edb82b22174c00271dcdc6ab5a8697a013a9e29ce08747ee7a93fe0244a89"
     },
     {
-      "path": "app.bundle.e447b94d47d35a06621c.js.map",
-      "sha256": "82ae0a7eeb1a68ee176a62a96a323d588fd1901b8ef4f1dcceed9abbde31a878"
+      "path": "app.bundle.ded7a7110e30e3ae64e6.js.map",
+      "sha256": "b996d84728ff627f52224dfa72b7a26b42605da443025449a9c9e4926378d92e"
     },
     {
       "path": "assets/android-chrome-144x144.png",
@@ -998,7 +998,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "af949ff57eb8841d9b64e3f41b57acd386a9519da845b9aaaa7a6191637271cf"
+      "sha256": "4f7e1815632d24684dfbd27305a0b04ea67dd59d174aac723f3534bb758cefa7"
     },
     {
       "path": "init-service-worker.js",
