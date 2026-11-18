@@ -100,3 +100,13 @@ it('resumes only through explicit context restoration, requiring all planes to r
   tracker.frame(ids[0]); tracker.frame(ids[1]); expect(tracker.state.status).toBe('loading');
   tracker.frame(ids[2]); expect(tracker.state.status).toBe('ready');
 });
+
+it('retains the original opening time and profile after a later context recovery', () => {
+  let time = 0; const tracker = new ViewerOpenTracker(() => time);
+  tracker.update({ requestedMode: 'auto', budgetMiB: 768 }); tracker.progress(3, 3, 0);
+  time = 100; ids.forEach(id => tracker.frame(id));
+  time = 600000; tracker.fail('context-lost'); tracker.resumeAfterContextRestore();
+  tracker.update({ budgetMiB: 640 }); time += 4000; ids.forEach(id => tracker.frame(id));
+  expect(tracker.state.status).toBe('ready'); expect(tracker.state.readyMs).toBe(100);
+  expect(tracker.state.readyBudgetMiB).toBe(768); expect(tracker.state.budgetMiB).toBe(640);
+});

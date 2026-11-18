@@ -22,6 +22,7 @@ export class ViewerOpenTracker {
   private started: number;
   private confirmed = new Set<string>();
   private allLoaded = false;
+  private readyBeforeRecovery: Pick<OpenSnapshot, 'readyMs' | 'readyMode' | 'readyBudgetMiB'> | null = null;
   readonly state: OpenSnapshot;
   constructor(private now = () => performance.now(), private changed: () => void = () => {}) {
     this.started = now();
@@ -58,10 +59,14 @@ export class ViewerOpenTracker {
     if (MPR_TELEMETRY_IDS.every(id => this.confirmed.has(id))) {
       recordViewerEvent('ready');
       this.update({ status: 'ready', readyMs: elapsed, errorCode: null,
-        readyMode: this.state.requestedMode, readyBudgetMiB: this.state.budgetMiB });
+        readyMode: this.state.requestedMode, readyBudgetMiB: this.state.budgetMiB, ...this.readyBeforeRecovery });
     }
   }
   resumeAfterContextRestore() {
+    // A driver loss after minutes of viewing must not inflate the original opening time.
+    if (this.state.readyMs !== null) this.readyBeforeRecovery = {
+      readyMs: this.state.readyMs, readyMode: this.state.readyMode, readyBudgetMiB: this.state.readyBudgetMiB,
+    };
     this.confirmed.clear();
     this.update({ status: 'loading', errorCode: null, readyMs: null, readyMode: null, readyBudgetMiB: null, rendered: [] });
   }
