@@ -3,18 +3,26 @@ import dicomImageLoader from '@cornerstonejs/dicom-image-loader';
 import { s3FileService } from './S3FileService';
 import { ORBITAL_S3_SCHEME, parseS3ImageId } from './s3ImageId';
 import { getViewerDiagnostics, recordViewerNetwork, recordViewerDecode } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
+import { createBoundedImageTasks } from './boundedImageTasks';
 
 export { ORBITAL_S3_SCHEME, orbitalS3ImageId } from './s3ImageId';
 
-const localIdByKey = new Map<string, string>();
-const inflight = new Map<string, Promise<string>>();
+type LocalFile = { users: number; localId?: string; pending?: Promise<string> };
+const localFiles = new Map<string, LocalFile>();
+const runImageTask = createBoundedImageTasks(4);
 let registered = false;
 
-async function ensureLocalImageId(key: string): Promise<string> {
-  const cached = localIdByKey.get(key);
+function removeLocalFile(entry: LocalFile) {
+  if (!entry.localId) return;
+  dicomImageLoader.wadouri.fileManager.remove(Number(entry.localId.split(':')[1]));
+  entry.localId = undefined;
+}
+
+async function ensureLocalImageId(key: string, entry: LocalFile): Promise<string> {
+  const cached = entry.localId;
   if (cached) return cached;
 
-  let pending = inflight.get(key);
+  let pending = entry.pending;
   if (!pending) {
     pending = (async () => {
       const tracked = !!getViewerDiagnostics();
@@ -30,20 +38,39 @@ async function ensureLocalImageId(key: string): Promise<string> {
       const filename = key.split('/').pop() || 's3.dcm';
       const file = new File([blob], filename, { type: 'application/dicom' });
       const localId = dicomImageLoader.wadouri.fileManager.add(file);
-      localIdByKey.set(key, localId);
+      entry.localId = localId;
       return localId;
     })().finally(() => {
-      inflight.delete(key);
+      entry.pending = undefined;
+      if (!entry.users) removeLocalFile(entry);
     });
-    inflight.set(key, pending);
+    entry.pending = pending;
   }
   return pending;
 }
 
 function loadImage(imageId: string, options?: unknown) {
   const { key, frame } = parseS3ImageId(imageId);
+  const entry = localFiles.get(key) || { users: 0 };
+  localFiles.set(key, entry);
+  entry.users++;
+  const controller = new AbortController();
   let decoded: any;
-  const promise = ensureLocalImageId(key).then(async localId => {
+  let released = false;
+  let settled = false;
+  let disposed = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    decoded?.decache?.();
+    if (--entry.users === 0) {
+      if (localFiles.get(key) === entry) localFiles.delete(key);
+      removeLocalFile(entry);
+    }
+  };
+  const promise = runImageTask(async () => {
+    const localId = await ensureLocalImageId(key, entry);
+    if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
     const tracked = !!getViewerDiagnostics();
     const before = tracked ? performance.now() : 0;
     try {
@@ -60,8 +87,19 @@ function loadImage(imageId: string, options?: unknown) {
       if (tracked) recordViewerDecode(performance.now() - before, false);
       throw error;
     }
+  }, controller.signal).catch(error => {
+    disposed = true;
+    throw error;
+  }).finally(() => {
+    settled = true;
+    if (disposed) release();
   });
-  return { promise, decache: () => decoded?.decache?.() };
+  const decache = () => {
+    disposed = true;
+    controller.abort();
+    if (settled) release();
+  };
+  return { promise, decache, cancelFn: decache };
 }
 
 /** pixels via SDK GetObject — no presigned URLs required */

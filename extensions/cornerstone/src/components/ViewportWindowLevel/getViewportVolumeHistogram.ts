@@ -1,4 +1,5 @@
-import { getWebWorkerManager } from '@cornerstonejs/core';
+import { cache, getWebWorkerManager } from '@cornerstonejs/core';
+import { volumeHistogramChunks, streamVolumeHistogram } from './streamVolumeHistogram';
 
 const workerManager = getWebWorkerManager();
 
@@ -27,46 +28,10 @@ const getViewportVolumeHistogram = async (viewport, volume, options?) => {
     return undefined;
   }
 
-  let scalarData = volume.scalarData;
-
-  if (volume.numTimePoints > 1) {
-    scalarData = volume.voxelManager.getDimensionGroupScalarData(volume.numTimePoints);
-  } else {
-    scalarData = volume.voxelManager.getCompleteScalarDataArray();
-  }
-
-  if (!scalarData?.length) {
-    return undefined;
-  }
-
-  const { dimensions, origin, direction, spacing } = volume;
-
-  const range = await workerManager.executeTask('histogram-worker', 'getRange', {
-    dimensions,
-    origin,
-    direction,
-    spacing,
-    scalarData,
-  });
-
-  const { minimum: min, maximum: max } = range;
-
-  if (min === Infinity || max === -Infinity) {
-    return undefined;
-  }
-
-  const calcHistOptions = {
-    numBins: 256,
-    min: Math.max(min, options?.min ?? min),
-    max: Math.min(max, options?.max ?? max),
-  };
-
-  const histogram = await workerManager.executeTask('histogram-worker', 'calcHistogram', {
-    data: scalarData,
-    options: calcHistOptions,
-  });
-
-  return histogram;
+  const chunks = volumeHistogramChunks(volume, id => cache.getImage(id));
+  return streamVolumeHistogram(chunks, (task, args) =>
+    workerManager.executeTask('histogram-worker', task, args), options,
+    () => cache.getVolume(volume.volumeId) === volume);
 };
 
 export { getViewportVolumeHistogram };
