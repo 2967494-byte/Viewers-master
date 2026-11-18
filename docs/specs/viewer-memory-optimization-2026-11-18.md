@@ -2,7 +2,8 @@
 
 ## Scope
 
-Local implementation only. Production, Android APK and iOS bundles were not updated.
+Implemented and validated locally, then deployed to the production web viewer
+on 2026-11-18. Android APK and iOS bundles were not updated.
 No new downsampling policy, deviceMemory threshold, texture format, resolution or
 quality preference was introduced.
 
@@ -101,3 +102,23 @@ include an extra local-only histogram trigger and are not deployable artifacts.
 - Local browser: real study, large synthetic study in maximum detail, actual
   histogram worker before/after, cache clearing and same-SPA reopening.
 - No physical Intel driver failure was reproduced or claimed fixed here.
+
+## Production deployment
+
+- Release: `20261118T182713Z-memory-optimization`.
+- Runtime source: `22040252b2b521985e53fb9e1f2c8d13aa5f9f57`.
+- Static Git commit: `6e4b34ca14209d67ac9fe710c05614ced18651a2`.
+- Main: `app.bundle.e447b94d47d35a06621c.js`.
+- SHA256: `6e408ac11b2a6c08b23a743ef1fec58d7d1b6ca7d56f2f46d8fc94087a5bcc36`.
+- Payload delivered through Git push/pull; all 343 manifest files verified.
+  Preserved 493 previous hashed assets for already-open pages.
+- HTTPS index, runtime configuration, new main and previous main returned 200
+  with matching hashes. Isolation/cache headers checked by deployment helper.
+- No service restart, configuration change, backend change or migration performed.
+  A concurrent independent CRM deployment changed its commit/PID during staging;
+  the initial activation guard stopped before switching. Viewer/config/nginx/worker
+  invariants were rechecked and the new CRM baseline preserved. All service states
+  and CRM commit were unchanged across the successful viewer activation.
+- Rollback target:
+  `/var/www/orbital3d-viewer/releases/20261118T132344Z-gpu-recovery/checkout/public`.
+- Deployment evidence: `tmp/release-memory-20261118/deployment.json`.
