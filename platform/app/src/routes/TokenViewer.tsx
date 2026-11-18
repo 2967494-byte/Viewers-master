@@ -5,6 +5,7 @@ import { s3FileService } from '../utils/S3FileService';
 import { validateViewerLaunch } from '../utils/viewerLaunch';
 import StudyLoadingScreen from '../components/StudyLoadingScreen/StudyLoadingScreen';
 import { getViewerOpenTracker } from '@ohif/core/src/constants/orbitalOpenTelemetry';
+import { patientCardReturnUrl, returnToPatientCard, setPatientReturnUrl } from '@ohif/core/src/constants/orbitalPatientReturn';
 
 const TokenViewer: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -21,6 +22,7 @@ const TokenViewer: React.FC = () => {
     let active = true;
     setAccessError(null);
     setAccessGranted(false);
+    setPatientReturnUrl(null);
     const resolve = async () => {
       try {
         if (disabled || !resolveUrl) throw new Error('Открытие из личного кабинета пока не подключено.');
@@ -37,7 +39,8 @@ const TokenViewer: React.FC = () => {
         if (!active) return;
         s3FileService.setStudyAccess(launch.s3Prefix, launch.access.resources, launch.access.expiresAt);
         setAccessGranted(true);
-        await loadFromS3(launch.s3Prefix, { sourceVersion: launch.sourceVersion });
+        await loadFromS3(launch.s3Prefix, { sourceVersion: launch.sourceVersion,
+          patientReturnUrl: patientCardReturnUrl(launch.s3Prefix, resolveUrl, window.location.href) });
       } catch (failure: any) {
         if (active && failure.name !== 'AbortError') getViewerOpenTracker()?.fail('access-or-index-error');
         if (active && failure.name !== 'AbortError') setAccessError(failure.message || 'Ошибка доступа к исследованию');
@@ -49,7 +52,9 @@ const TokenViewer: React.FC = () => {
 
   const message = accessError || error;
   return (
-    <StudyLoadingScreen accessGranted={accessGranted} progress={progress} error={message} onBack={() => navigate('/')} />
+    <StudyLoadingScreen accessGranted={accessGranted} progress={progress} error={message} onBack={() => {
+      if (!returnToPatientCard()) navigate('/');
+    }} />
   );
 };
 export default TokenViewer;

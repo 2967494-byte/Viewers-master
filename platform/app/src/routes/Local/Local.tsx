@@ -12,6 +12,7 @@ import S3BrowseModal from '../../components/S3BrowseModal/S3BrowseModal';
 import S3ProgressModal from '../../components/S3ProgressModal/S3ProgressModal';
 import { s3FileService } from '../../utils/S3FileService';
 import { useS3Loader } from '../../utils/useS3Loader';
+import { setPatientReturnUrl } from '@ohif/core/src/constants/orbitalPatientReturn';
 
 const getLoadButton = (onDrop, text, isDir) => {
   return (
@@ -87,6 +88,7 @@ function Local({ modePath }: LocalProps) {
   );
 
   const onDrop = async acceptedFiles => {
+    setPatientReturnUrl(null);
     const studies = await filesToStudies(acceptedFiles, dataSource);
 
     const query = new URLSearchParams();

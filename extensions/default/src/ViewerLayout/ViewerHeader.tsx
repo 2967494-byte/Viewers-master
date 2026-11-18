@@ -13,6 +13,7 @@ import LoadingProgressBar from './LoadingProgressBar';
 import DentalPanoramaButton from './DentalPanoramaButton';
 import DentalToolsToolbar from './DentalToolsToolbar';
 import RenderingModeControl from './RenderingModeControl';
+import { returnToPatientCard } from '@ohif/core/src/constants/orbitalPatientReturn';
 
 function ViewerHeader({
   appConfig,
@@ -45,6 +46,7 @@ function ViewerHeader({
   const location = useLocation();
 
   const onClickReturnButton = () => {
+    if (returnToPatientCard()) return;
     const { pathname } = location;
     const dataSourceIdx = pathname.indexOf('/', 1);
 

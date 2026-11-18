@@ -12,6 +12,7 @@ import { prepareS3Instances } from './s3MetadataIndex';
 import { loadCompressedStudy } from './s3CompressedStudy';
 import { getViewerOpenTracker } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
+import { setPatientReturnUrl } from '@ohif/core/src/constants/orbitalPatientReturn';
 
 export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   const navigate = useNavigate();
@@ -34,7 +35,8 @@ export const useS3Loader = (modePath: string = 'segmentation/dicomlocal') => {
   }, []);
 
   const loadFromS3 = useCallback(
-    async (prefix: string, options?: { sourceVersion?: string | number }) => {
+    async (prefix: string, options?: { sourceVersion?: string | number; patientReturnUrl?: string | null }) => {
+      setPatientReturnUrl(options?.patientReturnUrl || null);
       setLoading(true);
       setError(null);
       const indexStarted = performance.now();

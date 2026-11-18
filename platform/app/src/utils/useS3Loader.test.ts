@@ -3,6 +3,7 @@ import { DicomMetadataStore } from '@ohif/core';
 import { imageLoader } from '@cornerstonejs/core';
 import { s3FileService } from './S3FileService';
 import { useS3Loader } from './useS3Loader';
+import { returnToPatientCard, setPatientReturnUrl } from '@ohif/core/src/constants/orbitalPatientReturn';
 
 const mockNavigate = jest.fn();
 const mockShow = jest.fn();
@@ -20,6 +21,7 @@ jest.mock('./S3FileService', () => ({ s3FileService: {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  setPatientReturnUrl(null);
   (window as any).config = { s3: { compressedOnly: false } };
 });
 
@@ -32,7 +34,12 @@ it('opens a tagged index without listing/indexing DICOM files, warms one middle 
   }));
   (s3FileService.getMetadataIndex as jest.Mock).mockResolvedValue({ instances, indexPrefix: 'hot/appt_1/', indexKey: 'index' });
   const { result } = renderHook(() => useS3Loader());
-  await act(async () => { await result.current.loadFromS3('hot/appt_1/Data/'); });
+  await act(async () => { await result.current.loadFromS3('hot/appt_1/Data/', {
+    patientReturnUrl: 'https://admin.orbital3d.ru/patients/visit/1',
+  }); });
+  const assign = jest.fn();
+  expect(returnToPatientCard(assign)).toBe(true);
+  expect(assign).toHaveBeenCalledWith('https://admin.orbital3d.ru/patients/visit/1');
   expect(s3FileService.listAllObjects).not.toHaveBeenCalled();
   expect(mockShow).not.toHaveBeenCalled();
   expect(DicomMetadataStore.addInstance).toHaveBeenCalledTimes(3);
@@ -61,12 +68,14 @@ it('exposes index download progress through React before any navigation', async 
 });
 
 it('does not start a slow scan after a network/index error', async () => {
+  setPatientReturnUrl('https://admin.orbital3d.ru/patients/visit/999');
   (s3FileService.getMetadataIndex as jest.Mock).mockRejectedValue(new Error('CORS'));
   const { result } = renderHook(() => useS3Loader());
   await act(async () => { await result.current.loadFromS3('hot/appt_1/'); });
   expect(result.current.error).toBe('CORS');
   expect(result.current.loading).toBe(false);
   expect(s3FileService.listAllObjects).not.toHaveBeenCalled();
+  expect(returnToPatientCard(jest.fn())).toBe(false);
 });
 
 it('never falls back to original metadata/listing when a compressed pointer is missing', async () => {
