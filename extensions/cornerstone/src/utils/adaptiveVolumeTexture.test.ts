@@ -1,7 +1,9 @@
 import { createAdaptiveTextureContext, configureAdaptiveVolumeTexture, COMPATIBILITY_TEXTURE_BYTES, MOBILE_TEXTURE_BYTES, getDeviceTextureBudget, installRenderingPreferenceControl } from './adaptiveVolumeTexture';
 import { getGraphicsError, setRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import { beginGpuDiagnosticSession, getGpuDiagnosticBudget, GPU_DIAGNOSTIC_PROFILE_KEY, GPU_DIAGNOSTIC_REPORT_KEY } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
-import { initializeAutomaticGpuProfile, GPU_RECOVERY_KEY } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { initializeAutomaticGpuProfile, GPU_RECOVERY_KEY, rememberGpuRecovery, getAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { ViewerDiagnostics, setViewerDiagnostics } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
+import * as telemetry from '@ohif/core/src/constants/orbitalOpenTelemetry';
 import { cache, getRenderingEngines } from '@cornerstonejs/core';
 
 jest.mock('@cornerstonejs/core', () => ({ cache: { getVolume: jest.fn() }, getRenderingEngines: jest.fn(() => []) }));
@@ -135,7 +137,7 @@ it('stops rather than continuing to a retired 128/64 MiB profile', () => {
   const { context, gl, volume } = setup(128 * 1024 ** 2);
   context.texStorage3D(32879, 1, 33326, 600, 600, 300);
   expect(gl.texStorage3D.mock.calls.map(args => args[5])).toEqual([300, 186]);
-  expect(getGraphicsError()).toContain('чрезмерного снижения');
+  expect(getGraphicsError()).toContain('графическую память');
 });
 
 it('handles an initial texImage3D allocation and remaps a batch upload', () => {
@@ -153,9 +155,61 @@ it('stops after bounded attempts and reports an explicit error instead of accept
   const { context, gl } = setup(1);
   context.texStorage3D(32879, 1, 33326, 600, 600, 300);
   expect(gl.texStorage3D).toHaveBeenCalledTimes(2);
-  expect(getGraphicsError()).toContain('чрезмерного снижения');
+  expect(getGraphicsError()).toContain('графическую память');
   context.texSubImage3D(32879, 0, 0, 0, 0, 600, 600, 1, 6403, 5126, null);
   expect(gl.texSubImage3D).not.toHaveBeenCalled();
+});
+
+it('opens the reported 750x750x626 study within 384 MiB after a persisted GPU failure', () => {
+  const device = { renderer: 'Intel UHD Graphics 730', deviceMemory: 16 };
+  initializeAutomaticGpuProfile(device); rememberGpuRecovery(256 * 1024 ** 2); initializeAutomaticGpuProfile(device);
+  const { gl, context, volume } = setup(Infinity, [750, 750, 626]);
+  context.texStorage3D(32879, 1, 36760, 750, 750, 626);
+  expect(gl.texStorage3D.mock.calls.map(args => args[5])).toEqual([357]);
+  expect(volume.orbitalDisplaySampling.displayDepth).toBeGreaterThanOrEqual(313);
+  expect(getAutomaticGpuProfile().budgetBytes).toBe(384 * 1024 ** 2);
+});
+
+it('selects a valid recovery size after losing the reported full-size context', () => {
+  const device = { renderer: 'Intel UHD Graphics 730', deviceMemory: 16 };
+  initializeAutomaticGpuProfile(device);
+  const { gl, volume, model, texture } = setup(Infinity, [750, 750, 626]);
+  const canvas = document.createElement('canvas'); Object.assign(gl, { canvas });
+  const context = createAdaptiveTextureContext(gl, volume, texture, model, 768 * 1024 ** 2);
+  context.texStorage3D(32879, 1, 36760, 750, 750, 626);
+  (getRenderingEngines as jest.Mock).mockReturnValueOnce([{ contextPool: {
+    getAllContexts: () => [{ getOpenGLRenderWindow: () => ({ getCanvas: () => canvas }) }] } }]);
+  canvas.dispatchEvent(new Event('webglcontextlost'));
+  expect(initializeAutomaticGpuProfile(device).budgetBytes).toBe(384 * 1024 ** 2);
+});
+
+it('marks a quality-policy rejection separately without pretending the GPU allocated a texture', () => {
+  const tracker = { update: jest.fn(), fail: jest.fn() };
+  jest.spyOn(telemetry, 'getViewerOpenTracker').mockReturnValue(tracker as any);
+  setRenderingPreference('compatibility');
+  const { gl, context } = setup(Infinity, [750, 750, 626]);
+  context.texStorage3D(32879, 1, 36760, 750, 750, 626);
+  expect(gl.texStorage3D).not.toHaveBeenCalled();
+  expect(tracker.update).toHaveBeenCalledWith(expect.objectContaining({ profileReason: 'detail-policy-limit' }), false);
+  expect(getGraphicsError()).toContain('чрезмерного снижения');
+});
+
+it('accounts for releasing and reallocating GPU textures without accumulating live bytes', () => {
+  const diagnostic = new ViewerDiagnostics(); setViewerDiagnostics(diagnostic);
+  try {
+    const { gl, context, model } = setup();
+    for (let opening = 0; opening < 3; opening++) {
+      model.handle = {};
+      context.texStorage3D(32879, 1, 36760, 600, 600, 300);
+      expect(diagnostic.resources.textures).toBe(1);
+      context.deleteTexture(model.handle);
+      expect(diagnostic.resources.textures).toBe(0);
+      expect(diagnostic.resources.textureBytes).toBe(0);
+    }
+    expect(gl.deleteTexture).toHaveBeenCalledTimes(3);
+    expect(diagnostic.resources.allocations).toBe(3);
+    expect(diagnostic.resources.releases).toBe(3);
+  } finally { setViewerDiagnostics(null); }
 });
 
 it('uses supported nearest sampling when float texture interpolation is unavailable, preventing black textures', () => {

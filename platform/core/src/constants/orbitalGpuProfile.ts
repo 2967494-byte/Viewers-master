@@ -1,12 +1,17 @@
-import { MINIMUM_TEXTURE_BUDGET } from './orbitalRenderingPolicy';
+import { MINIMUM_TEXTURE_BUDGET, TEXTURE_BUDGET_STEPS } from './orbitalRenderingPolicy';
 // Browser-local policy, selected before any study or rendering engine is loaded.
 export type GpuDevice = { renderer?: string; deviceMemory?: number; mobile?: boolean; max3DTextureSize?: number };
 export type GpuProfile = { budgetBytes: number; reason: string };
 export const GPU_RECOVERY_KEY = 'orbital:gpu-recovery:v1';
 const MiB = 1024 ** 2;
-const RECOVERY_AGE = 30 * 24 * 60 * 60 * 1000;
+export const GPU_RECOVERY_AGE = 2 * 60 * 60 * 1000;
 let automatic: GpuProfile = { budgetBytes: Infinity, reason: 'desktop' };
 let identity = '';
+const listeners = new Set<() => void>();
+export const subscribeAutomaticGpuProfile = (listener: () => void) => {
+  listeners.add(listener); return () => { listeners.delete(listener); };
+};
+const notify = () => listeners.forEach(listener => listener());
 const readRecovery = () => {
   try { return JSON.parse(localStorage.getItem(GPU_RECOVERY_KEY) || 'null'); }
   catch { return null; }
@@ -37,28 +42,46 @@ export function initializeAutomaticGpuProfile(device: GpuDevice, now = Date.now(
     Boolean(device.mobile), device.max3DTextureSize || 0]);
   try {
     const saved = readRecovery();
-    if (saved?.identity === identity && [64, 128, 256].includes(saved.budgetMiB) &&
-        Number.isFinite(saved.at) && saved.at <= now && now - saved.at < RECOVERY_AGE) {
-      const recovered = Math.max(MINIMUM_TEXTURE_BUDGET, saved.budgetMiB * MiB);
+    if (saved?.identity === identity && [64, 128, 256, 384, 512, 640, 768].includes(saved.budgetMiB) &&
+        Number.isFinite(saved.at) && saved.at <= now && now - saved.at < GPU_RECOVERY_AGE) {
+      // Legacy 256 MiB recovery must not keep large studies in a rejected profile.
+      // Hardware/mobile limits below remain independent and are never raised here.
+      const recovered = (saved.version === 2 ? Math.max(256, saved.budgetMiB) : Math.max(384, saved.budgetMiB)) * MiB;
       if (recovered < automatic.budgetBytes) {
         automatic = { budgetBytes: recovered, reason: 'previous-graphics-error' };
       }
     }
   } catch { /* No storage or invalid data: use the hardware hints only. */ }
+  notify();
   return automatic;
 }
 
 export const getAutomaticGpuProfile = () => automatic;
 
+/** Only soft desktop hints may grow to the study's minimum acceptable size. */
+export function fitAutomaticGpuProfile(minimum: number, ceiling: number) {
+  if (['previous-graphics-error', 'limited-memory'].includes(automatic.reason) &&
+      automatic.budgetBytes < minimum && minimum <= ceiling && Number.isFinite(minimum)) {
+    automatic = { ...automatic, budgetBytes: minimum };
+    notify();
+  }
+  return automatic;
+}
+
+/** Reset the next opening only; never increase allocations in a running engine. */
+export function clearGpuRecovery() {
+  try { localStorage.removeItem(GPU_RECOVERY_KEY); return true; }
+  catch { return false; }
+}
+
 /** Remember the next startup budget, without changing a live engine or reloading the study. */
 export function rememberGpuRecovery(budgetBytes: number, now = Date.now()) {
   if (!identity || !Number.isFinite(budgetBytes)) return;
-  const budgetMiB = [256].find(value => value * MiB >= budgetBytes);
+  const budgetMiB = TEXTURE_BUDGET_STEPS.find(value => value >= budgetBytes) / MiB;
   if (!budgetMiB) return;
   try {
-    const saved = readRecovery();
-    const previous = saved?.identity === identity && [64, 128, 256].includes(saved.budgetMiB) &&
-      Number.isFinite(saved.at) && saved.at <= now && now - saved.at < RECOVERY_AGE ? Math.max(256, saved.budgetMiB) : Infinity;
-    localStorage.setItem(GPU_RECOVERY_KEY, JSON.stringify({ identity, budgetMiB: Math.min(previous, budgetMiB), at: now }));
+    // The latest series determines a usable recovery size. Do not retain the
+    // minimum of unrelated failures and silently lock every later series down.
+    localStorage.setItem(GPU_RECOVERY_KEY, JSON.stringify({ version: 2, identity, budgetMiB, at: now }));
   } catch { /* Recovery hints must never break rendering. */ }
 }

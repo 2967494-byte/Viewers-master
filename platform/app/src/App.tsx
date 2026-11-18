@@ -46,7 +46,7 @@ import {
   getGraphicsError,
   subscribeGraphicsError,
 } from '@ohif/core/src/constants/orbitalRendering';
-import { initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { clearGpuRecovery, getAutomaticGpuProfile, initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 import { startViewerOpenTelemetry, getViewerOpenTracker, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 
 let commandsManager: CommandsManager,
@@ -128,6 +128,7 @@ function App({
   }, []);
 
   if (startupError || graphicsError) {
+    const recovery = graphicsError && getAutomaticGpuProfile().reason === 'previous-graphics-error';
     return (
       <StudyLoadingScreen
         accessGranted={false}
@@ -136,11 +137,14 @@ function App({
         errorTitle="Не удалось открыть исследование"
         errorIntro={
           graphicsError
-            ? 'Во время отображения произошёл сбой графики. Подробности приведены ниже.'
+            ? 'Причина остановки указана ниже. Исходные данные исследования сохранены.'
             : WEBGL2_HELP
         }
-        backLabel={startupError ? 'Проверить снова' : 'Вернуться в личный кабинет'}
-        onBack={() => (startupError ? window.location.reload() : window.location.assign('/'))}
+        backLabel={startupError ? 'Проверить снова' : recovery ? 'Сбросить ограничение и вернуться в кабинет' : 'Вернуться в личный кабинет'}
+        onBack={() => {
+          if (recovery) clearGpuRecovery();
+          startupError ? window.location.reload() : window.location.assign('/');
+        }}
       />
     );
   }

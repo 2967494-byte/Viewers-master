@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import RenderingModeControl from './RenderingModeControl';
 import { getRenderingPreference, setRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
-import { initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { initializeAutomaticGpuProfile, rememberGpuRecovery, GPU_RECOVERY_KEY, getAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 import { beginGpuDiagnosticSession, GPU_DIAGNOSTIC_PROFILE_KEY } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
 
 beforeEach(() => { localStorage.clear(); beginGpuDiagnosticSession(); initializeAutomaticGpuProfile({}); setRenderingPreference('auto'); });
@@ -44,4 +44,16 @@ it('ignores retired diagnostic flags and still permits an explicit quality selec
   expect(view.queryByText(/64 МиБ/)).toBeNull();
   fireEvent.click(view.getByRole('menuitemradio',{name:'Максимальная детализация'}));
   expect(getRenderingPreference()).toBe('quality');view.unmount();
+});
+
+it('can reset the next opening without reallocating a running study', () => {
+  const device = { renderer: 'Intel UHD Graphics 730', deviceMemory: 16 };
+  initializeAutomaticGpuProfile(device); rememberGpuRecovery(384 * 1024 ** 2); initializeAutomaticGpuProfile(device);
+  const view = render(React.createElement(RenderingModeControl));
+  fireEvent.click(view.getByRole('button'));
+  fireEvent.click(view.getByRole('menuitem', { name: 'Сбросить ограничение после сбоя' }));
+  expect(localStorage.getItem(GPU_RECOVERY_KEY)).toBeNull();
+  expect(getAutomaticGpuProfile().budgetBytes).toBe(384 * 1024 ** 2);
+  expect(view.getByRole('status').textContent).toContain('откройте снимок заново');
+  view.unmount();
 });

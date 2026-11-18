@@ -1,5 +1,5 @@
 import { chooseGpuProfile, initializeAutomaticGpuProfile, getAutomaticGpuProfile, rememberGpuRecovery,
-  GPU_RECOVERY_KEY } from '@ohif/core/src/constants/orbitalGpuProfile';
+  GPU_RECOVERY_KEY, GPU_RECOVERY_AGE, clearGpuRecovery, fitAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 
 const MiB = 1024 ** 2;
 const laptop = { renderer: 'ANGLE (Intel, Intel(R) HD Graphics (0x00000F31) Direct3D11)', deviceMemory: 4, max3DTextureSize: 2048 };
@@ -41,6 +41,31 @@ it('never revives a retired hardware budget based on a prior recovery record', (
   initializeAutomaticGpuProfile(laptop, 1000);
   rememberGpuRecovery(256 * MiB, 1000);
   expect(initializeAutomaticGpuProfile(laptop, 1100)).toEqual({ budgetBytes: 256 * MiB, reason: 'legacy-intel' });
+});
+
+it('expires a recovery restriction after two hours and permits a reset without changing a live engine', () => {
+  initializeAutomaticGpuProfile(desktop, 1000); rememberGpuRecovery(384 * MiB, 1000);
+  expect(initializeAutomaticGpuProfile(desktop, 1100).budgetBytes).toBe(384 * MiB);
+  clearGpuRecovery();
+  expect(getAutomaticGpuProfile().budgetBytes).toBe(384 * MiB);
+  expect(initializeAutomaticGpuProfile(desktop, 1200).budgetBytes).toBe(Infinity);
+  rememberGpuRecovery(384 * MiB, 2000);
+  expect(initializeAutomaticGpuProfile(desktop, 2000 + GPU_RECOVERY_AGE).budgetBytes).toBe(Infinity);
+});
+
+it('migrates an active legacy restriction and fits only soft desktop budgets to a study', () => {
+  initializeAutomaticGpuProfile(desktop, 1000); rememberGpuRecovery(256 * MiB, 1000);
+  const legacy = JSON.parse(localStorage.getItem(GPU_RECOVERY_KEY)); delete legacy.version;
+  localStorage.setItem(GPU_RECOVERY_KEY, JSON.stringify(legacy));
+  expect(initializeAutomaticGpuProfile(desktop, 1100).budgetBytes).toBe(384 * MiB);
+  expect(fitAutomaticGpuProfile(512 * MiB, 768 * MiB).budgetBytes).toBe(512 * MiB);
+  expect(fitAutomaticGpuProfile(Infinity, 768 * MiB).budgetBytes).toBe(512 * MiB);
+  initializeAutomaticGpuProfile({ deviceMemory: 4 });
+  expect(fitAutomaticGpuProfile(384 * MiB, 768 * MiB).budgetBytes).toBe(384 * MiB);
+  initializeAutomaticGpuProfile(laptop);
+  expect(fitAutomaticGpuProfile(384 * MiB, 768 * MiB).budgetBytes).toBe(256 * MiB);
+  initializeAutomaticGpuProfile({ mobile: true });
+  expect(fitAutomaticGpuProfile(384 * MiB, 256 * MiB).budgetBytes).toBe(256 * MiB);
 });
 
 it('ignores malformed, future, unbounded and storage-blocked recovery records', () => {

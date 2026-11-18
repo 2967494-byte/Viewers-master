@@ -2,9 +2,9 @@ import { cache, getRenderingEngines } from '@cornerstonejs/core';
 import { getRenderingPreference, reportGraphicsError, subscribeRenderingPreference, forgetFailedRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import { setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
 import { getGpuDiagnosticBudget, recordGpuDiagnostic, isGpuDiagnosticSession } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
-import { getAutomaticGpuProfile, rememberGpuRecovery } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { fitAutomaticGpuProfile, rememberGpuRecovery } from '@ohif/core/src/constants/orbitalGpuProfile';
 import { getViewerOpenTracker, reportViewerAllocation, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
-import { MINIMUM_TEXTURE_BUDGET, MAXIMUM_Z_DECIMATION } from '@ohif/core/src/constants/orbitalRenderingPolicy';
+import { MINIMUM_TEXTURE_BUDGET, MAXIMUM_Z_DECIMATION, minimumDisplayBudget, TEXTURE_BUDGET_STEPS } from '@ohif/core/src/constants/orbitalRenderingPolicy';
 import { recordViewerEvent, recordViewerTexture, releaseViewerTexture } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 
 export const COMPATIBILITY_TEXTURE_BYTES = 256 * 1024 ** 2;
@@ -24,6 +24,8 @@ const canvasBudgets = new WeakMap<object, number>();
 let subscribed = false;
 
 const failureMessage = 'Не удалось отобразить исследование без чрезмерного снижения детализации. Сильно прореженное изображение не показывается. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново. Если ошибка повторится, обновите драйвер видеокарты или используйте другой компьютер.';
+const resourceFailureMessage = 'Браузер не смог выделить графическую память для исследования. Закройте другие вкладки просмотрщика и программы, использующие видеокарту, затем откройте исследование заново. Если ошибка повторяется, полностью перезапустите браузер.';
+const contextFailureMessage = 'Браузер потерял доступ к видеокарте во время отображения исследования. Закройте другие вкладки и программы, использующие графику, и откройте исследование заново из личного кабинета.';
 const qualityFailureMessage = 'Не удалось включить максимальную детализацию на этом устройстве. Качество автоматически не снижалось. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново из личного кабинета. Следующее открытие начнётся в автоматическом режиме.';
 
 /** Intercept only this volume's scalar texture; keep its CPU voxels and world geometry intact. */
@@ -40,7 +42,7 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
         rememberGpuRecovery(nextRecoveryBudget(canvasBudgets.get(gl.canvas) ?? (allocatedBytes || activeBudget)));
         recordGpuDiagnostic('context-lost', { message: event.statusMessage || '' });
         forgetFailedRenderingPreference();
-        reportGraphicsError('Браузер потерял доступ к видеокарте во время отображения исследования. Закройте другие вкладки и программы, использующие графику, и откройте исследование заново из личного кабинета.');
+        reportGraphicsError(contextFailureMessage);
       }
     });
     gl.canvas.addEventListener('webglcontextrestored', () => recordViewerEvent('context-restored'));
@@ -53,19 +55,28 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
   let retryQueued = false;
   let allocatedBytes = 0;
   let activeBudget = Infinity;
-  const nextRecoveryBudget = _bytes => MINIMUM_TEXTURE_BUDGET;
+  const nextRecoveryBudget = bytes => {
+    const bytesPerVoxel = allocatedBytes ? allocatedBytes / (width * height * displayDepth) : 2 * (model.inputNumComps || 1);
+    const minimum = minimumDisplayBudget(width, height, sourceDepth, bytesPerVoxel);
+    return TEXTURE_BUDGET_STEPS.find(size => size >= Math.max(minimum, bytes / 2)) ?? minimum;
+  };
   let uploadedSlices = 0;
   let uploadMilestone = -1;
   const diagnosticEnabled = isGpuDiagnosticSession();
   const uploadedPositions = diagnosticEnabled ? new Set<number>() : null;
   const methods = new Map();
   const error = () => typeof gl.getError === 'function' ? gl.getError() : 0;
-  const fail = () => { failed = true; recordViewerEvent('allocation-error', { bytes: allocatedBytes });
+  const fail = (policy = false) => { failed = true; const lost = targetLost();
+    recordViewerEvent('allocation-error', { bytes: allocatedBytes, ...(policy && !lost ? { code: 10001 } : {}) });
     recordGpuDiagnostic('texture-failed', { contextLost: targetLost(), allocatedBytes, uploadedSlices });
-    getViewerOpenTracker()?.fail('texture-unavailable');
+    const tracker = getViewerOpenTracker();
+    // Keep the existing wire error code accepted by older CRM deployments.
+    // profileReason distinguishes policy rejection from an actual GPU failure.
+    if (policy && !lost) tracker?.update({ profileReason: 'detail-policy-limit', sourceDimensions: [width, height, sourceDepth] }, false);
+    tracker?.fail(lost ? 'context-lost' : 'texture-unavailable');
     const quality = getRenderingPreference() === 'quality';
     forgetFailedRenderingPreference();
-    reportGraphicsError(quality ? qualityFailureMessage : failureMessage);
+    reportGraphicsError(lost ? contextFailureMessage : quality ? qualityFailureMessage : policy ? failureMessage : resourceFailureMessage);
   };
   const upload = args => {
     if (failed || retryQueued) return;
@@ -91,7 +102,9 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
     }
     recordGpuDiagnostic('upload-error', { code, allocatedBytes, uploadedSlices });
     recordViewerEvent('allocation-error', { code, bytes: allocatedBytes });
-    const next = getRenderingPreference() === 'quality' ? undefined : [MINIMUM_TEXTURE_BUDGET].find(bytes => bytes < allocatedBytes);
+    const bytesPerVoxel = allocatedBytes / (width * height * displayDepth);
+    const minimum = minimumDisplayBudget(width, height, sourceDepth, bytesPerVoxel);
+    const next = getRenderingPreference() === 'quality' ? undefined : [minimum].find(bytes => bytes < allocatedBytes);
     if (code !== (gl.OUT_OF_MEMORY || 1285) || !next || !controllers.has(volume) ||
         Math.floor(displayDepth * next / allocatedBytes) < Math.ceil(sourceDepth / MAXIMUM_Z_DECIMATION)) { fail(); return; }
     retryQueued = true;
@@ -140,7 +153,7 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
           if (target.isContextLost?.()) { fail(); return; }
           // Limits are per texture dimension; free VRAM itself is not exposed by WebGL.
           const maximum = target.getParameter?.(target.MAX_3D_TEXTURE_SIZE) || Infinity;
-          if (width > maximum || height > maximum) { fail(); return; }
+          if (width > maximum || height > maximum) { fail(true); return; }
           const bytes = ([33321].includes(args[2]) ? 1 : [33322, 33325, 36760, 36762].includes(args[2]) ? 2 : 4)
             * (model.inputNumComps || 1);
           const manual = getRenderingPreference() === 'compatibility';
@@ -150,7 +163,9 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
           const diagnosticBudget = getGpuDiagnosticBudget();
           const preference = getRenderingPreference();
           const quality = preference === 'quality';
-          const automaticBudget = preference === 'auto' ? getAutomaticGpuProfile().budgetBytes : Infinity;
+          const minimum = minimumDisplayBudget(width, height, sourceDepth, bytes);
+          const automaticBudget = preference === 'auto' ? fitAutomaticGpuProfile(minimum,
+            Math.min(baseBudget, deviceBudget, diagnosticBudget)).budgetBytes : Infinity;
           let budget = quality ? Infinity : Math.min(baseBudget, deviceBudget, diagnosticBudget, automaticBudget,
             manual ? COMPATIBILITY_TEXTURE_BYTES : Infinity, volume.orbitalGPUFallbackBudget || Infinity);
           activeBudget = budget;
@@ -160,11 +175,11 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
           const acceptable = count => count >= Math.ceil(sourceDepth / MAXIMUM_Z_DECIMATION);
           // Refuse a coarse texture before displaying it. Explicit quality has
           // one meaning: native Z resolution, or a clear failure, never silent fallback.
-          if ((quality && (depth !== sourceDepth || width * height * sourceDepth * bytes > deviceBudget)) || !acceptable(depth)) { fail(); return; }
+          if ((quality && (depth !== sourceDepth || width * height * sourceDepth * bytes > deviceBudget)) || !acceptable(depth)) { fail(true); return; }
           let reason = volume.orbitalGPUFallbackBudget ? 'memory' : Number.isFinite(diagnosticBudget) ? 'diagnostic' : manual || preference === 'economy' ? 'manual' :
             Number.isFinite(automaticBudget) ? 'automatic' :
             depth < sourceDepth ? (deviceBudget < Infinity ? 'mobile' : 'size') : 'normal';
-          const fallbackBudgets = quality ? [] : [MINIMUM_TEXTURE_BUDGET];
+          const fallbackBudgets = quality ? [] : [minimum];
           for (let attempt = 0; attempt < 4; attempt++) {
             // Drain earlier errors so only this allocation decides whether to retry.
             for (let i = 0; i < 8 && error() !== 0; i++) { /* bounded */ }

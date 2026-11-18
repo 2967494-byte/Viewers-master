@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getRenderingPreference, setRenderingPreference, subscribeRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import type { RenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
-import { getAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { clearGpuRecovery, getAutomaticGpuProfile, subscribeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 
 export default function RenderingModeControl() {
   const mode = useSyncExternalStore(subscribeRenderingPreference, getRenderingPreference, getRenderingPreference);
   const [open, setOpen] = useState(false);
+  const [reset, setReset] = useState(false);
+  const profile = useSyncExternalStore(subscribeAutomaticGpuProfile, getAutomaticGpuProfile, getAutomaticGpuProfile);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function RenderingModeControl() {
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
   }, [open]);
-  const autoBudget = getAutomaticGpuProfile().budgetBytes;
+  const autoBudget = profile.budgetBytes;
   const budget = mode === 'compatibility' ? 256 : mode === 'auto' ? autoBudget / 1024 ** 2 : Infinity;
   const light = Number.isFinite(budget);
   const description = mode === 'auto' ? `Автоматический режим${light ? ` · ${budget} МиБ` : ''}` : mode === 'quality' ? 'Максимальная детализация · исходное разрешение' : `Облегчённый режим · ${budget} МиБ`;
@@ -43,6 +45,10 @@ export default function RenderingModeControl() {
     {open && <div className="dental-tool-menu" role="menu" aria-label="Режим графики" style={{ minWidth: 270, right: 0, left: 'auto' }}>
       {options.map(option => <button type="button" role="menuitemradio" aria-checked={mode === option.value} key={option.value}
         onClick={() => { setRenderingPreference(option.value); setOpen(false); trigger.current?.focus(); }}>{option.label}</button>)}
+      {profile.reason === 'previous-graphics-error' && <>
+        <button type="button" role="menuitem" disabled={reset} onClick={() => setReset(clearGpuRecovery())}>Сбросить ограничение после сбоя</button>
+        {reset && <p role="status" style={{ padding: '8px 12px', maxWidth: 270 }}>Ограничение сброшено. Закройте просмотрщик и откройте снимок заново из кабинета.</p>}
+      </>}
       <p style={{ maxWidth: 270, padding: '8px 12px', fontSize: 12, color: '#b8bec9' }}>Максимальная детализация сохраняет исходное разрешение. При нехватке ресурсов качество незаметно не снижается.</p>
     </div>}
     </div>
