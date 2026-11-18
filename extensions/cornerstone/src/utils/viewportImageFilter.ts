@@ -5,6 +5,9 @@ import { disableImageFilterAfterFailure, getImageFilter, getImageFilterStrength,
 import { getRenderingPreference, subscribeRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import guardImageFilterPass from './guardImageFilterPass';
 
+const resets = new WeakMap<object, () => void>();
+export const resetViewportImageFilter = (viewport: object) => resets.get(viewport)?.();
+
 /** Filter the rendered slice on the GPU, before DOM annotations and without touching the volume. */
 export default function installViewportImageFilter(element: HTMLElement) {
   const viewport = getEnabledElement(element)?.viewport;
@@ -15,6 +18,16 @@ export default function installViewportImageFilter(element: HTMLElement) {
   let guardedPass;
   let activeKernel: number[];
   let validatePass: (() => void) | undefined;
+  const resetPass = () => {
+    const framebuffer = pass?.getFramebuffer();
+    framebuffer?.getColorTexture()?.delete();
+    framebuffer?.releaseGraphicsResources();
+    framebuffer?.delete();
+    pass?.delete();
+    forward?.delete();
+    pass = forward = guardedPass = activeKernel = validatePass = undefined;
+  };
+  resets.set(viewport, resetPass);
   const update = () => {
     const kernel = getRenderingPreference() === 'compatibility' ? null : imageFilterKernel(getImageFilter(), getImageFilterStrength());
     if (kernel) {
@@ -48,11 +61,7 @@ export default function installViewportImageFilter(element: HTMLElement) {
     unsubscribe();
     unsubscribePreference();
     if (viewport.getRenderPasses === renderPasses) viewport.getRenderPasses = previous;
-    const framebuffer = pass?.getFramebuffer();
-    framebuffer?.getColorTexture()?.delete();
-    framebuffer?.releaseGraphicsResources();
-    framebuffer?.delete();
-    pass?.delete();
-    forward?.delete();
+    resets.delete(viewport);
+    resetPass();
   };
 }

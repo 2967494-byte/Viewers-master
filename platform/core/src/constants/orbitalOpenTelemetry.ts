@@ -61,6 +61,10 @@ export class ViewerOpenTracker {
         readyMode: this.state.requestedMode, readyBudgetMiB: this.state.budgetMiB });
     }
   }
+  resumeAfterContextRestore() {
+    this.confirmed.clear();
+    this.update({ status: 'loading', errorCode: null, readyMs: null, readyMode: null, readyBudgetMiB: null, rendered: [] });
+  }
   fail(code: string) { recordViewerEvent('error', { value: code }); this.update({ status: 'error', errorCode: code }); }
   close() { if (this.state.status === 'loading') this.update({ status: 'interrupted' }); }
 }

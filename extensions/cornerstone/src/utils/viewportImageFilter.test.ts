@@ -1,7 +1,7 @@
 import { getEnabledElement } from '@cornerstonejs/core';
 import vtkConvolution2DPass from '@kitware/vtk.js/Rendering/OpenGL/Convolution2DPass';
 import { filterImagePixels, imageFilterKernel, setImageFilterStrength, setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
-import installViewportImageFilter from './viewportImageFilter';
+import installViewportImageFilter, { resetViewportImageFilter } from './viewportImageFilter';
 
 jest.mock('@cornerstonejs/core', () => ({
   getEnabledElement: jest.fn(), Enums: { ViewportType: { ORTHOGRAPHIC: 'mpr', STACK: 'stack' } },
@@ -95,4 +95,17 @@ it('blends sharpening continuously, preserves a uniform image and bypasses at ze
   const pixels = new Uint8ClampedArray(49).fill(110);
   expect([...filterImagePixels(pixels,7,7,'unsharp',.37)]).toEqual([...pixels]);
   expect(filterImagePixels(pixels,7,7,'unsharp',0)).toBe(pixels);
+});
+
+it('recreates optional filter resources after context restoration instead of reusing an invalid framebuffer', () => {
+  setImageFilter('none'); jest.clearAllMocks();
+  const viewport = { type: 'mpr', getRenderPasses: () => null, render: jest.fn() };
+  (getEnabledElement as jest.Mock).mockReturnValue({ viewport });
+  const cleanup = installViewportImageFilter(document.createElement('div'));
+  setImageFilter('sharpen'); const first = viewport.getRenderPasses()[0];
+  setImageFilter('none'); resetViewportImageFilter(viewport);
+  expect(first.delete).toHaveBeenCalledTimes(1);
+  setImageFilter('sharpen'); expect(viewport.getRenderPasses()[0]).not.toBe(first);
+  expect(vtkConvolution2DPass.newInstance).toHaveBeenCalledTimes(2);
+  cleanup(); setImageFilter('none'); jest.clearAllMocks();
 });

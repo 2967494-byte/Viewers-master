@@ -28,7 +28,7 @@ add('extensions/cornerstone/src/utils/guardImageFilterPass.test.ts');
 for (const name of ['DentalCrosshairsTool', 'dentalCrosshairHandles', 'DentalImplantTool', 'DentalMeasurementTools', 'dentalGeometry', 'implantGeometry']) {
   add(`extensions/cornerstone/src/tools/${name}.test.ts`);
 }
-for (const name of ['dentalToolControls', 'crosshairSlabControls', 'viewportImageFilter', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout', 'largeVolumeTexture', 'adaptiveVolumeTexture', 'automaticGpuProfile', 'gpuStartupProfile', 'gpuDiagnosticProfile', 'gpuEngineDiagnostics', 'hiddenPanoramaRenderGuard', 'viewerOpenTelemetry', 'viewerDiagnostics', 'zoomMprViewport', 'preserveMprResize']) {
+for (const name of ['dentalToolControls', 'crosshairSlabControls', 'viewportImageFilter', 'implantDragPriority', 'intersectVolumePlane', 'mprFocusLayout', 'largeVolumeTexture', 'adaptiveVolumeTexture', 'graphicsContextRecovery', 'adaptiveVolumeRecovery', 'automaticGpuProfile', 'gpuStartupProfile', 'gpuDiagnosticProfile', 'gpuEngineDiagnostics', 'hiddenPanoramaRenderGuard', 'viewerOpenTelemetry', 'viewerDiagnostics', 'zoomMprViewport', 'preserveMprResize']) {
   add(`extensions/cornerstone/src/utils/${name}.test.ts`);
 }
 add('extensions/cornerstone/src/Viewport/Overlays/VolumeSliceIndicator.test.ts');
@@ -40,6 +40,7 @@ for (const name of ['S3FileService', 'orbitalS3ImageLoader', 's3CompressedStudy'
 }
 add('platform/app/src/routes/Local/__tests__/readDicomMetadataFast.test.js');
 add('platform/app/src/components/ViewportGrid.test.ts');
+add('platform/app/src/components/GraphicsRecoveryBoundary.test.ts');
 
 console.log(`ORBITAL: running ${tests.size} regression suites.`);
 const result = spawnSync(process.execPath, [

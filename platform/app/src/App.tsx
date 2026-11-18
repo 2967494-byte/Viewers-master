@@ -1,6 +1,6 @@
 // External
 
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import i18n from '@ohif/i18n';
 import { I18nextProvider } from 'react-i18next';
@@ -36,6 +36,7 @@ import appInit from './appInit.js';
 import OpenIdConnectRoutes from './utils/OpenIdConnectRoutes';
 import { ShepherdJourneyProvider } from 'react-shepherd';
 import './App.css';
+import GraphicsRecoveryBoundary from './components/GraphicsRecoveryBoundary';
 import StudyLoadingScreen from './components/StudyLoadingScreen/StudyLoadingScreen';
 import {
   checkVolumeRenderingSupport,
@@ -46,7 +47,7 @@ import {
   getGraphicsError,
   subscribeGraphicsError,
 } from '@ohif/core/src/constants/orbitalRendering';
-import { clearGpuRecovery, getAutomaticGpuProfile, initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
+import { initializeAutomaticGpuProfile } from '@ohif/core/src/constants/orbitalGpuProfile';
 import { startViewerOpenTelemetry, getViewerOpenTracker, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 
 let commandsManager: CommandsManager,
@@ -59,6 +60,8 @@ const routerFutureFlags: BrowserRouterProps['future'] = {
   v7_startTransition: true,
   v7_relativeSplatPath: true,
 };
+
+const CombinedProviders = ({ components, children }) => Compose({ components, children });
 
 function App({
   config = {
@@ -83,11 +86,6 @@ function App({
 }) {
   const [init, setInit] = useState(null);
   const [startupError, setStartupError] = useState<string | null>(null);
-  const graphicsError = useSyncExternalStore(
-    subscribeGraphicsError,
-    getGraphicsError,
-    getGraphicsError
-  );
   useEffect(() => {
     let stopTelemetry: (() => void) | undefined;
     try {
@@ -127,26 +125,10 @@ function App({
     return () => { unsubscribe(); stopTelemetry?.(); };
   }, []);
 
-  if (startupError || graphicsError) {
-    const recovery = graphicsError && getAutomaticGpuProfile().reason === 'previous-graphics-error';
-    return (
-      <StudyLoadingScreen
-        accessGranted={false}
-        progress={{ text: '', percent: 0 }}
-        error={startupError || graphicsError}
-        errorTitle="Не удалось открыть исследование"
-        errorIntro={
-          graphicsError
-            ? 'Причина остановки указана ниже. Исходные данные исследования сохранены.'
-            : WEBGL2_HELP
-        }
-        backLabel={startupError ? 'Проверить снова' : recovery ? 'Сбросить ограничение и вернуться в кабинет' : 'Вернуться в личный кабинет'}
-        onBack={() => {
-          if (recovery) clearGpuRecovery();
-          startupError ? window.location.reload() : window.location.assign('/');
-        }}
-      />
-    );
+  if (startupError) {
+    return <StudyLoadingScreen accessGranted={false} progress={{ text: '', percent: 0 }}
+      error={startupError} errorTitle="Не удалось открыть исследование" errorIntro={WEBGL2_HELP}
+      backLabel="Проверить снова" onBack={() => window.location.reload()} />;
   }
 
   if (!init) {
@@ -206,8 +188,6 @@ function App({
     });
   }
 
-  const CombinedProviders = ({ children }) => Compose({ components: providers, children });
-
   let authRoutes = null;
 
   // Should there be a generic call to init on the extension manager?
@@ -236,15 +216,17 @@ function App({
   }
 
   return (
-    <CombinedProviders>
-      <BrowserRouter
-        basename={routerBasename}
-        future={routerFutureFlags}
-      >
-        {authRoutes}
-        {appRoutes}
-      </BrowserRouter>
-    </CombinedProviders>
+    <GraphicsRecoveryBoundary>
+      <CombinedProviders components={providers}>
+        <BrowserRouter
+          basename={routerBasename}
+          future={routerFutureFlags}
+        >
+          {authRoutes}
+          {appRoutes}
+        </BrowserRouter>
+      </CombinedProviders>
+    </GraphicsRecoveryBoundary>
   );
 }
 

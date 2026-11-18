@@ -91,3 +91,12 @@ it('boots reporting asynchronously with CSRF, same-origin credentials and no tok
   expect(update[1].body).not.toContain('test-launch-token-123456');
   stop(); global.fetch = originalFetch; jest.clearAllTimers(); jest.useRealTimers();
 });
+
+it('resumes only through explicit context restoration, requiring all planes to redraw', () => {
+  const tracker = new ViewerOpenTracker(() => 100);
+  tracker.progress(3, 3, 0); ids.forEach(id => tracker.frame(id));
+  tracker.fail('context-lost'); tracker.resumeAfterContextRestore();
+  expect(tracker.state.status).toBe('loading'); expect(tracker.state.readyMs).toBeNull();
+  tracker.frame(ids[0]); tracker.frame(ids[1]); expect(tracker.state.status).toBe('loading');
+  tracker.frame(ids[2]); expect(tracker.state.status).toBe('ready');
+});

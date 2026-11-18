@@ -55,7 +55,7 @@ export class ViewerDiagnostics {
     this.events.push(entry);
     if (this.events.length > DIAGNOSTIC_EVENT_LIMIT) this.events.shift();
   }
-  allocate(handle: object, bytes: number, sourceBytes: number, dims: number[]) {
+  allocate(handle: object, bytes: number, sourceBytes: number, dims: number[], internalFormat?: number) {
     if (!handle || typeof handle !== 'object') return;
     const previous = this.handles.get(handle);
     const size = number(bytes, 16 * 1024 ** 3);
@@ -65,7 +65,7 @@ export class ViewerDiagnostics {
     this.resources.texturePeakBytes = Math.max(this.resources.texturePeakBytes, this.resources.textureBytes);
     this.resources.sourceBytes = Math.max(this.resources.sourceBytes, number(sourceBytes));
     this.resources.allocations = increment(this.resources.allocations);
-    this.event('texture-allocate', { bytes: size, width: dims[0], height: dims[1], depth: dims[2] });
+    this.event('texture-allocate', { bytes: size, width: dims[0], height: dims[1], depth: dims[2], code: internalFormat });
   }
   release(handle: object) {
     const size = handle && typeof handle === 'object' ? this.handles.get(handle) : undefined;
@@ -124,7 +124,7 @@ export const getViewerDiagnostics = () => active;
 export const setViewerDiagnostics = (value: ViewerDiagnostics | null) => { active = value; };
 // Hooks are optional: instrumentation failures must not escape into the image/renderer pipeline.
 export function recordViewerEvent(type: EventType, fields?: Fields) { try { active?.event(type, fields); } catch { /* optional */ } }
-export function recordViewerTexture(handle: object, bytes: number, sourceBytes: number, dims: number[]) { try { active?.allocate(handle, bytes, sourceBytes, dims); } catch { /* optional */ } }
+export function recordViewerTexture(handle: object, bytes: number, sourceBytes: number, dims: number[], internalFormat?: number) { try { active?.allocate(handle, bytes, sourceBytes, dims, internalFormat); } catch { /* optional */ } }
 export function releaseViewerTexture(handle: object) { try { active?.release(handle); } catch { /* optional */ } }
 export function recordViewerNetwork(bytes: number, ms: number, ok: boolean) { try { active?.network(bytes, ms, ok); } catch { /* optional */ } }
 export function recordViewerDecode(ms: number, ok: boolean) { try { active?.decode(ms, ok); } catch { /* optional */ } }

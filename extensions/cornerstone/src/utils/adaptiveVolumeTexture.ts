@@ -1,7 +1,12 @@
+import { resetViewportImageFilter } from './viewportImageFilter';
+import vtkForwardPass from '@kitware/vtk.js/Rendering/OpenGL/ForwardPass';
+import { GraphicsContextRecovery } from './graphicsContextRecovery';
+import { setGraphicsRecovery } from '@ohif/core/src/constants/orbitalGraphicsRecovery';
+import { MPR_TELEMETRY_IDS } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 import { cache, getRenderingEngines } from '@cornerstonejs/core';
 import { getRenderingPreference, reportGraphicsError, subscribeRenderingPreference, forgetFailedRenderingPreference } from '@ohif/core/src/constants/orbitalRendering';
 import { setImageFilter } from '@ohif/core/src/constants/orbitalImageFilters';
-import { getGpuDiagnosticBudget, recordGpuDiagnostic, isGpuDiagnosticSession } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
+import { getGpuDiagnosticBudget, recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
 import { fitAutomaticGpuProfile, rememberGpuRecovery } from '@ohif/core/src/constants/orbitalGpuProfile';
 import { getViewerOpenTracker, reportViewerAllocation, reportViewerProfile } from '@ohif/core/src/constants/orbitalOpenTelemetry';
 import { MINIMUM_TEXTURE_BUDGET, MAXIMUM_Z_DECIMATION, minimumDisplayBudget, TEXTURE_BUDGET_STEPS } from '@ohif/core/src/constants/orbitalRenderingPolicy';
@@ -20,6 +25,7 @@ export function getDeviceTextureBudget(device = typeof navigator === 'undefined'
 const configured = new WeakSet<object>();
 const controllers = new WeakMap<object, { reset: () => void }>();
 const watchedCanvases = new WeakSet<object>();
+const recoveryBudgets = new WeakMap<object, () => number>();
 const canvasBudgets = new WeakMap<object, number>();
 let subscribed = false;
 
@@ -28,25 +34,80 @@ const resourceFailureMessage = 'Браузер не смог выделить г
 const contextFailureMessage = 'Браузер потерял доступ к видеокарте во время отображения исследования. Закройте другие вкладки и программы, использующие графику, и откройте исследование заново из личного кабинета.';
 const qualityFailureMessage = 'Не удалось включить максимальную детализацию на этом устройстве. Качество автоматически не снижалось. Закройте другие вкладки и программы, использующие видеокарту, и откройте исследование заново из личного кабинета. Следующее открытие начнётся в автоматическом режиме.';
 
+const activeCanvas = (canvas: object) => getRenderingEngines().some((engine: any) =>
+  engine.contextPool?.getAllContexts().some(window => window.getOpenGLRenderWindow().getCanvas() === canvas));
+const pendingBudgets = new Map<object, number>();
+export const graphicsContextRecovery = new GraphicsContextRecovery({
+  alive: activeCanvas,
+  phase: setGraphicsRecovery,
+  started: () => getViewerOpenTracker()?.fail('context-lost'),
+  rebuild: () => {
+    // No reload, engine recreation, camera reset or network access. VTK has released render passes.
+    setImageFilter('none');
+    for (const engine of getRenderingEngines()) {
+      engine.getViewports().forEach(resetViewportImageFilter);
+      for (const window of engine.contextPool?.getAllContexts() || []) {
+        const view = window.getOpenGLRenderWindow();
+        view.releaseGraphicsResources();
+        // VTK's Release traversal does not rebuild mapper VAOs/VBOs after context loss.
+        // Drop GPU view nodes, retaining the core renderers, actors, cameras and annotations.
+        view.prepareNodes();
+        view.removeUnusedNodes();
+        view.get()._textureResourceIds.clear();
+        view.setActiveFramebuffer(null);
+        view.setRenderPasses([vtkForwardPass.newInstance()]);
+        // The native context object is the same. Restore VTK's initial GL state
+        // without initialize(), which would count a second physical context.
+        const gl = view.getContext();
+        gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.depthFunc(gl.LEQUAL);
+        gl.enable(gl.BLEND);
+        gl.depthMask(true); // Refresh VTK's cached GL state after the browser reset.
+        for (let i = 0; i < 8 && gl.getError() !== 0; i++) { /* discard cleanup errors only */ }
+      }
+    }
+    const seen = new Set();
+    const ids = new Set<string>();
+    const budget = Math.min(...pendingBudgets.values());
+    for (const engine of getRenderingEngines()) {
+      for (const viewport of engine.getViewports()) {
+        if (MPR_TELEMETRY_IDS.includes(viewport.id) && viewport.canvas?.width > 0 && viewport.canvas?.height > 0) ids.add(viewport.id);
+        const id = viewport.getVolumeId?.();
+        const volume = id && cache.getVolume(id);
+        if (!volume || seen.has(volume)) continue;
+        seen.add(volume);
+        if (getRenderingPreference() === 'auto' && Number.isFinite(budget)) volume.orbitalGPUFallbackBudget = budget;
+        controllers.get(volume)?.reset();
+      }
+    }
+    pendingBudgets.clear();
+    getViewerOpenTracker()?.resumeAfterContextRestore();
+    // render() schedules the next animation frame, after expected IDs have been installed.
+    getRenderingEngines().forEach(engine => engine.render());
+    return [...ids];
+  },
+  cancelled: () => pendingBudgets.clear(),
+  completed: () => recordViewerEvent('context-restored', { value: 'ready', count: 1 }),
+  failed: code => {
+    pendingBudgets.clear();
+    recordViewerEvent('allocation-error', { value: 'context-lost', code });
+    getViewerOpenTracker()?.fail('context-lost');
+    forgetFailedRenderingPreference();
+    reportGraphicsError(contextFailureMessage);
+  },
+});
+function recoverLostContext(canvas: object) {
+  if (!activeCanvas(canvas)) return;
+  if (graphicsContextRecovery.phase !== 'rebuilding') {
+    const budget = recoveryBudgets.get(canvas)?.();
+    if (Number.isFinite(budget)) { pendingBudgets.set(canvas, budget); rememberGpuRecovery(budget); }
+  }
+  // Upload failure may detect the loss before the DOM event arrives. Do not count that event twice.
+  graphicsContextRecovery.lose(canvas);
+}
+
 /** Intercept only this volume's scalar texture; keep its CPU voxels and world geometry intact. */
 export function createAdaptiveTextureContext(gl, volume, texture, model, baseBudget = Infinity) {
-  if (gl.canvas?.addEventListener && !watchedCanvases.has(gl.canvas)) {
-    watchedCanvases.add(gl.canvas);
-    gl.canvas.addEventListener('webglcontextlost', event => {
-      // Ignore contexts deliberately disposed when a rendering engine is closed.
-      const inUse = getRenderingEngines().some((engine: any) =>
-        engine.contextPool?.getAllContexts().some(window =>
-          window.getOpenGLRenderWindow().getCanvas() === event.target));
-      if (inUse) {
-        getViewerOpenTracker()?.fail('context-lost');
-        rememberGpuRecovery(nextRecoveryBudget(canvasBudgets.get(gl.canvas) ?? (allocatedBytes || activeBudget)));
-        recordGpuDiagnostic('context-lost', { message: event.statusMessage || '' });
-        forgetFailedRenderingPreference();
-        reportGraphicsError(contextFailureMessage);
-      }
-    });
-    gl.canvas.addEventListener('webglcontextrestored', () => recordViewerEvent('context-restored'));
-  }
   const [width, height, sourceDepth] = volume.dimensions;
   let displayDepth = sourceDepth;
   let sourceToDisplay = new Map<number, number>();
@@ -60,13 +121,28 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
     const minimum = minimumDisplayBudget(width, height, sourceDepth, bytesPerVoxel);
     return TEXTURE_BUDGET_STEPS.find(size => size >= Math.max(minimum, bytes / 2)) ?? minimum;
   };
+  if (gl.canvas?.addEventListener) {
+    recoveryBudgets.set(gl.canvas, () => nextRecoveryBudget(canvasBudgets.get(gl.canvas) ?? (allocatedBytes || activeBudget)));
+    if (!watchedCanvases.has(gl.canvas)) {
+      watchedCanvases.add(gl.canvas);
+      gl.canvas.addEventListener('webglcontextlost', event => {
+        event.preventDefault();
+        recordGpuDiagnostic('context-lost', { message: event.statusMessage || '' });
+        recoverLostContext(gl.canvas);
+      });
+      gl.canvas.addEventListener('webglcontextrestored', () => {
+        recordViewerEvent('context-restored');
+        graphicsContextRecovery.restore(gl.canvas);
+      });
+    }
+  }
   let uploadedSlices = 0;
   let uploadMilestone = -1;
-  const diagnosticEnabled = isGpuDiagnosticSession();
-  const uploadedPositions = diagnosticEnabled ? new Set<number>() : null;
+  const uploadedPositions = new Set<number>();
   const methods = new Map();
   const error = () => typeof gl.getError === 'function' ? gl.getError() : 0;
   const fail = (policy = false) => { failed = true; const lost = targetLost();
+    if (lost && gl.canvas) { recoverLostContext(gl.canvas); return; }
     recordViewerEvent('allocation-error', { bytes: allocatedBytes, ...(policy && !lost ? { code: 10001 } : {}) });
     recordGpuDiagnostic('texture-failed', { contextLost: targetLost(), allocatedBytes, uploadedSlices });
     const tracker = getViewerOpenTracker();
@@ -82,8 +158,9 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
     if (failed || retryQueued) return;
     // Journal before the first actual upload: drivers can crash before returning an error.
     const milestone = Math.min(16, Math.floor(uploadedSlices * 16 / displayDepth));
-    if (diagnosticEnabled && milestone !== uploadMilestone) {
+    if (milestone !== uploadMilestone) {
       uploadMilestone = milestone;
+      recordViewerEvent('index', { value: 'volume', code: 20010, count: uploadedSlices, depth: displayDepth });
       recordGpuDiagnostic('upload-progress', { uploadedSlices, displayDepth, allocatedBytes, nextZ: args[4] });
     }
     gl.texSubImage3D(...args);
@@ -212,7 +289,7 @@ export function createAdaptiveTextureContext(gl, volume, texture, model, baseBud
               allocatedBytes = width * height * depth * bytes;
               const sourceBytes = width * height * sourceDepth * (/8/.test(volume.dataType || '') ? 1 : /16/.test(volume.dataType || '') ? 2 : /64/.test(volume.dataType || '') ? 8 : 4);
               recordViewerTexture(typeof model.handle === 'object' && model.handle ? model.handle : texture,
-                allocatedBytes, sourceBytes, [width, height, depth]);
+                allocatedBytes, sourceBytes, [width, height, depth], args[2]);
               reportViewerAllocation([width, height, sourceDepth], [width, height, depth], allocatedBytes, budget, reason);
               if (gl.canvas) canvasBudgets.set(gl.canvas, allocatedBytes);
               if (reason === 'memory') rememberGpuRecovery(budget);
