@@ -48,6 +48,9 @@ export const graphicsContextRecovery = new GraphicsContextRecovery({
       engine.getViewports().forEach(resetViewportImageFilter);
       for (const window of engine.contextPool?.getAllContexts() || []) {
         const view = window.getOpenGLRenderWindow();
+        const gl = view.getContext();
+        if (!gl) continue; // A pool can contain slots that have never created a context.
+        if (gl.isContextLost?.()) throw new Error('Context has not returned');
         view.releaseGraphicsResources();
         // VTK's Release traversal does not rebuild mapper VAOs/VBOs after context loss.
         // Drop GPU view nodes, retaining the core renderers, actors, cameras and annotations.
@@ -58,7 +61,6 @@ export const graphicsContextRecovery = new GraphicsContextRecovery({
         view.setRenderPasses([vtkForwardPass.newInstance()]);
         // The native context object is the same. Restore VTK's initial GL state
         // without initialize(), which would count a second physical context.
-        const gl = view.getContext();
         gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.depthFunc(gl.LEQUAL);
         gl.enable(gl.BLEND);
@@ -71,7 +73,9 @@ export const graphicsContextRecovery = new GraphicsContextRecovery({
     const budget = Math.min(...pendingBudgets.values());
     for (const engine of getRenderingEngines()) {
       for (const viewport of engine.getViewports()) {
-        if (MPR_TELEMETRY_IDS.includes(viewport.id) && viewport.canvas?.width > 0 && viewport.canvas?.height > 0) ids.add(viewport.id);
+        const rect = viewport.element?.getBoundingClientRect?.();
+        if (MPR_TELEMETRY_IDS.includes(viewport.id) && viewport.canvas?.width > 0 && viewport.canvas?.height > 0 &&
+            (!rect || (rect.width > 0 && rect.height > 0))) ids.add(viewport.id);
         const id = viewport.getVolumeId?.();
         const volume = id && cache.getVolume(id);
         if (!volume || seen.has(volume)) continue;

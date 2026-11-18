@@ -19,7 +19,7 @@ it('rebuilds frozen VTK APIs from cached voxels, preserves explicit quality and 
   const window = Object.freeze({ getCanvas: () => canvas, releaseGraphicsResources: jest.fn(),
     prepareNodes: jest.fn(), removeUnusedNodes: jest.fn(), get: () => ({ _textureResourceIds: new Map() }),
     setActiveFramebuffer: jest.fn(), setRenderPasses: jest.fn(), setInitialized: jest.fn(), initialize: jest.fn(), getContext: () => gl });
-  const engine = { contextPool: { getAllContexts: () => [{ getOpenGLRenderWindow: () => window }] },
+  const engine = { contextPool: { getAllContexts: () => [{ getOpenGLRenderWindow: () => window }, { getOpenGLRenderWindow: () => ({ getCanvas: () => ({}), getContext: () => null }) }] },
     getViewports: () => ids.map(id => ({ id, canvas: { width: 200, height: 200 }, getVolumeId: () => 'volume' })), render: jest.fn() };
   (getRenderingEngines as jest.Mock).mockReturnValue([engine]);
   (cache.getVolume as jest.Mock).mockReturnValue(volume);
