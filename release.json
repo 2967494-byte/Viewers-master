@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "69981b219ccce269ef4d694608d59b894646983d",
-  "createdAt": "2026-11-20T10:55:51.531Z",
-  "mainBundle": "app.bundle.b587517e0e76e76c37e5.js",
-  "mainSha256": "9803b520c8bc85c2e72c45aca25857dbc688c2f57a6f255312419835804351eb",
+  "sourceCommit": "368d37badb7414fea74d87ac36560f141b8a2c06",
+  "createdAt": "2026-11-20T11:22:41.671Z",
+  "mainBundle": "app.bundle.7c931e1ef16e63aef508.js",
+  "mainSha256": "12e57763c8129d88abf55a0485a772ea5a1153b87fed4de93e643c5cbadeb28b",
   "files": [
     {
       "path": "1006.bundle.979b24c51aba05fe5c7e.js",
@@ -329,11 +329,11 @@
       "sha256": "79ae7c43da5805189d190de6b3a6d77a6cce250042da6104750d16551d2472b7"
     },
     {
-      "path": "app.bundle.b587517e0e76e76c37e5.js",
-      "sha256": "9803b520c8bc85c2e72c45aca25857dbc688c2f57a6f255312419835804351eb"
+      "path": "app.bundle.7c931e1ef16e63aef508.js",
+      "sha256": "12e57763c8129d88abf55a0485a772ea5a1153b87fed4de93e643c5cbadeb28b"
     },
     {
-      "path": "app.bundle.b587517e0e76e76c37e5.js.LICENSE.txt",
+      "path": "app.bundle.7c931e1ef16e63aef508.js.LICENSE.txt",
       "sha256": "a50edb82b22174c00271dcdc6ab5a8697a013a9e29ce08747ee7a93fe0244a89"
     },
     {
@@ -722,7 +722,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "674949cfe7b89a674ecd1a059c4ace58dcc106e6647112293dd684e849a86207"
+      "sha256": "3f6f88a4ab480831594cc70db48e326ef0d8e1a9f47100eea4ebab17690b66a2"
     },
     {
       "path": "init-service-worker.js",
