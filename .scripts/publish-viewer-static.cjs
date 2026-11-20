@@ -44,7 +44,7 @@ let parent;
 try { parent = git(['rev-parse', '--verify', `refs/heads/${branch}`]); } catch { /* First publication creates an orphan deployment branch. */ }
 try {
   git(['read-tree', '--empty']);
-  const hashes = git(['hash-object', '-w', '--stdin-paths'], files.map(({ file }) => JSON.stringify(file.replaceAll('\\','/'))).join('\n')+'\n').split(/\r?\n/);
+  const hashes = git(['hash-object', '-w', '--no-filters', '--stdin-paths'], files.map(({ file }) => JSON.stringify(file.replaceAll('\\','/'))).join('\n')+'\n').split(/\r?\n/);
   const manifest = git(['hash-object', '-w', '--stdin'], JSON.stringify(metadata, null, 2)+'\n');
   // Serve only public/: Git metadata and the deployment manifest stay outside the web root.
   const entries = files.map(({ rel }, i) => `100644 ${hashes[i]}\tpublic/${rel}\0`).join('') + `100644 ${manifest}\trelease.json\0`;
