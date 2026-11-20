@@ -41,6 +41,8 @@ import getClosestOrientationFromIOP from '../../utils/isReferenceViewable';
 import preserveMprResize from '../../utils/preserveMprResize';
 import { installGpuEngineDiagnostics } from '../../utils/gpuEngineDiagnostics';
 import installHiddenPanoramaRenderGuard from '../../utils/hiddenPanoramaRenderGuard';
+import { deferSkull, releaseSkull, releaseAllSkulls } from '../../utils/lazySkull';
+import { getPanoramaSession, releasePanoramaSessions } from '../../components/ManualPanorama/panoramaSession';
 import { installViewerOpenTelemetry } from '../../utils/viewerOpenTelemetry';
 
 const EVENTS = {
@@ -192,6 +194,10 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
    * Removes the viewport from cornerstone, and destroys the rendering engine
    */
   public destroy() {
+    window.dispatchEvent(new Event('orbital:release-study-resources'));
+    releaseAllSkulls();
+    releasePanoramaSessions();
+    cache.getVolumes().forEach(volume => volume?.cancelLoading?.());
     this._removeResizeObserver();
     this.viewportGridResizeObserver = null;
     try {
@@ -200,6 +206,7 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
       console.warn('Rendering engine not destroyed', e);
     }
     this.viewportsDisplaySets.clear();
+    this.viewportsById.clear();
     this.renderingEngine = null;
     cache.purgeCache();
   }
@@ -215,6 +222,7 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
    * @param viewportId - The viewportId to disable
    */
   public disableElement(viewportId: string): void {
+    releaseSkull(this.getCornerstoneViewport(viewportId));
     this.renderingEngine?.disableElement(viewportId);
 
     // clean up
@@ -1033,7 +1041,17 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
     return this.setVolumesForViewport(viewport, volumeInputArray, presentations);
   }
 
-  public async setVolumesForViewport(viewport, volumeInputArray, presentations) {
+  public async setVolumesForViewport(viewport, volumeInputArray, presentations, initializeSkull = false) {
+    if (viewport.id === 'mpr-3d' && viewport.type === csEnums.ViewportType.VOLUME_3D && !initializeSkull && volumeInputArray.length === 1) {
+      const volume = cache.getVolume(volumeInputArray[0].volumeId);
+      deferSkull(viewport, volumeInputArray[0].volumeId,
+        () => !!volume?.loadStatus?.loaded && getPanoramaSession(volume).state.status !== 'working',
+        async () => {
+          if (this.getCornerstoneViewport(viewport.id) !== viewport || cache.getVolume(volume.volumeId) !== volume) return;
+          await this.setVolumesForViewport(viewport, volumeInputArray, presentations, true);
+        });
+      return;
+    }
     const { displaySetService, viewportGridService } = this.servicesManager.services;
 
     const viewportInfo = this.getViewportInfo(viewport.id);
@@ -1044,7 +1062,12 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
 
     // seems like a hack but we need the actor to be ready first before
     // we set the properties
-    const timeoutViewportCallback = (callback: () => void) => setTimeout(callback, 0);
+    const assignedDisplaySets = this.viewportsDisplaySets.get(viewport.id);
+    const stillAssigned = () => this.getCornerstoneViewport(viewport.id) === viewport &&
+      this.viewportsDisplaySets.get(viewport.id) === assignedDisplaySets;
+    const timeoutViewportCallback = (callback: () => void) => setTimeout(() => {
+      if (stillAssigned()) callback();
+    }, 0);
 
     // filter overlay display sets (e.g. segmentation) since they will get handled below via the segmentation service
     const filteredVolumeInputArray = volumeInputArray
@@ -1117,6 +1140,7 @@ class CornerstoneViewportService extends PubSubService implements IViewportServi
     }
 
     await viewport.setVolumes(volumeInputArray);
+    if (!stillAssigned()) return;
 
     if (overlayProcessingResults?.length) {
       overlayProcessingResults.forEach(({ addOverlayFn }) => {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { runVolumeBackgroundWork } from '../../utils/volumeBackgroundWork';
 import { cache, Enums, eventTarget, getEnabledElement, utilities } from '@cornerstonejs/core';
 import { ImageScrollbar } from '@ohif/ui-next/components/Viewport/ImageScrollbar';
 import {
@@ -760,7 +761,7 @@ export default function ManualPanorama({
     setProgress(0);
     setPanorama(null);
     const timer = setTimeout(() => {
-      reconstructPanorama({
+      runVolumeBackgroundWork(() => reconstructPanorama({
         curve,
         ...context,
         thickness,
@@ -770,7 +771,7 @@ export default function ManualPanorama({
         onProgress: percent => {
           if (!controller.signal.aborted && generation.current === attempt) setProgress(percent);
         },
-      })
+      }), controller.signal)
         .then(result => {
           if (!controller.signal.aborted && generation.current === attempt) {
             setPanorama(result);
@@ -857,7 +858,7 @@ export default function ManualPanorama({
     setSectionBusy(true);
     setSections([]);
     const timer = setTimeout(() => {
-      reconstructSections({ curve, ...context, center, step, heightMm, signal: controller.signal })
+      runVolumeBackgroundWork(() => reconstructSections({ curve, ...context, center, step, heightMm, signal: controller.signal }), controller.signal)
         .then(result => {
           if (!controller.signal.aborted && sectionGeneration.current === attempt) {
             setSections(result);

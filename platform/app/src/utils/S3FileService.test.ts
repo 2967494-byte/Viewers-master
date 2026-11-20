@@ -89,6 +89,22 @@ it('holds a download slot until the object body is fully consumed', async () => 
   await Promise.all(requests);
 });
 
+it('removes cancelled queued transfers without starting them or losing a download slot', async () => {
+  (window as any).config = { s3: { downloadConcurrency: 1 } };
+  let finish: () => void;
+  mockSend.mockResolvedValueOnce({ Body: { complete: new Promise<void>(resolve => { finish = resolve; }) } })
+    .mockResolvedValue({ Body: {} });
+  const service = new S3FileService(), controller = new AbortController();
+  const first = service.getObjectAsBlob('first');
+  const cancelled = service.getObjectAsBlob('cancelled', controller.signal);
+  const rejected = expect(cancelled).rejects.toHaveProperty('name', 'AbortError');
+  const last = service.getObjectAsBlob('last');
+  controller.abort(); await rejected; await Promise.resolve();
+  expect(mockSend).toHaveBeenCalledTimes(1);
+  finish(); await first; await last;
+  expect(mockSend.mock.calls.map(([command]) => command.input.Key)).toEqual(['first', 'last']);
+});
+
 it('uses only exact short-lived CRM object grants and never falls back to SDK credentials', async () => {
   const service = new S3FileService();
   const key = 'hot/appt_1/_viewer/representations.json';

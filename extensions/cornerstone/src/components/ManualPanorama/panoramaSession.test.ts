@@ -1,7 +1,7 @@
 import { cache } from '@cornerstonejs/core';
 import { detectDentalArch } from './automaticArch';
 import { reconstructPanorama } from './reconstruction';
-import { getPanoramaSession, matchesPanorama } from './panoramaSession';
+import { getPanoramaSession, matchesPanorama, releasePanoramaSessions } from './panoramaSession';
 
 jest.mock('@cornerstonejs/core', () => ({ cache: { getImage: jest.fn() } }));
 jest.mock('./automaticArch', () => ({
@@ -84,9 +84,10 @@ describe('A shared panorama per decoded volume', () => {
   it('cancels an obsolete job and never publishes its late result into the new attempt', async () => {
     let finish;
     (detectDentalArch as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
+      ({ signal }) =>
+        new Promise((resolve, reject) => {
           finish = resolve;
+          signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true });
         })
     );
     const session = getPanoramaSession(volume);
@@ -112,5 +113,15 @@ describe('A shared panorama per decoded volume', () => {
     session.publish({ ...value, sharpness: 10, range: { lower: 0, upper: 1000 } });
     expect(matchesPanorama(session.state.snapshot, value.points, value.up, value)).toBe(true);
     expect(reconstructPanorama).toHaveBeenCalledTimes(1);
+  });
+  it('releases editor work and computed rasters on study exit', async () => {
+    const session = getPanoramaSession(volume);
+    await session.ensure(viewport, volume);
+    const editor = new AbortController(); session.reserveEditor(editor);
+    releasePanoramaSessions();
+    expect(editor.signal.aborted).toBe(true);
+    expect(session.state.snapshot).toBeNull();
+    expect(session.sections).toBeNull();
+    expect(getPanoramaSession(volume)).not.toBe(session);
   });
 });

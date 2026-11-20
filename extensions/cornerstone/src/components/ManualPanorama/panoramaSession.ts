@@ -1,4 +1,5 @@
 import { cache } from '@cornerstonejs/core';
+import { runVolumeBackgroundWork } from '../../utils/volumeBackgroundWork';
 import { detectDentalArch, volumeWorldBounds } from './automaticArch';
 import {
   buildCurve,
@@ -102,6 +103,8 @@ export class PanoramaSession {
     this.emit({ status: 'ready', progress: 100, snapshot, error: '' });
   }
   cancel() {
+    this.editorController?.abort();
+    this.releaseEditor();
     if (!this.controller) return;
     this.controller?.abort();
     this.controller = null;
@@ -143,7 +146,13 @@ export class PanoramaSession {
       this.emit({ status: 'error', progress: 0, snapshot: null, error: error.message });
       throw error;
     }
-    const { sample, bounds } = input;
+    return this.start(viewport,
+      options => detectDentalArch({ ...input, ...options }),
+      options => reconstructPanorama({ ...options, sample: input.sample }));
+  }
+  private start(viewport, findArch, render): Promise<PanoramaSnapshot> {
+    if (this.pending) return this.pending;
+    if (this.state.snapshot) return Promise.resolve(this.state.snapshot);
     const controller = new AbortController();
     this.controller = controller;
     const current = () => this.controller === controller && !controller.signal.aborted;
@@ -151,11 +160,9 @@ export class PanoramaSession {
     const report = (progress: number) => {
       if (current()) this.emit({ ...this.state, progress: Math.round(progress) });
     };
-    this.pending = (async () => {
+    this.pending = runVolumeBackgroundWork(async () => {
       try {
-        const arch = await detectDentalArch({
-          sample,
-          bounds,
+        const arch = await findArch({
           signal: controller.signal,
           onProgress: percent => report(percent * 0.6),
         });
@@ -163,10 +170,9 @@ export class PanoramaSession {
         const curve = buildCurve(arch.points);
         const up: Point3 = [0, 0, 1];
         const settings: PanoramaSettings = { thickness: 20, heightMm: 140, projection: 'mean' };
-        const raster = await reconstructPanorama({
+        const raster = await render({
           curve,
           up,
-          sample,
           ...settings,
           mode: settings.projection,
           signal: controller.signal,
@@ -198,17 +204,24 @@ export class PanoramaSession {
           this.controller = null;
         }
       }
-    })();
+    }, controller.signal);
     return this.pending;
   }
 }
 
-const sessions = new WeakMap<object, PanoramaSession>();
+let sessions = new WeakMap<object, PanoramaSession>();
+const liveSessions = new Set<PanoramaSession>();
+export function releasePanoramaSessions() {
+  liveSessions.forEach(session => session.invalidate());
+  liveSessions.clear();
+  sessions = new WeakMap();
+}
 export function getPanoramaSession(volume: object): PanoramaSession {
   let session = sessions.get(volume);
   if (!session) {
     session = new PanoramaSession();
     sessions.set(volume, session);
+    liveSessions.add(session);
   }
   return session;
 }

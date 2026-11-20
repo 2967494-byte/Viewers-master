@@ -121,7 +121,6 @@ describe('Default panorama in the existing lower-right viewport', () => {
     global.requestAnimationFrame = previousRAF;
     global.cancelAnimationFrame = previousCancel;
   });
-
   it('waits for all slices, builds once and toggles the skull without rebuilding', async () => {
     volume.loadStatus.loaded = false;
     const view = render(React.createElement(AutomaticPanoramaPane, { element: target.element }));
@@ -204,9 +203,10 @@ describe('Default panorama in the existing lower-right viewport', () => {
   it('cancels a previous study and ignores its late result', async () => {
     let finish;
     (detectDentalArch as jest.Mock).mockImplementationOnce(
-      () =>
-        new Promise(resolve => {
+      ({ signal }) =>
+        new Promise((resolve, reject) => {
           finish = resolve;
+          signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')), { once: true });
         })
     );
     const view = render(React.createElement(AutomaticPanoramaPane, { element: target.element }));

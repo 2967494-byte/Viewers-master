@@ -1,7 +1,7 @@
 import { imageLoader } from '@cornerstonejs/core';
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader';
 import { s3FileService } from './S3FileService';
-import { orbitalS3ImageId, registerOrbitalS3ImageLoader } from './orbitalS3ImageLoader';
+import { orbitalS3ImageId, registerOrbitalS3ImageLoader, cancelOrbitalImageTasks } from './orbitalS3ImageLoader';
 
 jest.mock('@cornerstonejs/core', () => ({ imageLoader: { registerImageLoader: jest.fn() } }), { virtual: true });
 jest.mock('@cornerstonejs/dicom-image-loader', () => ({
@@ -23,7 +23,7 @@ it('deduplicates SDK downloads and returns the requested image ID for each frame
   const second = load(imageId + '&frame=2');
   const images = await Promise.all([first.promise, second.promise]);
   expect(s3FileService.getObjectAsBlob).toHaveBeenCalledTimes(1);
-  expect(s3FileService.getObjectAsBlob).toHaveBeenCalledWith('hot/appt_1/a&b.dcm');
+  expect(s3FileService.getObjectAsBlob).toHaveBeenCalledWith('hot/appt_1/a&b.dcm', expect.any(AbortSignal));
   expect(images.map(x => x.imageId)).toEqual([imageId + '&frame=1', imageId + '&frame=2']);
   expect(images.every(image => image.getPixelData() === pixels)).toBe(true);
   expect(pixels).toEqual(new Int16Array([-32768, -1024, 0, 1234, 32767]));
@@ -74,4 +74,64 @@ it('releases a file arriving after eviction without starting its decoder', async
   finish(new Blob(['late']));
   await expect(request.promise).rejects.toHaveProperty('name', 'AbortError');
   expect((dicomImageLoader.wadouri.loadImage as jest.Mock).mock.calls.length).toBe(before);
+});
+
+it('drops a completed single-frame volume source while keeping its exact decoded pixels', async () => {
+  const load = (imageLoader.registerImageLoader as jest.Mock).mock.calls[0][1];
+  const pixels = new Int16Array([-32768, -1024, 0, 1234, 32767]);
+  const image = { imageId: '', data: { string: tag => tag === 'x00020010' ? '1.2.840.10008.1.2.4.91' : '1', byteArray: new Uint8Array(100) }, getPixelData: () => pixels };
+  const decache = jest.fn();
+  (s3FileService.getObjectAsBlob as jest.Mock).mockResolvedValue(new Blob(['volume']));
+  (dicomImageLoader.wadouri.loadImage as jest.Mock).mockReturnValue({ promise: Promise.resolve(image), decache });
+  const before = (dicomImageLoader.wadouri.fileManager.remove as jest.Mock).mock.calls.length;
+  const request = load(orbitalS3ImageId('hot/volume-source.dcm'), { additionalDetails: { volumeId: 'volume:1' } });
+  const result = await request.promise;
+  expect(result.data).toBeUndefined();expect(result.getPixelData()).toBe(pixels);
+  expect(Array.from(pixels)).toEqual([-32768, -1024, 0, 1234, 32767]);
+  expect(decache).toHaveBeenCalledTimes(1);
+  request.decache();request.cancelFn();expect(decache).toHaveBeenCalledTimes(1);
+  expect((dicomImageLoader.wadouri.fileManager.remove as jest.Mock).mock.calls.length - before).toBe(1);
+});
+
+it('keeps the source for multiframe volume consumers', async () => {
+  const load = (imageLoader.registerImageLoader as jest.Mock).mock.calls[0][1], decache = jest.fn();
+  const data = { string: tag => tag === 'x00020010' ? '1.2.840.10008.1.2.4.90' : '2' };
+  const image = { data, getPixelData: () => new Uint16Array([42]) };
+  (dicomImageLoader.wadouri.loadImage as jest.Mock).mockReturnValue({ promise: Promise.resolve(image), decache });
+  const request = load(orbitalS3ImageId('hot/multiframe-volume.dcm'), { additionalDetails: { volumeId: 'volume:2' } });
+  expect((await request.promise).data).toBe(data);expect(decache).not.toHaveBeenCalled();
+  request.decache();expect(decache).toHaveBeenCalledTimes(1);
+});
+
+it('aborts an active transfer on study exit and does not start a late decoder', async () => {
+  const load = (imageLoader.registerImageLoader as jest.Mock).mock.calls[0][1];
+  let finish: (value: Blob) => void;
+  let signal: AbortSignal;
+  (s3FileService.getObjectAsBlob as jest.Mock).mockImplementationOnce((_key, currentSignal) => {
+    signal = currentSignal;
+    return new Promise(resolve => { finish = resolve; });
+  });
+  const before = (dicomImageLoader.wadouri.loadImage as jest.Mock).mock.calls.length;
+  const request = load(orbitalS3ImageId('hot/exit-active.dcm'));
+  const rejected = expect(request.promise).rejects.toHaveProperty('name', 'AbortError');
+  await Promise.resolve(); await Promise.resolve();
+  cancelOrbitalImageTasks();
+  expect(signal.aborted).toBe(true);
+  finish(new Blob(['late'])); await rejected;
+  expect((dicomImageLoader.wadouri.loadImage as jest.Mock).mock.calls.length).toBe(before);
+});
+
+it('lets a second frame finish when only one consumer cancels a shared transfer', async () => {
+  const load = (imageLoader.registerImageLoader as jest.Mock).mock.calls[0][1];
+  let finish: (value: Blob) => void;
+  let signal: AbortSignal;
+  (s3FileService.getObjectAsBlob as jest.Mock).mockImplementationOnce((_key, currentSignal) => {
+    signal = currentSignal; return new Promise(resolve => { finish = resolve; });
+  });
+  const id = orbitalS3ImageId('hot/shared-cancel.dcm');
+  const first = load(id + '&frame=1'), second = load(id + '&frame=2');
+  const rejected = expect(first.promise).rejects.toHaveProperty('name', 'AbortError');
+  await Promise.resolve(); await Promise.resolve(); first.cancelFn();
+  expect(signal.aborted).toBe(false);
+  finish(new Blob(['shared'])); await rejected; await second.promise; second.decache();
 });

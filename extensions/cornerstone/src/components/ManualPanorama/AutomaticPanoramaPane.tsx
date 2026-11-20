@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { recordViewerEvent } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 import { cache, Enums, eventTarget, getEnabledElement } from '@cornerstonejs/core';
-import type { BaseVolumeViewport, VolumeViewport } from '@cornerstonejs/core';
+import type { VolumeViewport } from '@cornerstonejs/core';
 import { annotation, Enums as ToolEnums, ToolGroupManager } from '@cornerstonejs/tools';
 import type { CrosshairsTool } from '@cornerstonejs/tools';
 import RasterView from './RasterView';
@@ -11,15 +11,24 @@ import { START_AUTOMATIC_PANORAMA } from './ManualPanorama';
 import { displayedMprCrosshair, nearestPanoramaPosition } from './panoramaCrosshair';
 import { panoramaNavigationTarget } from './panoramaNavigation';
 import './ManualPanorama.css';
+import { skullVolumeId } from '../../utils/lazySkull';
 
 /** Overlay the existing 3D viewport, preserving its renderer, camera and focus controls. */
 export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr-axial' }) {
   const [showPanorama, setShowPanorama] = useState(true);
+  const [skullState, setSkullState] = useState('');
   const [state, setState] = useState<PanoramaSession['state']>(null);
   const [sliceOffset, setSliceOffset] = useState(0);
   const [position, setPosition] = useState<number>();
   const [navigationEnabled, setNavigationEnabled] = useState(false);
   const sessionRef = useRef<PanoramaSession>(null);
+  useEffect(() => {
+    if (!element) return;
+    const changed = (event: CustomEvent) => setSkullState(event.detail);
+    element.addEventListener('orbital:skull-state', changed);
+    return () => element.removeEventListener('orbital:skull-state', changed);
+  }, [element]);
+
   useEffect(() => {
     recordViewerEvent('panorama', { value: showPanorama ? 'automatic' : 'volume' });
     // React has removed the covering panorama before requesting the first visible skull frame.
@@ -34,7 +43,7 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
       frame = 0;
       const enabled = getEnabledElement(element);
       const source = enabled?.renderingEngine?.getViewport(sourceViewportId) as VolumeViewport;
-      const volumeId = (enabled?.viewport as BaseVolumeViewport)?.getVolumeId?.();
+      const volumeId = skullVolumeId(enabled?.viewport);
       const volume =
         volumeId && source?.getVolumeId?.() === volumeId ? cache.getVolume(volumeId) : null;
       setNavigationEnabled(
@@ -50,6 +59,7 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
         sessionRef.current = volume ? getPanoramaSession(volume) : null;
         setState(sessionRef.current?.state || null);
         setShowPanorama(true);
+        setSkullState('');
         setPosition(undefined);
         if (sessionRef.current) {
           const session = sessionRef.current;
@@ -154,7 +164,7 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
     const enabled = getEnabledElement(element);
     const engine = enabled?.renderingEngine;
     const source = engine?.getViewport(sourceViewportId) as VolumeViewport;
-    const volumeId = (enabled?.viewport as BaseVolumeViewport)?.getVolumeId?.();
+    const volumeId = skullVolumeId(enabled?.viewport);
     const volume = volumeId && cache.getVolume(volumeId);
     const current = sessionRef.current;
     const group = engine && ToolGroupManager.getToolGroupForViewport(sourceViewportId, engine.id);
@@ -193,6 +203,11 @@ export default function AutomaticPanoramaPane({ element, sourceViewportId = 'mpr
   const toggleTitle = showPanorama ? 'Показать череп' : 'Показать автопанораму';
   return (
     <>
+      {!showPanorama && ['waiting', 'error'].includes(skullState) && (
+        <div className="automatic-panorama-message" role="status" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          {skullState === 'error' ? 'Не удалось подготовить череп. Можно продолжить работу со срезами и панорамой.' : 'Подготавливаем череп…'}
+        </div>
+      )}
       {showPanorama && (
         <div
           className="automatic-panorama-pane"

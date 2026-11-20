@@ -1,4 +1,5 @@
 import { recordGpuDiagnostic } from '@ohif/core/src/constants/orbitalGpuDiagnostics';
+import { isSkullDeferred, requestSkull } from './lazySkull';
 
 const installed = new WeakSet<object>();
 
@@ -22,6 +23,10 @@ export default function installHiddenPanoramaRenderGuard(engine: any) {
       return;
     }
     reported.delete(viewport);
+    if (isSkullDeferred(viewport)) {
+      requestSkull(viewport);
+      return;
+    }
     return original.call(this, viewport, ...args);
   };
 }

@@ -4,12 +4,21 @@ import { s3FileService } from './S3FileService';
 import { ORBITAL_S3_SCHEME, parseS3ImageId } from './s3ImageId';
 import { getViewerDiagnostics, recordViewerNetwork, recordViewerDecode } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 import { createBoundedImageTasks } from './boundedImageTasks';
+import { detachDecodedVolumeSource } from './decodedVolumeSource';
 
 export { ORBITAL_S3_SCHEME, orbitalS3ImageId } from './s3ImageId';
 
-type LocalFile = { users: number; localId?: string; pending?: Promise<string> };
+type LocalFile = { users: number; localId?: string; pending?: Promise<string>; controller: AbortController; signals: Set<AbortSignal> };
 const localFiles = new Map<string, LocalFile>();
-const runImageTask = createBoundedImageTasks(4);
+// Bound decoded files as well as transfers; retain headroom for UI and panorama.
+const runImageTask = createBoundedImageTasks(() => {
+  const nav = typeof navigator === 'undefined' ? {} : navigator as any;
+  return nav.deviceMemory && nav.deviceMemory <= 4 || nav.hardwareConcurrency && nav.hardwareConcurrency <= 4 ? 2 : 4;
+});
+const activeRequests = new Set<() => void>();
+export function cancelOrbitalImageTasks() {
+  [...activeRequests].forEach(cancel => cancel());
+}
 let registered = false;
 
 function removeLocalFile(entry: LocalFile) {
@@ -29,7 +38,8 @@ async function ensureLocalImageId(key: string, entry: LocalFile): Promise<string
       const before = tracked ? performance.now() : 0;
       let blob: Blob;
       try {
-        blob = await s3FileService.getObjectAsBlob(key);
+        blob = await s3FileService.getObjectAsBlob(key, entry.controller.signal);
+        if (entry.controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
         if (tracked) recordViewerNetwork(blob.size, performance.now() - before, true);
       } catch (error) {
         if (tracked) recordViewerNetwork(0, performance.now() - before, false);
@@ -51,10 +61,11 @@ async function ensureLocalImageId(key: string, entry: LocalFile): Promise<string
 
 function loadImage(imageId: string, options?: unknown) {
   const { key, frame } = parseS3ImageId(imageId);
-  const entry = localFiles.get(key) || { users: 0 };
+  const entry = localFiles.get(key) || { users: 0, controller: new AbortController(), signals: new Set<AbortSignal>() };
   localFiles.set(key, entry);
   entry.users++;
   const controller = new AbortController();
+  entry.signals.add(controller.signal);
   let decoded: any;
   let released = false;
   let settled = false;
@@ -62,6 +73,7 @@ function loadImage(imageId: string, options?: unknown) {
   const release = () => {
     if (released) return;
     released = true;
+    entry.signals.delete(controller.signal);
     decoded?.decache?.();
     if (--entry.users === 0) {
       if (localFiles.get(key) === entry) localFiles.delete(key);
@@ -78,9 +90,14 @@ function loadImage(imageId: string, options?: unknown) {
         frame ? `${localId}&frame=${frame}` : localId, options as any
       );
       const image = await (decoded?.promise || decoded);
+      if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
       // Cornerstone's cache, volume events and UI must refer to the requested ID.
       // The private dicomfile ID is only an implementation detail of the decoder.
       image.imageId = imageId;
+      detachDecodedVolumeSource(image, options, () => {
+        release();
+        decoded = undefined;
+      });
       if (tracked) recordViewerDecode(performance.now() - before, true);
       return image;
     } catch (error) {
@@ -91,14 +108,22 @@ function loadImage(imageId: string, options?: unknown) {
     disposed = true;
     throw error;
   }).finally(() => {
+    activeRequests.delete(decache);
     settled = true;
     if (disposed) release();
   });
   const decache = () => {
     disposed = true;
     controller.abort();
+    if ([...entry.signals].every(signal => signal.aborted)) {
+      entry.controller.abort();
+      // A new request must not attach to an already cancelled download.
+      if (localFiles.get(key) === entry) localFiles.delete(key);
+    }
+    if (!settled) decoded?.cancelFn?.();
     if (settled) release();
   };
+  activeRequests.add(decache);
   return { promise, decache, cancelFn: decache };
 }
 
@@ -106,6 +131,8 @@ function loadImage(imageId: string, options?: unknown) {
 export function registerOrbitalS3ImageLoader(): void {
   if (registered) return;
   imageLoader.registerImageLoader(ORBITAL_S3_SCHEME, loadImage as any);
+  window.addEventListener('orbital:release-study-resources', cancelOrbitalImageTasks);
+  window.addEventListener('pagehide', cancelOrbitalImageTasks);
   registered = true;
   console.log('[orbital-s3] image loader registered');
 }

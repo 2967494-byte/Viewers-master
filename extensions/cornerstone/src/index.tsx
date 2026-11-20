@@ -1,6 +1,8 @@
 import React from 'react';
 import * as cornerstone from '@cornerstonejs/core';
 import * as cornerstoneTools from '@cornerstonejs/tools';
+import { releaseAllSkulls } from './utils/lazySkull';
+import { releasePanoramaSessions } from './components/ManualPanorama/panoramaSession';
 import {
   Enums as cs3DEnums,
   imageLoadPoolManager,
@@ -138,6 +140,10 @@ const cornerstoneExtension: Types.Extensions.Extension = {
   },
   getPanelModule,
   onModeExit: ({ servicesManager }: withAppTypes): void => {
+    window.dispatchEvent(new Event('orbital:release-study-resources'));
+    releaseAllSkulls();
+    releasePanoramaSessions();
+    cornerstone.cache.getVolumes().forEach(volume => volume?.cancelLoading?.());
     unsubscriptions.forEach(unsubscribe => unsubscribe());
     // Clear the unsubscriptions
     unsubscriptions.length = 0;

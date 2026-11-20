@@ -1,5 +1,5 @@
 /** Bound the whole fetch/parse/decode pipeline, not only the worker count. */
-export function createBoundedImageTasks(limit = 4) {
+export function createBoundedImageTasks(limit: number | (() => number) = 4) {
   let active = 0;
   const waiting: Array<() => void> = [];
   return async function run<T>(task: () => Promise<T>, signal: AbortSignal): Promise<T> {
@@ -15,7 +15,7 @@ export function createBoundedImageTasks(limit = 4) {
         if (index >= 0) waiting.splice(index, 1);
         reject(new DOMException('Cancelled', 'AbortError'));
       };
-      if (active < limit) start();
+      if (active < Math.max(1, typeof limit === 'function' ? limit() : limit)) start();
       else {
         waiting.push(start);
         signal.addEventListener('abort', cancel, { once: true });

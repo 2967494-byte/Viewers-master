@@ -399,15 +399,24 @@ export class S3FileService {
     }
   }
 
-  async getObjectAsBlob(key: string): Promise<Blob> {
+  async getObjectAsBlob(key: string, signal?: AbortSignal): Promise<Blob> {
     // Cornerstone may enqueue 50+ images at once. Bound actual SDK transfers,
     // including consumption of their bodies, so the first slices get bandwidth.
-    await new Promise<void>(resolve => {
-      this.downloadQueue.push(resolve);
+    await new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) return reject(new DOMException('Cancelled', 'AbortError'));
+      const start = () => { signal?.removeEventListener('abort', cancel); resolve(); };
+      const cancel = () => {
+        const index = this.downloadQueue.indexOf(start);
+        if (index >= 0) this.downloadQueue.splice(index, 1);
+        reject(new DOMException('Cancelled', 'AbortError'));
+      };
+      signal?.addEventListener('abort', cancel, { once: true });
+      this.downloadQueue.push(start);
       this.drainDownloads();
     });
     try {
-      const response = await this.requestObject(key);
+      if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
+      const response = await this.requestObject(key, signal);
       if (!response.Body) throw new Error('Response body is undefined');
       return await new Response(response.Body as any).blob();
     } finally {
