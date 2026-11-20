@@ -28,7 +28,8 @@ export function chooseGpuProfile(device: GpuDevice): GpuProfile {
   if (/Intel/i.test(renderer) && (/0x0*0f31\b/i.test(renderer) ||
       /\bHD(?:\s+Graphics)?\s*(?:2000|2500|3000|4000)\b/i.test(renderer) ||
       /\bHD Graphics\s*(?:\(|Direct3D|$)/i.test(renderer))) {
-    return { budgetBytes: MINIMUM_TEXTURE_BUDGET, reason: 'legacy-intel' };
+    // Temporary supervised test; restore the previous release after the laptop check.
+    return { budgetBytes: 640 * MiB, reason: 'legacy-intel' };
   }
   if (device.mobile) return { budgetBytes: MINIMUM_TEXTURE_BUDGET, reason: 'mobile' };
   if (ram > 0 && ram <= 2) return { budgetBytes: MINIMUM_TEXTURE_BUDGET, reason: 'low-memory' };

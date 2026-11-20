@@ -9,8 +9,8 @@ afterEach(() => { jest.restoreAllMocks(); localStorage.clear(); initializeAutoma
 
 it.each([laptop, { renderer: 'ANGLE (Intel(R) HD Graphics 4000 Direct3D11)' },
   { renderer: 'ANGLE (Intel(R) HD Graphics Direct3D11)' }, { renderer: 'llvmpipe' }, { renderer: 'Google SwiftShader' }])(
-  'starts a known constrained adapter at 256 MiB without a stress test: %j', device => {
-    expect(chooseGpuProfile(device).budgetBytes).toBe(256 * MiB);
+  'uses the temporary 640 MiB budget only for legacy Intel adapters: %j', device => {
+    expect(chooseGpuProfile(device).budgetBytes).toBe((/Intel/i.test(device.renderer) ? 640 : 256) * MiB);
   });
 
 it.each(['Intel(R) UHD Graphics 620', 'Intel(R) Iris Xe Graphics', 'Intel(R) HD Graphics 530',
@@ -40,7 +40,8 @@ it('remembers only stricter recovery for this graphics device, without changing 
 it('never revives a retired hardware budget based on a prior recovery record', () => {
   initializeAutomaticGpuProfile(laptop, 1000);
   rememberGpuRecovery(256 * MiB, 1000);
-  expect(initializeAutomaticGpuProfile(laptop, 1100)).toEqual({ budgetBytes: 256 * MiB, reason: 'legacy-intel' });
+  expect(initializeAutomaticGpuProfile(laptop, 1100)).toEqual({ budgetBytes: 256 * MiB, reason: 'previous-graphics-error' });
+  expect(fitAutomaticGpuProfile(640 * MiB, Infinity).budgetBytes).toBe(640 * MiB);
 });
 
 it('expires a recovery restriction after two hours and permits a reset without changing a live engine', () => {
@@ -63,7 +64,7 @@ it('migrates an active legacy restriction and fits only soft desktop budgets to 
   initializeAutomaticGpuProfile({ deviceMemory: 4 });
   expect(fitAutomaticGpuProfile(384 * MiB, 768 * MiB).budgetBytes).toBe(384 * MiB);
   initializeAutomaticGpuProfile(laptop);
-  expect(fitAutomaticGpuProfile(384 * MiB, 768 * MiB).budgetBytes).toBe(256 * MiB);
+  expect(fitAutomaticGpuProfile(384 * MiB, 768 * MiB).budgetBytes).toBe(640 * MiB);
   initializeAutomaticGpuProfile({ mobile: true });
   expect(fitAutomaticGpuProfile(384 * MiB, 256 * MiB).budgetBytes).toBe(256 * MiB);
 });
@@ -80,5 +81,5 @@ it('ignores malformed, future, unbounded and storage-blocked recovery records', 
   jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
   expect(() => initializeAutomaticGpuProfile(laptop)).not.toThrow();
   expect(() => rememberGpuRecovery(256 * MiB)).not.toThrow();
-  expect(getAutomaticGpuProfile().budgetBytes).toBe(256 * MiB);
+  expect(getAutomaticGpuProfile().budgetBytes).toBe(640 * MiB);
 });
