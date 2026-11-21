@@ -1,8 +1,8 @@
 {
-  "sourceCommit": "368d37badb7414fea74d87ac36560f141b8a2c06",
-  "createdAt": "2026-11-20T11:22:41.671Z",
-  "mainBundle": "app.bundle.7c931e1ef16e63aef508.js",
-  "mainSha256": "12e57763c8129d88abf55a0485a772ea5a1153b87fed4de93e643c5cbadeb28b",
+  "sourceCommit": "f79e91c80a5bf9bca7d05d20a8f9dfc05614a6dd",
+  "createdAt": "2026-11-21T07:48:12.605Z",
+  "mainBundle": "app.bundle.90665324cbad0b8285ad.js",
+  "mainSha256": "0abac071ba786f1a32c5aa965a1cedf14617f2e589795021ae479789c5032e85",
   "files": [
     {
       "path": "1006.bundle.979b24c51aba05fe5c7e.js",
@@ -245,8 +245,8 @@
       "sha256": "5381e88113392118f7752b2573ca267b0946391c2aa3e6923693bc48ee13f7a8"
     },
     {
-      "path": "7978.bundle.41d97b439deb51d3bd55.js",
-      "sha256": "1e8305010e2b68c99e307bda3582dfbc0f0e7537fbf5d36ad7c30b0e308a588b"
+      "path": "7978.bundle.3d2922f7088048c0289f.js",
+      "sha256": "50dffc1ec6b653a38a4fce4e8ef365a9eaf736bffff29f944f7fd020e3e9b2d1"
     },
     {
       "path": "8193.1fd9083b0246a2334c5c.css",
@@ -329,11 +329,11 @@
       "sha256": "79ae7c43da5805189d190de6b3a6d77a6cce250042da6104750d16551d2472b7"
     },
     {
-      "path": "app.bundle.7c931e1ef16e63aef508.js",
-      "sha256": "12e57763c8129d88abf55a0485a772ea5a1153b87fed4de93e643c5cbadeb28b"
+      "path": "app.bundle.90665324cbad0b8285ad.js",
+      "sha256": "0abac071ba786f1a32c5aa965a1cedf14617f2e589795021ae479789c5032e85"
     },
     {
-      "path": "app.bundle.7c931e1ef16e63aef508.js.LICENSE.txt",
+      "path": "app.bundle.90665324cbad0b8285ad.js.LICENSE.txt",
       "sha256": "a50edb82b22174c00271dcdc6ab5a8697a013a9e29ce08747ee7a93fe0244a89"
     },
     {
@@ -722,7 +722,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "3f6f88a4ab480831594cc70db48e326ef0d8e1a9f47100eea4ebab17690b66a2"
+      "sha256": "714b1208f65b7eef9c751fe57629ae78ae8a930f6981a5773b6b96c2058be5bf"
     },
     {
       "path": "init-service-worker.js",
