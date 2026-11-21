@@ -5,6 +5,7 @@ import {
 } from '@cornerstonejs/core/loaders';
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader';
 import { errorHandler, utils } from '@ohif/core';
+import { getOrbitalDecodeBudget } from '@ohif/core/src/constants/orbitalDecodeBudget';
 
 const { registerVolumeLoader } = volumeLoader;
 
@@ -21,10 +22,7 @@ export default function initWADOImageLoader(
   );
 
   dicomImageLoader.init({
-    maxWebWorkers: Math.min(
-      Math.max(navigator.hardwareConcurrency - 1, 1),
-      appConfig.maxNumberOfWebWorkers
-    ),
+    maxWebWorkers: getOrbitalDecodeBudget(navigator, appConfig.maxNumberOfWebWorkers).decoders,
     beforeSend: function (xhr) {
       //TODO should be removed in the future and request emitted by DicomWebDataSource
       const sourceConfig = extensionManager.getActiveDataSource()?.[0].getConfig() ?? {};

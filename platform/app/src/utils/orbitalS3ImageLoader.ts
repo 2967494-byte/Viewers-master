@@ -5,16 +5,22 @@ import { ORBITAL_S3_SCHEME, parseS3ImageId } from './s3ImageId';
 import { getViewerDiagnostics, recordViewerNetwork, recordViewerDecode } from '@ohif/core/src/constants/orbitalViewerDiagnostics';
 import { createBoundedImageTasks } from './boundedImageTasks';
 import { detachDecodedVolumeSource } from './decodedVolumeSource';
+import { getOrbitalDecodeBudget } from '@ohif/core/src/constants/orbitalDecodeBudget';
 
 export { ORBITAL_S3_SCHEME, orbitalS3ImageId } from './s3ImageId';
 
 type LocalFile = { users: number; localId?: string; pending?: Promise<string>; controller: AbortController; signals: Set<AbortSignal> };
 const localFiles = new Map<string, LocalFile>();
+const imageBudget = () => getOrbitalDecodeBudget(undefined,
+  typeof window === 'undefined' ? undefined : (window as any).config?.maxNumberOfWebWorkers);
 // Bound decoded files as well as transfers; retain headroom for UI and panorama.
-const runImageTask = createBoundedImageTasks(() => {
-  const nav = typeof navigator === 'undefined' ? {} : navigator as any;
-  return nav.deviceMemory && nav.deviceMemory <= 4 || nav.hardwareConcurrency && nav.hardwareConcurrency <= 4 ? 2 : 4;
-});
+const runImageTask = createBoundedImageTasks(() => imageBudget().pipelines);
+// Hold the source File until its decoder slot is available; do not parse more
+// DICOM datasets or enqueue more WASM work while the decoder is busy.
+const runDecodeTask = createBoundedImageTasks(() => imageBudget().decoders);
+export function getOrbitalImageTaskStats() {
+  return { budget: imageBudget(), pipelines: runImageTask.getStats(), decoding: runDecodeTask.getStats(), activeRequests: activeRequests.size };
+}
 const activeRequests = new Set<() => void>();
 export function cancelOrbitalImageTasks() {
   [...activeRequests].forEach(cancel => cancel());
@@ -83,27 +89,29 @@ function loadImage(imageId: string, options?: unknown) {
   const promise = runImageTask(async () => {
     const localId = await ensureLocalImageId(key, entry);
     if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
-    const tracked = !!getViewerDiagnostics();
-    const before = tracked ? performance.now() : 0;
-    try {
-      decoded = dicomImageLoader.wadouri.loadImage(
-        frame ? `${localId}&frame=${frame}` : localId, options as any
-      );
-      const image = await (decoded?.promise || decoded);
-      if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
-      // Cornerstone's cache, volume events and UI must refer to the requested ID.
-      // The private dicomfile ID is only an implementation detail of the decoder.
-      image.imageId = imageId;
-      detachDecodedVolumeSource(image, options, () => {
-        release();
-        decoded = undefined;
-      });
-      if (tracked) recordViewerDecode(performance.now() - before, true);
-      return image;
-    } catch (error) {
-      if (tracked) recordViewerDecode(performance.now() - before, false);
-      throw error;
-    }
+    return runDecodeTask(async () => {
+      const tracked = !!getViewerDiagnostics();
+      const before = tracked ? performance.now() : 0;
+      try {
+        decoded = dicomImageLoader.wadouri.loadImage(
+          frame ? `${localId}&frame=${frame}` : localId, options as any
+        );
+        const image = await (decoded?.promise || decoded);
+        if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+        // Cornerstone's cache, volume events and UI refer to the requested ID.
+        // The private dicomfile ID is only a decoder implementation detail.
+        image.imageId = imageId;
+        detachDecodedVolumeSource(image, options, () => {
+          release();
+          decoded = undefined;
+        });
+        if (tracked) recordViewerDecode(performance.now() - before, true);
+        return image;
+      } catch (error) {
+        if (tracked) recordViewerDecode(performance.now() - before, false);
+        throw error;
+      }
+    }, controller.signal);
   }, controller.signal).catch(error => {
     disposed = true;
     throw error;
@@ -131,6 +139,8 @@ function loadImage(imageId: string, options?: unknown) {
 export function registerOrbitalS3ImageLoader(): void {
   if (registered) return;
   imageLoader.registerImageLoader(ORBITAL_S3_SCHEME, loadImage as any);
+  // Read-only counters for local resource comparisons; no timers or reporting requests.
+  (window as any).__orbitalImageTaskStats = getOrbitalImageTaskStats;
   window.addEventListener('orbital:release-study-resources', cancelOrbitalImageTasks);
   window.addEventListener('pagehide', cancelOrbitalImageTasks);
   registered = true;

@@ -1,7 +1,7 @@
 import { imageLoader } from '@cornerstonejs/core';
 import dicomImageLoader from '@cornerstonejs/dicom-image-loader';
 import { s3FileService } from './S3FileService';
-import { orbitalS3ImageId, registerOrbitalS3ImageLoader, cancelOrbitalImageTasks } from './orbitalS3ImageLoader';
+import { orbitalS3ImageId, registerOrbitalS3ImageLoader, cancelOrbitalImageTasks, getOrbitalImageTaskStats } from './orbitalS3ImageLoader';
 
 jest.mock('@cornerstonejs/core', () => ({ imageLoader: { registerImageLoader: jest.fn() } }), { virtual: true });
 jest.mock('@cornerstonejs/dicom-image-loader', () => ({
@@ -134,4 +134,33 @@ it('lets a second frame finish when only one consumer cancels a shared transfer'
   await Promise.resolve(); await Promise.resolve(); first.cancelFn();
   expect(signal.aborted).toBe(false);
   finish(new Blob(['shared'])); await rejected; await second.promise; second.decache();
+});
+
+it('decodes one frame on a constrained device while downloading ahead, and cancels a waiting decode', async () => {
+  const hardware = jest.spyOn(navigator, 'hardwareConcurrency', 'get').mockReturnValue(2);
+  const load = (imageLoader.registerImageLoader as jest.Mock).mock.calls[0][1];
+  const releases: Array<() => void> = [];let active=0,peak=0;
+  const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
+  const downloads=(s3FileService.getObjectAsBlob as jest.Mock).mock.calls.length;
+  (s3FileService.getObjectAsBlob as jest.Mock).mockResolvedValue(new Blob(['compressed']));
+  (dicomImageLoader.wadouri.loadImage as jest.Mock).mockImplementation(() => ({
+    promise:new Promise(resolve=>{
+      peak=Math.max(peak,++active);
+      releases.push(()=>{active--;resolve({getPixelData:()=>new Int16Array([1,-1024,32767])});});
+    }),decache:jest.fn(),
+  }));
+  const requests=Array.from({length:4},(_,i)=>load(orbitalS3ImageId(`hot/bounded-${i}.dcm`)));
+  const all=Promise.allSettled(requests.map(r=>r.promise));
+  try {
+    await tick();expect(releases).toHaveLength(1);
+    expect((s3FileService.getObjectAsBlob as jest.Mock).mock.calls.length-downloads).toBe(2);
+    requests[1].cancelFn();await tick();
+    for(let i=0;i<3;i++){expect(releases[i]).toBeDefined();releases[i]();await tick();}
+    const results=await all;
+    expect(results.map(r=>r.status)).toEqual(['fulfilled','rejected','fulfilled','fulfilled']);
+    expect((results[1] as PromiseRejectedResult).reason.name).toBe('AbortError');
+    expect(peak).toBe(1);expect(releases).toHaveLength(3);
+    for(const result of results)if(result.status==='fulfilled')expect(Array.from(result.value.getPixelData())).toEqual([1,-1024,32767]);
+    expect(getOrbitalImageTaskStats()).toMatchObject({decoding:{active:0,queued:0},pipelines:{active:0,queued:0},activeRequests:0});
+  } finally { requests.forEach(r=>r.decache());hardware.mockRestore(); }
 });
